@@ -1,0 +1,35 @@
+"use client";
+
+import Link from "next/link";
+import { Home, Sparkles, Stethoscope } from "lucide-react";
+
+export function Header() {
+  return (
+    <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-gray-800 dark:bg-gray-950/90">
+      <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between px-4">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+            <Stethoscope className="h-4 w-4" />
+          </div>
+          <span className="text-base font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
+            My Allergy
+          </span>
+        </Link>
+
+        <nav className="hidden items-center gap-2 sm:flex">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+          >
+            <Home className="h-4 w-4" />
+            Home
+          </Link>
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+            <Sparkles className="h-4 w-4" />
+            Live Sync
+          </span>
+        </nav>
+      </div>
+    </header>
+  );
+}
