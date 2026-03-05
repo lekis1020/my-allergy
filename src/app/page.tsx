@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { RightRail } from "@/components/layout/right-rail";
 import { TopicMonitorPanel } from "@/components/layout/topic-monitor-panel";
 import { MobileDrawer } from "@/components/layout/mobile-drawer";
@@ -18,6 +18,7 @@ function HomePage() {
   const { filters, setFilters, clearFilters, hasActiveFilters } = usePaperFilters();
   const { papers, total, hasMore, isLoading, isLoadingMore, loadMore } = usePapers(filters);
   const { open: drawerOpen, close: closeDrawer } = useMobileDrawer();
+  const [cloudOpen, setCloudOpen] = useState(false);
 
   const handleRemoveFilter = (key: string, value?: string) => {
     if (key === "journals" && value) {
@@ -107,13 +108,32 @@ function HomePage() {
               />
             </div>
 
-            <div className="border-t border-gray-200 px-4 py-2 dark:border-gray-800">
-              <JournalCloud
-                journals={JOURNALS}
-                activeJournals={filters.journals || []}
-                onToggle={toggleJournal}
-                onClearAll={() => setFilters({ journals: undefined })}
-              />
+            <div className="border-t border-gray-200 dark:border-gray-800">
+              <button
+                onClick={() => setCloudOpen((v) => !v)}
+                className="flex w-full items-center justify-center gap-1 px-4 py-1.5 text-xs text-gray-400 transition-colors hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+              >
+                <span>Journals{filters.journals?.length ? ` (${filters.journals.length})` : ""}</span>
+                <svg
+                  className={`h-3 w-3 transition-transform ${cloudOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {cloudOpen && (
+                <div className="px-4 pb-2">
+                  <JournalCloud
+                    journals={JOURNALS}
+                    activeJournals={filters.journals || []}
+                    onToggle={toggleJournal}
+                    onClearAll={() => setFilters({ journals: undefined })}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
