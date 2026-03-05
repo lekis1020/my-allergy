@@ -12,6 +12,7 @@ import { usePaperFilters } from "@/hooks/use-paper-filters";
 import { usePapers } from "@/hooks/use-papers";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
 import { JOURNALS } from "@/lib/constants/journals";
+import { JournalCloud } from "@/components/papers/journal-cloud";
 
 function HomePage() {
   const { filters, setFilters, clearFilters, hasActiveFilters } = usePaperFilters();
@@ -107,34 +108,12 @@ function HomePage() {
             </div>
 
             <div className="border-t border-gray-200 px-4 py-2 dark:border-gray-800">
-              <div className="flex gap-2 overflow-x-auto">
-                <button
-                  onClick={() => setFilters({ journals: undefined })}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
-                    !filters.journals?.length
-                      ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                      : "border-gray-300 text-gray-600 dark:border-gray-700 dark:text-gray-300"
-                  }`}
-                >
-                  All journals
-                </button>
-                {JOURNALS.map((journal) => {
-                  const active = filters.journals?.includes(journal.slug);
-                  return (
-                    <button
-                      key={journal.slug}
-                      onClick={() => toggleJournal(journal.slug)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
-                        active
-                          ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                          : "border-gray-300 text-gray-600 dark:border-gray-700 dark:text-gray-300"
-                      }`}
-                    >
-                      {journal.abbreviation}
-                    </button>
-                  );
-                })}
-              </div>
+              <JournalCloud
+                journals={JOURNALS}
+                activeJournals={filters.journals || []}
+                onToggle={toggleJournal}
+                onClearAll={() => setFilters({ journals: undefined })}
+              />
             </div>
           </div>
 
