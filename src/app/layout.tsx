@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Manrope, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
@@ -32,6 +33,12 @@ export default function RootLayout({
         <meta name="google-adsense-account" content="ca-pub-8245767086450488" />
       </head>
       <body className={`${manrope.variable} ${spaceGrotesk.variable} antialiased`}>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8245767086450488"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <MobileDrawerProvider>
           <div className="flex min-h-screen flex-col">
             <Header />
