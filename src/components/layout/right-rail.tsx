@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Clock3, MapPin, Sparkles, TrendingUp } from "lucide-react";
+import { AdBanner } from "@/components/ads/ad-banner";
 import { AuthorWorldMap } from "@/components/maps/author-world-map";
 import {
   type AuthorLocationPoint,
@@ -134,6 +135,8 @@ export function RightRail({ total, papers }: RightRailProps) {
           </div>
         </div>
       </section>
+
+      <AdBanner variant="right-rail" />
 
       <section className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">

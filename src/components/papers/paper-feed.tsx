@@ -3,8 +3,11 @@
 import { useRef, useEffect, useCallback } from "react";
 import { PaperCard } from "./paper-card";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
+import { AdBanner } from "@/components/ads/ad-banner";
 import type { PaperWithJournal } from "@/types/filters";
 import { Loader2 } from "lucide-react";
+
+const AD_INTERVAL = 5;
 
 interface PaperFeedProps {
   papers: PaperWithJournal[];
@@ -77,8 +80,13 @@ export function PaperFeed({
         {total.toLocaleString()} papers in your timeline
       </div>
       <div className="divide-y divide-gray-200 dark:divide-gray-800">
-        {papers.map((paper) => (
-          <PaperCard key={paper.id} paper={paper} />
+        {papers.map((paper, index) => (
+          <div key={paper.id}>
+            <PaperCard paper={paper} />
+            {(index + 1) % AD_INTERVAL === 0 && (
+              <AdBanner variant="feed-inline" />
+            )}
+          </div>
         ))}
       </div>
 
