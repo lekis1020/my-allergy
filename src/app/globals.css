@@ -22,6 +22,15 @@ h4,
   font-family: var(--font-space-grotesk), var(--font-manrope), "Segoe UI", sans-serif;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-bg: #0f172a;
+    --app-text: #e2e8f0;
+    --app-muted: #94a3b8;
+    --timeline-line: #334155;
+  }
+}
+
 ::selection {
   background: #bfdbfe;
   color: #1e3a8a;

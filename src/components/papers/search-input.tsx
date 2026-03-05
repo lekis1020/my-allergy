@@ -55,7 +55,7 @@ export function SearchInput({
             setLocalValue("");
             onChange("");
           }}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <X className="h-4 w-4" />
         </button>
