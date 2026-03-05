@@ -21,7 +21,20 @@ INSERT INTO journals (name, abbreviation, issn, e_issn, impact_factor, color, sl
   ('Allergologia et Immunopathologia', 'Allergol Immunopathol (Madr)', '0301-0546', '1578-1267', 2.10, '#EF4444', 'allergol-immunopathol-madr'),
   ('Asian Pacific Journal of Allergy and Immunology', 'Asian Pac J Allergy Immunol', '0125-877X', NULL, 1.90, '#0D9488', 'asian-pac-j-allergy-immunol'),
   ('International Archives of Allergy and Immunology', 'Int Arch Allergy Immunol', '1018-2438', '1423-0097', NULL, '#8B5CF6', 'int-arch-allergy'),
-  ('JACI: Global', 'J Allergy Clin Immunol Glob', '2772-8293', NULL, 2.41, '#60A5FA', 'jaci-global')
+  ('JACI: Global', 'J Allergy Clin Immunol Glob', '2772-8293', NULL, 2.41, '#60A5FA', 'jaci-global'),
+  ('International Forum of Allergy & Rhinology', 'Int Forum Allergy Rhinol', '2042-6976', '2042-6984', 6.80, '#BE185D', 'int-forum-allergy-rhinol'),
+  ('Frontiers in Immunology', 'Front Immunol', '1664-3224', '1664-3224', 5.90, '#4F46E5', 'frontiers-immunology'),
+  ('Expert Review of Clinical Immunology', 'Expert Rev Clin Immunol', '1744-666X', '1744-8409', 3.70, '#9333EA', 'expert-rev-clin-immunol'),
+  ('Frontiers in Allergy', 'Front Allergy', NULL, '2673-6101', 3.10, '#0369A1', 'frontiers-allergy'),
+  ('The Lancet', 'Lancet', '0140-6736', '1474-547X', 88.50, '#B91C1C', 'lancet'),
+  ('New England Journal of Medicine', 'N Engl J Med', '0028-4793', '1533-4406', 78.50, '#C2410C', 'nejm'),
+  ('JAMA', 'JAMA', '0098-7484', '1538-3598', 55.00, '#7E22CE', 'jama'),
+  ('BMJ', 'BMJ', '0959-535X', '1756-1833', 42.70, '#1D4ED8', 'bmj'),
+  ('The Lancet Respiratory Medicine', 'Lancet Respir Med', '2213-2600', '2213-2619', 32.80, '#DB2777', 'lancet-respir-med'),
+  ('European Respiratory Journal', 'Eur Respir J', '0903-1936', '1399-3003', 21.00, '#0F766E', 'eur-respir-j'),
+  ('American Journal of Respiratory and Critical Care Medicine', 'Am J Respir Crit Care Med', '1073-449X', '1535-4970', 19.40, '#6D28D9', 'ajrccm'),
+  ('Chest', 'Chest', '0012-3692', '1931-3543', 8.60, '#CA8A04', 'chest'),
+  ('Thorax', 'Thorax', '0040-6376', '1468-3296', 7.70, '#475569', 'thorax')
 ON CONFLICT (abbreviation) DO UPDATE SET
   name = EXCLUDED.name,
   issn = EXCLUDED.issn,

@@ -1,7 +1,7 @@
 export interface JournalConfig {
   name: string;
   abbreviation: string;
-  issn: string;
+  issn: string | null;
   eIssn: string | null;
   impactFactor: number | null;
   color: string;
@@ -239,5 +239,145 @@ export const JOURNALS: JournalConfig[] = [
     color: "#60A5FA",
     slug: "jaci-global",
     pubmedQuery: '"J Allergy Clin Immunol Glob"[ta]',
+  },
+  {
+    name: "International Forum of Allergy & Rhinology",
+    abbreviation: "Int Forum Allergy Rhinol",
+    issn: "2042-6976",
+    eIssn: "2042-6984",
+    impactFactor: 6.8,
+    color: "#BE185D",
+    slug: "int-forum-allergy-rhinol",
+    pubmedQuery: '"Int Forum Allergy Rhinol"[ta]',
+  },
+  {
+    name: "Frontiers in Immunology",
+    abbreviation: "Front Immunol",
+    issn: "1664-3224",
+    eIssn: "1664-3224",
+    impactFactor: 5.9,
+    color: "#4F46E5",
+    slug: "frontiers-immunology",
+    pubmedQuery:
+      '"Front Immunol"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+  },
+  {
+    name: "Expert Review of Clinical Immunology",
+    abbreviation: "Expert Rev Clin Immunol",
+    issn: "1744-666X",
+    eIssn: "1744-8409",
+    impactFactor: 3.7,
+    color: "#9333EA",
+    slug: "expert-rev-clin-immunol",
+    pubmedQuery: '"Expert Rev Clin Immunol"[ta]',
+  },
+  {
+    name: "Frontiers in Allergy",
+    abbreviation: "Front Allergy",
+    issn: null,
+    eIssn: "2673-6101",
+    impactFactor: 3.1,
+    color: "#0369A1",
+    slug: "frontiers-allergy",
+    pubmedQuery: '"Front Allergy"[ta]',
+  },
+  {
+    name: "The Lancet",
+    abbreviation: "Lancet",
+    issn: "0140-6736",
+    eIssn: "1474-547X",
+    impactFactor: 88.5,
+    color: "#B91C1C",
+    slug: "lancet",
+    pubmedQuery:
+      '"Lancet"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+  },
+  {
+    name: "New England Journal of Medicine",
+    abbreviation: "N Engl J Med",
+    issn: "0028-4793",
+    eIssn: "1533-4406",
+    impactFactor: 78.5,
+    color: "#C2410C",
+    slug: "nejm",
+    pubmedQuery:
+      '"N Engl J Med"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+  },
+  {
+    name: "JAMA",
+    abbreviation: "JAMA",
+    issn: "0098-7484",
+    eIssn: "1538-3598",
+    impactFactor: 55.0,
+    color: "#7E22CE",
+    slug: "jama",
+    pubmedQuery:
+      '"JAMA"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+  },
+  {
+    name: "BMJ",
+    abbreviation: "BMJ",
+    issn: "0959-535X",
+    eIssn: "1756-1833",
+    impactFactor: 42.7,
+    color: "#1D4ED8",
+    slug: "bmj",
+    pubmedQuery:
+      '"BMJ"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+  },
+  {
+    name: "The Lancet Respiratory Medicine",
+    abbreviation: "Lancet Respir Med",
+    issn: "2213-2600",
+    eIssn: "2213-2619",
+    impactFactor: 32.8,
+    color: "#DB2777",
+    slug: "lancet-respir-med",
+    pubmedQuery:
+      '"Lancet Respir Med"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+  },
+  {
+    name: "European Respiratory Journal",
+    abbreviation: "Eur Respir J",
+    issn: "0903-1936",
+    eIssn: "1399-3003",
+    impactFactor: 21.0,
+    color: "#0F766E",
+    slug: "eur-respir-j",
+    pubmedQuery:
+      '"Eur Respir J"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+  },
+  {
+    name: "American Journal of Respiratory and Critical Care Medicine",
+    abbreviation: "Am J Respir Crit Care Med",
+    issn: "1073-449X",
+    eIssn: "1535-4970",
+    impactFactor: 19.4,
+    color: "#6D28D9",
+    slug: "ajrccm",
+    pubmedQuery:
+      '"Am J Respir Crit Care Med"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+  },
+  {
+    name: "Chest",
+    abbreviation: "Chest",
+    issn: "0012-3692",
+    eIssn: "1931-3543",
+    impactFactor: 8.6,
+    color: "#CA8A04",
+    slug: "chest",
+    pubmedQuery:
+      '"Chest"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+  },
+  {
+    name: "Thorax",
+    abbreviation: "Thorax",
+    issn: "0040-6376",
+    eIssn: "1468-3296",
+    impactFactor: 7.7,
+    color: "#475569",
+    slug: "thorax",
+    pubmedQuery:
+      '"Thorax"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
   },
 ];
