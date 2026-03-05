@@ -3,6 +3,8 @@
 import { Suspense } from "react";
 import { RightRail } from "@/components/layout/right-rail";
 import { TopicMonitorPanel } from "@/components/layout/topic-monitor-panel";
+import { MobileDrawer } from "@/components/layout/mobile-drawer";
+import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { PaperFeed } from "@/components/papers/paper-feed";
 import { FilterBar } from "@/components/papers/filter-bar";
 import { SearchInput } from "@/components/papers/search-input";
@@ -14,6 +16,7 @@ import { JOURNALS } from "@/lib/constants/journals";
 function HomePage() {
   const { filters, setFilters, clearFilters, hasActiveFilters } = usePaperFilters();
   const { papers, total, hasMore, isLoading, isLoadingMore, loadMore } = usePapers(filters);
+  const { open: drawerOpen, close: closeDrawer } = useMobileDrawer();
 
   const handleRemoveFilter = (key: string, value?: string) => {
     if (key === "journals" && value) {
@@ -39,8 +42,22 @@ function HomePage() {
     setFilters({ journals: updated.length > 0 ? updated : undefined });
   };
 
+  const handleDrawerActivate = (topic: string) => {
+    setFilters({ q: topic, sort: "date_desc" });
+    closeDrawer();
+  };
+
   return (
     <div className="mx-auto w-full max-w-[1280px] px-0 sm:px-4 sm:py-4">
+      <MobileDrawer
+        open={drawerOpen}
+        onClose={closeDrawer}
+        activeQuery={filters.q}
+        onActivate={handleDrawerActivate}
+        onClearActive={() => setFilters({ q: undefined })}
+        total={total}
+        papers={papers}
+      />
       <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_320px]">
         <div className="hidden lg:block lg:pr-4">
           <div className="sticky top-20 max-h-[calc(100vh-96px)] overflow-y-auto pr-1">
