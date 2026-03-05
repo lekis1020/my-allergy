@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Home, Menu, Sparkles, Stethoscope } from "lucide-react";
+import { Home, Menu, Stethoscope } from "lucide-react";
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 
 export function Header() {
@@ -36,10 +36,6 @@ export function Header() {
             <Home className="h-4 w-4" />
             Home
           </Link>
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
-            <Sparkles className="h-4 w-4" />
-            Live Sync
-          </span>
         </nav>
       </div>
     </header>
