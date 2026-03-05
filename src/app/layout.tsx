@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Manrope, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { MobileDrawerProvider } from "@/components/layout/mobile-drawer-context";
-
-const ADSENSE_CLIENT_ID = "ca-pub-8245767086450488";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -32,12 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <Script
-          async
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`}
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
+        <meta name="google-adsense-account" content="ca-pub-8245767086450488" />
       </head>
       <body className={`${manrope.variable} ${spaceGrotesk.variable} antialiased`}>
         <MobileDrawerProvider>
