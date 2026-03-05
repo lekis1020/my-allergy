@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { createServiceClient } from "@/lib/supabase/server";
 import { syncAllJournals } from "@/lib/sync/orchestrator";
+
+function safeCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) {
+    timingSafeEqual(bufA, bufA);
+    return false;
+  }
+  return timingSafeEqual(bufA, bufB);
+}
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -13,7 +24,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
   }
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  if (!safeCompare(authHeader ?? "", `Bearer ${cronSecret}`)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

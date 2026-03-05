@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createAnonClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/utils/rate-limit";
 import {
   getCoordinatesForLocation,
   inferLocationFromAffiliation,
@@ -15,10 +16,18 @@ interface AuthorRow {
   affiliation: string | null;
 }
 
+const limiter = rateLimit({ windowMs: 60_000, maxRequests: 10 });
+
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 export async function GET(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  const { success } = limiter.check(ip);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const requestedDays = Number(searchParams.get("days") || process.env.CRON_SYNC_DAYS || "180");
   const days =
@@ -31,7 +40,7 @@ export async function GET(request: NextRequest) {
     .toISOString()
     .slice(0, 10);
 
-  const supabase = createServiceClient();
+  const supabase = createAnonClient();
 
   const { data: paperRows, error: paperError } = await supabase
     .from("papers")

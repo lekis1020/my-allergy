@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { createServiceClient } from "@/lib/supabase/server";
 import { syncAllJournals } from "@/lib/sync/orchestrator";
+
+function safeCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) {
+    timingSafeEqual(bufA, bufA);
+    return false;
+  }
+  return timingSafeEqual(bufA, bufB);
+}
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -13,15 +24,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
   }
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  if (!safeCompare(authHeader ?? "", `Bearer ${cronSecret}`)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const body = await request.json().catch(() => ({}));
     const fullSync = (body as Record<string, unknown>).fullSync === true;
-    const days = typeof (body as Record<string, unknown>).days === "number"
+    const rawDays = typeof (body as Record<string, unknown>).days === "number"
       ? (body as Record<string, number>).days
+      : 180;
+    const days = Number.isFinite(rawDays) && rawDays >= 1
+      ? Math.min(Math.floor(rawDays), 365)
       : 180;
 
     const supabase = createServiceClient();

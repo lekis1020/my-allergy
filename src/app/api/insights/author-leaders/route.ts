@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createAnonClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/utils/rate-limit";
 import { inferLocationFromAffiliation } from "@/lib/utils/author-location";
+
+const limiter = rateLimit({ windowMs: 60_000, maxRequests: 10 });
 
 interface AuthorRow {
   paper_id: string;
@@ -27,6 +30,12 @@ function formatName(lastName: string, firstName: string | null, initials: string
 }
 
 export async function GET(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  const { success } = limiter.check(ip);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const requestedDays = Number(searchParams.get("days") || "180");
   const days =
@@ -39,7 +48,7 @@ export async function GET(request: NextRequest) {
     .toISOString()
     .slice(0, 10);
 
-  const supabase = createServiceClient();
+  const supabase = createAnonClient();
 
   // Get all paper IDs in date range
   const { data: paperRows, error: paperError } = await supabase

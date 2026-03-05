@@ -1,7 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAnonClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/utils/rate-limit";
 
-export async function GET() {
+const limiter = rateLimit({ windowMs: 60_000, maxRequests: 30 });
+
+export async function GET(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  const { success } = limiter.check(ip);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const supabase = createAnonClient();
 
   // Database: connectivity + latency
