@@ -6,6 +6,12 @@ import { withRetry } from "@/lib/utils/retry";
 const BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
 const RATE_LIMIT_MS = 250;
 
+const GLOBAL_FILTERS = [
+  "hasabstract",
+  "English[la]",
+  'NOT ("Published Erratum"[pt] OR "Retracted Publication"[pt] OR "Retraction of Publication"[pt])',
+].join(" AND ");
+
 let lastRequestTime = 0;
 
 async function rateLimitedFetch(url: string): Promise<Response> {
@@ -29,10 +35,12 @@ function getApiKeyParam(): string {
 
 export async function esearch(
   query: string,
-  options: { retmax?: number; mindate?: string; maxdate?: string } = {}
+  options: { retmax?: number; mindate?: string; maxdate?: string; fetchAll?: boolean } = {}
 ): Promise<PubMedSearchResult> {
-  const { retmax = 500, mindate, maxdate } = options;
-  let url = `${BASE_URL}/esearch.fcgi?db=pubmed&term=${encodeURIComponent(query)}&retmax=${retmax}&retmode=json&usehistory=y${getApiKeyParam()}`;
+  const { retmax = 500, mindate, maxdate, fetchAll = false } = options;
+
+  const fullQuery = `(${query}) AND ${GLOBAL_FILTERS}`;
+  let url = `${BASE_URL}/esearch.fcgi?db=pubmed&term=${encodeURIComponent(fullQuery)}&retmax=${retmax}&retmode=json&usehistory=y${getApiKeyParam()}`;
 
   if (mindate) url += `&mindate=${mindate}`;
   if (maxdate) url += `&maxdate=${maxdate}`;
@@ -41,12 +49,30 @@ export async function esearch(
   const response = await rateLimitedFetch(url);
   const data: ESearchResponse = await response.json();
 
-  return {
+  const result: PubMedSearchResult = {
     count: parseInt(data.esearchresult.count, 10),
     idList: data.esearchresult.idlist || [],
     webEnv: data.esearchresult.webenv,
     queryKey: data.esearchresult.querykey,
   };
+
+  // Paginate when fetchAll is enabled and there are more results than retmax
+  const MAX_TOTAL = 2000; // safety cap
+  if (fetchAll && result.count > retmax && result.webEnv && result.queryKey) {
+    let retstart = retmax;
+    while (retstart < result.count && retstart < MAX_TOTAL) {
+      const pageUrl = `${BASE_URL}/esearch.fcgi?db=pubmed&WebEnv=${result.webEnv}&query_key=${result.queryKey}&retstart=${retstart}&retmax=${retmax}&retmode=json&usehistory=y${getApiKeyParam()}`;
+      const pageResponse = await rateLimitedFetch(pageUrl);
+      const pageData: ESearchResponse = await pageResponse.json();
+      const pageIds = pageData.esearchresult.idlist || [];
+      if (pageIds.length === 0) break;
+      result.idList.push(...pageIds);
+      retstart += retmax;
+    }
+    console.log(`[PubMed] Paginated: fetched ${result.idList.length} / ${result.count} total IDs`);
+  }
+
+  return result;
 }
 
 // Fetches articles in batches and parses each batch separately

@@ -9,6 +9,80 @@ export interface JournalConfig {
   pubmedQuery: string;
 }
 
+// --- Allergy MeSH & tiab terms for general journals ---
+const ALLERGY_MESH_TERMS = [
+  "Hypersensitivity",
+  "Allergens",
+  "Asthma",
+  "Rhinitis, Allergic",
+  "Dermatitis, Atopic",
+  "Food Hypersensitivity",
+  "Anaphylaxis",
+  "Urticaria",
+  "Immunoglobulin E",
+  "Drug Hypersensitivity",
+  "Eosinophilia",
+  "Eosinophilic Esophagitis",
+  "Angioedema",
+  "Desensitization, Immunologic",
+  "Mast Cells",
+  "Mastocytosis",
+  "Immunologic Deficiency Syndromes",
+  "Dermatitis, Allergic Contact",
+  "Asthma, Occupational",
+];
+
+const ALLERGY_TIAB_TERMS = [
+  "anaphylaxis",
+  "urticaria",
+  "atopic dermatitis",
+  "food allergy",
+  "drug allergy",
+  "angioedema",
+  "allergic rhinitis",
+  "allergic asthma",
+  "allergen immunotherapy",
+  "eosinophilic esophagitis",
+  "mastocytosis",
+  "immunodeficiency",
+];
+
+// --- Respiratory-specific MeSH & tiab for respiratory journals ---
+const RESPIRATORY_MESH_TERMS = [
+  "Asthma",
+  "Rhinitis, Allergic",
+  "Hypersensitivity",
+  "Eosinophilia",
+  "Immunoglobulin E",
+  "Allergens",
+  "Desensitization, Immunologic",
+  "Bronchial Hyperreactivity",
+  "Aspergillosis, Allergic Bronchopulmonary",
+  "Alveolitis, Extrinsic Allergic",
+  "Anaphylaxis",
+  "Drug Hypersensitivity",
+];
+
+const RESPIRATORY_TIAB_TERMS = [
+  "allergic asthma",
+  "eosinophilic asthma",
+  "type 2 inflammation",
+  "allergic bronchopulmonary",
+  "hypersensitivity pneumonitis",
+  "occupational asthma",
+  "allergic rhinitis",
+  "severe eosinophilic asthma",
+];
+
+function buildMeshFilter(meshTerms: string[], tiabTerms: string[]): string {
+  const mesh = meshTerms.map((t) => `"${t}"[MeSH]`).join(" OR ");
+  const tiab = tiabTerms.map((t) => `"${t}"[tiab]`).join(" OR ");
+  return `(${mesh} OR ${tiab})`;
+}
+
+const ALLERGY_FILTER = buildMeshFilter(ALLERGY_MESH_TERMS, ALLERGY_TIAB_TERMS);
+const RESPIRATORY_FILTER = buildMeshFilter(RESPIRATORY_MESH_TERMS, RESPIRATORY_TIAB_TERMS);
+
 export const JOURNALS: JournalConfig[] = [
   {
     name: "Allergy",
@@ -258,8 +332,7 @@ export const JOURNALS: JournalConfig[] = [
     impactFactor: 5.9,
     color: "#4F46E5",
     slug: "frontiers-immunology",
-    pubmedQuery:
-      '"Front Immunol"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+    pubmedQuery: `"Front Immunol"[ta] AND ${ALLERGY_FILTER}`,
   },
   {
     name: "Expert Review of Clinical Immunology",
@@ -289,8 +362,7 @@ export const JOURNALS: JournalConfig[] = [
     impactFactor: 88.5,
     color: "#B91C1C",
     slug: "lancet",
-    pubmedQuery:
-      '"Lancet"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+    pubmedQuery: `"Lancet"[ta] AND ${ALLERGY_FILTER}`,
   },
   {
     name: "New England Journal of Medicine",
@@ -300,8 +372,7 @@ export const JOURNALS: JournalConfig[] = [
     impactFactor: 78.5,
     color: "#C2410C",
     slug: "nejm",
-    pubmedQuery:
-      '"N Engl J Med"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+    pubmedQuery: `"N Engl J Med"[ta] AND ${ALLERGY_FILTER}`,
   },
   {
     name: "JAMA",
@@ -311,8 +382,7 @@ export const JOURNALS: JournalConfig[] = [
     impactFactor: 55.0,
     color: "#7E22CE",
     slug: "jama",
-    pubmedQuery:
-      '"JAMA"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+    pubmedQuery: `"JAMA"[ta] AND ${ALLERGY_FILTER}`,
   },
   {
     name: "BMJ",
@@ -322,8 +392,7 @@ export const JOURNALS: JournalConfig[] = [
     impactFactor: 42.7,
     color: "#1D4ED8",
     slug: "bmj",
-    pubmedQuery:
-      '"BMJ"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+    pubmedQuery: `"BMJ"[ta] AND ${ALLERGY_FILTER}`,
   },
   {
     name: "The Lancet Respiratory Medicine",
@@ -333,8 +402,7 @@ export const JOURNALS: JournalConfig[] = [
     impactFactor: 32.8,
     color: "#DB2777",
     slug: "lancet-respir-med",
-    pubmedQuery:
-      '"Lancet Respir Med"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+    pubmedQuery: `"Lancet Respir Med"[ta] AND ${RESPIRATORY_FILTER}`,
   },
   {
     name: "European Respiratory Journal",
@@ -344,8 +412,7 @@ export const JOURNALS: JournalConfig[] = [
     impactFactor: 21.0,
     color: "#0F766E",
     slug: "eur-respir-j",
-    pubmedQuery:
-      '"Eur Respir J"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+    pubmedQuery: `"Eur Respir J"[ta] AND ${RESPIRATORY_FILTER}`,
   },
   {
     name: "American Journal of Respiratory and Critical Care Medicine",
@@ -355,8 +422,7 @@ export const JOURNALS: JournalConfig[] = [
     impactFactor: 19.4,
     color: "#6D28D9",
     slug: "ajrccm",
-    pubmedQuery:
-      '"Am J Respir Crit Care Med"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+    pubmedQuery: `"Am J Respir Crit Care Med"[ta] AND ${RESPIRATORY_FILTER}`,
   },
   {
     name: "Chest",
@@ -366,8 +432,7 @@ export const JOURNALS: JournalConfig[] = [
     impactFactor: 8.6,
     color: "#CA8A04",
     slug: "chest",
-    pubmedQuery:
-      '"Chest"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+    pubmedQuery: `"Chest"[ta] AND ${RESPIRATORY_FILTER}`,
   },
   {
     name: "Thorax",
@@ -377,7 +442,6 @@ export const JOURNALS: JournalConfig[] = [
     impactFactor: 7.7,
     color: "#475569",
     slug: "thorax",
-    pubmedQuery:
-      '"Thorax"[ta] AND ("Hypersensitivity"[MeSH] OR "Allergens"[MeSH] OR "Asthma"[MeSH] OR "Rhinitis, Allergic"[MeSH] OR "Dermatitis, Atopic"[MeSH] OR "Food Hypersensitivity"[MeSH] OR "Anaphylaxis"[MeSH] OR "Urticaria"[MeSH] OR "Immunoglobulin E"[MeSH] OR "Drug Hypersensitivity"[MeSH])',
+    pubmedQuery: `"Thorax"[ta] AND ${RESPIRATORY_FILTER}`,
   },
 ];

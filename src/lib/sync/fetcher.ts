@@ -12,6 +12,7 @@ export async function fetchPapersForJournal(
     retmax: 500,
     mindate: options.mindate,
     maxdate: options.maxdate,
+    fetchAll: true,
   });
 
   console.log(`[Fetcher] Found ${searchResult.count} results for ${journal.abbreviation}`);
