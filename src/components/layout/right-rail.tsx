@@ -31,11 +31,20 @@ interface GeographyInsightsResponse {
   }>;
 }
 
+interface AuthorLeadersResponse {
+  source: "database";
+  days: number;
+  asOf: string;
+  fromDate: string;
+  totalPapers: number;
+  firstAuthors: AuthorLeader[];
+  correspondingAuthors: AuthorLeader[];
+}
+
 export function RightRail({ total, papers }: RightRailProps) {
   const latest = papers.slice(0, 5);
-  const firstAuthorLeaders = buildAuthorLeaders(papers, "first");
-  const correspondingLeaders = buildAuthorLeaders(papers, "corresponding");
   const [geoInsights, setGeoInsights] = useState<GeographyInsightsResponse | null>(null);
+  const [authorInsights, setAuthorInsights] = useState<AuthorLeadersResponse | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -50,10 +59,23 @@ export function RightRail({ total, papers }: RightRailProps) {
         if (active) setGeoInsights(null);
       });
 
+    fetch("/api/insights/author-leaders?days=180", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!active || !data) return;
+        setAuthorInsights(data as AuthorLeadersResponse);
+      })
+      .catch(() => {
+        if (active) setAuthorInsights(null);
+      });
+
     return () => {
       active = false;
     };
   }, []);
+
+  const firstAuthorLeaders = authorInsights?.firstAuthors ?? buildAuthorLeaders(papers, "first");
+  const correspondingLeaders = authorInsights?.correspondingAuthors ?? buildAuthorLeaders(papers, "corresponding");
 
   const locationPoints: AuthorLocationPoint[] = useMemo(() => {
     if (geoInsights?.locations?.length) {
@@ -157,6 +179,11 @@ export function RightRail({ total, papers }: RightRailProps) {
           <TrendingUp className="h-4 w-4 text-emerald-500" />
           Top First Authors
         </h3>
+        <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+          {authorInsights
+            ? `Source: database (${authorInsights.days} days, ${authorInsights.totalPapers} papers)`
+            : "Source: currently loaded timeline"}
+        </p>
         <div className="space-y-2">
           {firstAuthorLeaders.length === 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400">No author data yet.</p>
@@ -187,6 +214,11 @@ export function RightRail({ total, papers }: RightRailProps) {
         <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
           Likely Corresponding Authors
         </h3>
+        <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+          {authorInsights
+            ? `Source: database (${authorInsights.days} days, ${authorInsights.totalPapers} papers)`
+            : "Source: currently loaded timeline"}
+        </p>
         <div className="space-y-2">
           {correspondingLeaders.length === 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400">No corresponding-author signal yet.</p>
@@ -260,7 +292,7 @@ function buildAuthorLeaders(papers: PaperWithJournal[], mode: LeaderMode): Autho
       target = explicit ?? sortedAuthors[sortedAuthors.length - 1];
     }
 
-    const name = formatAuthorName(target.last_name, target.initials);
+    const name = formatAuthorName(target.last_name, target.first_name, target.initials);
     const location = inferLocationFromAffiliation(target.affiliation);
     const current = counter.get(name);
 
@@ -286,9 +318,10 @@ function buildAuthorLeaders(papers: PaperWithJournal[], mode: LeaderMode): Autho
     .slice(0, 8);
 }
 
-function formatAuthorName(lastName: string, initials: string | null): string {
-  if (!initials) return lastName;
-  return `${lastName} ${initials}`;
+function formatAuthorName(lastName: string, firstName: string | null, initials: string | null): string {
+  if (initials) return `${lastName} ${initials}`;
+  if (firstName) return `${lastName} ${firstName.charAt(0)}`;
+  return lastName;
 }
 
 function getFirstAuthorLocation(paper: PaperWithJournal): string {
