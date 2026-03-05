@@ -6,7 +6,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { MobileDrawerProvider } from "@/components/layout/mobile-drawer-context";
 
-const adsenseId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? "";
+const ADSENSE_CLIENT_ID = "ca-pub-8245767086450488";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -32,14 +32,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {adsenseId && (
-          <Script
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseId}`}
-            crossOrigin="anonymous"
-            strategy="afterInteractive"
-          />
-        )}
+        <Script
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`}
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
       </head>
       <body className={`${manrope.variable} ${spaceGrotesk.variable} antialiased`}>
         <MobileDrawerProvider>
