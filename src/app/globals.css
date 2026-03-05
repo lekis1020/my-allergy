@@ -9,7 +9,7 @@
 
 html,
 body {
-  background: radial-gradient(circle at top, #ffffff 0%, var(--app-bg) 55%);
+  background: var(--app-bg);
   color: var(--app-text);
   font-family: var(--font-manrope), "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
