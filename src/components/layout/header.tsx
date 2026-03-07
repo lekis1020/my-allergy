@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Bookmark, Home, Menu, Stethoscope } from "lucide-react";
+import { Bell, Bookmark, CalendarDays, Home, Menu, Stethoscope } from "lucide-react";
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { AuthButton } from "@/components/layout/auth-button";
 
@@ -43,6 +43,13 @@ export function Header() {
           >
             <Bookmark className="h-4 w-4" />
             Bookmarks
+          </Link>
+          <Link
+            href="/calendar"
+            className="hidden items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 sm:inline-flex"
+          >
+            <CalendarDays className="h-4 w-4" />
+            Calendar
           </Link>
           <Link
             href="/alerts"
