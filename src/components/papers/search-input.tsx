@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -18,27 +18,31 @@ export function SearchInput({
 }: SearchInputProps) {
   const [localValue, setLocalValue] = useState(value);
   const debouncedValue = useDebounce(localValue, 300);
-  const syncingFromExternalValueRef = useRef(false);
 
-  useEffect(() => {
-    if (value === localValue) return;
-    syncingFromExternalValueRef.current = true;
-    setLocalValue(value);
-  }, [value]);
+  // Track sync state using React "store previous value in state" pattern
+  const [prevValue, setPrevValue] = useState(value);
+  const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    if (syncingFromExternalValueRef.current) {
-      // Ignore debounced echo produced by external state sync (e.g. topic click).
-      if (debouncedValue === value) {
-        syncingFromExternalValueRef.current = false;
-      }
-      return;
+  // Sync external value prop into local state (replaces useEffect+setState)
+  if (prevValue !== value) {
+    setPrevValue(value);
+    if (value !== localValue) {
+      setSyncing(true);
+      setLocalValue(value);
     }
+  }
 
-    if (debouncedValue !== value) {
+  // Clear syncing flag when debounced value catches up to external value
+  if (syncing && debouncedValue === value) {
+    setSyncing(false);
+  }
+
+  // Notify parent of debounced local changes (skip echo from external sync)
+  useEffect(() => {
+    if (!syncing && debouncedValue !== value) {
       onChange(debouncedValue);
     }
-  }, [debouncedValue, onChange, value]);
+  }, [debouncedValue, onChange, value, syncing]);
 
   return (
     <div className="relative">

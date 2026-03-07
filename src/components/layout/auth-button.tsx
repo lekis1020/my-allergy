@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { LogIn, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase/client";
@@ -40,9 +41,11 @@ export function AuthButton() {
   return (
     <div className="flex items-center gap-2">
       {avatarUrl ? (
-        <img
+        <Image
           src={avatarUrl}
           alt={name || "User"}
+          width={28}
+          height={28}
           className="h-7 w-7 rounded-full"
           referrerPolicy="no-referrer"
         />
