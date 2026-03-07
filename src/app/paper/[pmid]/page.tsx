@@ -8,6 +8,7 @@ import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 import { ArrowLeft, ExternalLink, Calendar, Quote, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AbstractSummary } from "@/components/papers/abstract-summary";
 
 interface AuthorData {
   last_name: string;
@@ -159,6 +160,11 @@ export default async function PaperDetailPage({ params }: PageProps) {
             <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-line dark:text-gray-300">
               {decodeHtmlEntities(String(paper.abstract))}
             </p>
+            <AbstractSummary
+              abstract={String(paper.abstract)}
+              title={String(paper.title)}
+              pmid={pmid}
+            />
           </div>
         )}
 
