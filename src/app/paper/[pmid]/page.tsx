@@ -63,8 +63,8 @@ export default async function PaperDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const journal = paper.journals as unknown as JournalData;
-  const authors = ((paper.paper_authors as unknown as AuthorData[]) || []);
+  const journal = paper.journals;
+  const authors = paper.paper_authors || [];
   const [relatedIds, referencedIds, citedByIds] = await Promise.all([
     fetchLinkedPmids(pmid, "pubmed_pubmed", 30),
     fetchLinkedPmids(pmid, "pubmed_pubmed_refs", 30),
@@ -295,8 +295,8 @@ async function getLinkedPapersMap(
 
   const map = new Map<string, LinkedPaper>();
 
-  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
-    const journal = row.journals as Record<string, unknown>;
+  for (const row of (data ?? [])) {
+    const journal = row.journals;
     map.set(String(row.pmid), {
       pmid: String(row.pmid),
       title: String(row.title ?? ""),

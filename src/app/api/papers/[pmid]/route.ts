@@ -26,8 +26,8 @@ export async function GET(
     return NextResponse.json({ error: "Paper not found" }, { status: 404 });
   }
 
-  const journal = data.journals as Record<string, unknown>;
-  const authors = (data.paper_authors as Record<string, unknown>[]) || [];
+  const journal = data.journals;
+  const authors = data.paper_authors || [];
   const keywords = Array.isArray(data.keywords)
     ? (data.keywords as unknown[])
         .filter((keyword): keyword is string => typeof keyword === "string")

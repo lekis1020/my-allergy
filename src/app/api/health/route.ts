@@ -58,6 +58,8 @@ export async function GET(request: NextRequest) {
       lastSyncCheck = { status: "error", lastSyncAt: null, minutesAgo: null };
     } else if (!data) {
       lastSyncCheck = { status: "stale", lastSyncAt: null, minutesAgo: null };
+    } else if (!data.completed_at) {
+      lastSyncCheck = { status: "stale", lastSyncAt: null, minutesAgo: null };
     } else {
       const ageMs = Date.now() - new Date(data.completed_at).getTime();
       const minutesAgo = Math.round(ageMs / 60_000);
