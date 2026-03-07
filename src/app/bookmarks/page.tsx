@@ -9,11 +9,13 @@ import { buildApiUrl } from "@/lib/utils/url";
 import type { PaperWithJournal, PapersResponse } from "@/types/filters";
 
 export default function BookmarksPage() {
-  const { pmids } = useBookmarks();
+  const { pmids, loading: bookmarksLoading } = useBookmarks();
   const [papers, setPapers] = useState<PaperWithJournal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (bookmarksLoading) return;
+
     if (pmids.length === 0) {
       setPapers([]);
       setIsLoading(false);
@@ -43,7 +45,9 @@ export default function BookmarksPage() {
     return () => {
       cancelled = true;
     };
-  }, [pmids]);
+  }, [pmids, bookmarksLoading]);
+
+  const showSkeleton = bookmarksLoading || isLoading;
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-0 sm:px-4 sm:py-4">
@@ -62,7 +66,7 @@ export default function BookmarksPage() {
           </div>
         </div>
 
-        {isLoading ? (
+        {showSkeleton ? (
           <div className="divide-y divide-gray-200 dark:divide-gray-800">
             {Array.from({ length: 3 }).map((_, i) => (
               <PaperCardSkeleton key={i} />

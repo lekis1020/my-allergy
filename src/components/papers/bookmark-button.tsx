@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark } from "lucide-react";
+import { Bookmark, Loader2 } from "lucide-react";
 import { useBookmarks } from "@/hooks/use-bookmarks";
 
 interface BookmarkButtonProps {
@@ -9,10 +9,18 @@ interface BookmarkButtonProps {
 }
 
 export function BookmarkButton({ pmid, size = "sm" }: BookmarkButtonProps) {
-  const { isBookmarked, toggleBookmark } = useBookmarks();
+  const { isBookmarked, toggleBookmark, loading } = useBookmarks();
   const saved = isBookmarked(pmid);
 
   const iconSize = size === "sm" ? "h-4 w-4" : "h-5 w-5";
+
+  if (loading) {
+    return (
+      <div className="rounded-full p-1.5">
+        <Loader2 className={`${iconSize} animate-spin text-gray-300 dark:text-gray-600`} />
+      </div>
+    );
+  }
 
   return (
     <button
