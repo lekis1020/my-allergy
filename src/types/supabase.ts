@@ -35,6 +35,51 @@ export type Database = {
         }
         Relationships: []
       }
+      email_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          journal_slug: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          journal_slug: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          journal_slug?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      keyword_alerts: {
+        Row: {
+          id: string
+          user_id: string
+          keyword: string
+          active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          keyword: string
+          active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          keyword?: string
+          active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
       journals: {
         Row: {
           abbreviation: string
