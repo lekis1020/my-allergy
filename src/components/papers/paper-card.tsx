@@ -9,6 +9,7 @@ import { TOPIC_META } from "@/lib/utils/topic-tags";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 import type { PaperWithJournal } from "@/types/filters";
 import { ExternalLink, Quote, Users } from "lucide-react";
+import { BookmarkButton } from "./bookmark-button";
 
 interface PaperCardProps {
   paper: PaperWithJournal;
@@ -129,6 +130,7 @@ export function PaperCard({ paper }: PaperCardProps) {
                   DOI <ExternalLink className="h-3 w-3" />
                 </a>
               )}
+              <BookmarkButton pmid={paper.pmid} size="sm" />
             </div>
           </div>
 

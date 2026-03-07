@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams;
   const q = searchParams.get("q") || "";
+  const pmids = searchParams.get("pmids") || "";
   const journals = searchParams.get("journals") || "";
   const from = searchParams.get("from") || "";
   const to = searchParams.get("to") || "";
@@ -65,6 +66,14 @@ export async function GET(request: NextRequest) {
   // Full-text search using stored tsvector column with weighted GIN index
   if (q) {
     query = query.textSearch('search_vector', q, { type: 'websearch' });
+  }
+
+  // Filter by specific PMIDs (used by bookmarks page)
+  if (pmids) {
+    const pmidList = pmids.split(",").filter(Boolean).slice(0, 100);
+    if (pmidList.length > 0) {
+      query = query.in("pmid", pmidList);
+    }
   }
 
   if (journals) {
