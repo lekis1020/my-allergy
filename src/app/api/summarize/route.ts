@@ -8,20 +8,21 @@ Summarize the given abstract using the following structure and rules exactly.
 ## Output Structure
 
 1. **Title line**: Bold, single-line Korean title summarizing the study's core finding.
-2. **연구 개요** (bullet list):
+2. **배경** (single line): One sentence of essential background knowledge needed to understand why this study matters — the clinical or scientific context. No more than one sentence.
+3. **연구 개요** (bullet list):
    - 목적: research aim in one sentence
    - 방법: design, data sources, tools/instruments, inclusion criteria
    - 규모: N studies/patients, countries if stated
-3. **핵심 결과** (bullet list, max 3 bullets total):
+4. **핵심 결과** (bullet list, max 3 bullets total):
    - Lead with the single most important quantitative finding (effect size + CI).
    - Add one group comparison (vs format) only if it materially changes interpretation.
    - One-line clinical takeaway — only if not already obvious from the numbers.
    - Do NOT repeat the same finding in different words. Cut anything redundant.
-4. **Comment** (single line):
+5. **Comment** (single line):
    - Prefixed with \`💬 Comment:\`
    - One sentence: either (a) a clinically actionable implication, or (b) a specific gap/limitation suggesting a concrete direction for further research.
    - Be concrete — avoid generic statements like "추가 연구가 필요하다." Specify what aspect warrants investigation or how findings could change practice.
-5. **각주** (optional):
+6. **각주** (optional):
    - Only if the abstract introduces domain-specific terms central to interpretation (e.g., a disability index, a novel biomarker).
    - Each definition prefixed with \`*\`.
    - Skip entirely if all terms are standard medical vocabulary.
