@@ -9,7 +9,7 @@ const tabs = [
   { href: "/trending", label: "Trending", icon: TrendingUp },
   { href: "/insights", label: "Insights", icon: BarChart2 },
   { href: "/bookmarks", label: "Saved", icon: Bookmark },
-  { href: "/auth", label: "Account", icon: User },
+  { href: "/login", label: "Account", icon: User },
 ] as const;
 
 export function MobileBottomNav() {
