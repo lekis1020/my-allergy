@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ConferenceList } from "@/components/calendar/conference-list";
 
 export const metadata: Metadata = {
-  title: "Conference Calendar - My Allergy",
+  title: "학회 일정 | My Allergy",
   description:
     "Upcoming allergy, asthma, and immunology conferences and academic meetings worldwide.",
 };
