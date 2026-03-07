@@ -1,57 +1,13 @@
-export interface Journal {
-  id: string;
-  name: string;
-  abbreviation: string;
-  issn: string;
-  e_issn: string | null;
-  impact_factor: number | null;
-  color: string;
-  slug: string;
-  created_at: string;
-}
+import type { Database } from "./supabase";
 
-export interface Paper {
-  id: string;
-  journal_id: string;
-  pmid: string;
-  doi: string | null;
-  title: string;
-  abstract: string | null;
-  publication_date: string;
-  epub_date: string | null;
-  volume: string | null;
-  issue: string | null;
-  pages: string | null;
-  keywords: string[];
-  mesh_terms: string[];
-  citation_count: number | null;
-  crossref_data: Record<string, unknown> | null;
-  created_at: string;
-  updated_at: string;
-}
+// Re-export generated Database type
+export type { Database };
 
-export interface PaperAuthor {
-  id: string;
-  paper_id: string;
-  last_name: string;
-  first_name: string | null;
-  initials: string | null;
-  affiliation: string | null;
-  position: number;
-}
-
-export interface SyncLog {
-  id: string;
-  journal_id: string;
-  sync_type: "full" | "incremental";
-  status: "running" | "success" | "error";
-  papers_found: number;
-  papers_inserted: number;
-  papers_updated: number;
-  error_message: string | null;
-  started_at: string;
-  completed_at: string | null;
-}
+// Convenience row-type aliases
+export type Journal = Database["public"]["Tables"]["journals"]["Row"];
+export type Paper = Database["public"]["Tables"]["papers"]["Row"];
+export type PaperAuthor = Database["public"]["Tables"]["paper_authors"]["Row"];
+export type SyncLog = Database["public"]["Tables"]["sync_logs"]["Row"];
 
 export interface PaperWithDetails extends Paper {
   journal: Journal;

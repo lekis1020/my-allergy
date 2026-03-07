@@ -106,9 +106,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch papers" }, { status: 500 });
   }
 
-  const papers = (data || []).map((paper: Record<string, unknown>) => {
-    const journal = paper.journals as Record<string, unknown>;
-    const authors = (paper.paper_authors as Record<string, unknown>[]) || [];
+  const papers = (data || []).map((paper) => {
+    const journal = paper.journals;
+    const authors = paper.paper_authors || [];
     const keywords = Array.isArray(paper.keywords)
       ? paper.keywords
           .filter((keyword): keyword is string => typeof keyword === "string")
