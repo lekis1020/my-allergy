@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import useSWR from "swr";
 import { useAuth } from "./use-auth";
 
@@ -23,6 +23,7 @@ function readLocalBookmarks(): string[] {
 function writeLocalBookmarks(pmids: string[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pmids));
+    emitLocalChange();
   } catch {
     // localStorage full or unavailable
   }
@@ -31,7 +32,33 @@ function writeLocalBookmarks(pmids: string[]) {
 function clearLocalBookmarks() {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    emitLocalChange();
   } catch {}
+}
+
+// --- useSyncExternalStore support ---
+
+let listeners: (() => void)[] = [];
+
+function emitLocalChange() {
+  for (const fn of listeners) fn();
+}
+
+function subscribe(callback: () => void) {
+  listeners.push(callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    listeners = listeners.filter((l) => l !== callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function getSnapshot(): string {
+  return localStorage.getItem(STORAGE_KEY) ?? "[]";
+}
+
+function getServerSnapshot(): string {
+  return "[]";
 }
 
 // --- SWR fetcher ---
@@ -56,27 +83,16 @@ export function useBookmarks() {
     revalidateOnFocus: false,
   });
 
-  // Local bookmarks state (for unauthenticated users)
-  const [localPmids, setLocalPmids] = useState<string[]>([]);
-  const [localHydrated, setLocalHydrated] = useState(false);
-
-  // Hydrate local bookmarks on mount
-  useEffect(() => {
-    setLocalPmids(readLocalBookmarks());
-    setLocalHydrated(true);
-  }, []);
-
-  // Persist local bookmarks when they change (only for unauthenticated users)
-  const skipInitialWrite = useRef(true);
-  useEffect(() => {
-    if (skipInitialWrite.current) {
-      skipInitialWrite.current = false;
-      return;
+  // Local bookmarks from localStorage (no hydration effect needed)
+  const localPmidsRaw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const localPmids = useMemo(() => {
+    try {
+      const parsed = JSON.parse(localPmidsRaw);
+      return Array.isArray(parsed) ? (parsed as string[]) : [];
+    } catch {
+      return [];
     }
-    if (!user && localHydrated) {
-      writeLocalBookmarks(localPmids);
-    }
-  }, [localPmids, user, localHydrated]);
+  }, [localPmidsRaw]);
 
   // Migrate localStorage → server on first login
   useEffect(() => {
@@ -101,11 +117,9 @@ export function useBookmarks() {
       ).then(() => {
         mutate([...serverPmids, ...toMigrate], { revalidate: false });
         clearLocalBookmarks();
-        setLocalPmids([]);
       });
     } else {
       clearLocalBookmarks();
-      setLocalPmids([]);
     }
   }, [user, serverPmids, mutate]);
 
@@ -117,7 +131,7 @@ export function useBookmarks() {
 
   const bookmarks = useMemo(() => new Set(pmids), [pmids]);
 
-  const loading = authLoading || (user ? swrLoading : !localHydrated);
+  const loading = authLoading || (user ? swrLoading : false);
 
   const addBookmark = useCallback(
     (pmid: string) => {
@@ -131,9 +145,10 @@ export function useBookmarks() {
           body: JSON.stringify({ pmid }),
         }).catch(() => mutate());
       } else {
-        setLocalPmids((prev) =>
-          prev.includes(pmid) ? prev : [...prev, pmid]
-        );
+        const current = readLocalBookmarks();
+        if (!current.includes(pmid)) {
+          writeLocalBookmarks([...current, pmid]);
+        }
       }
     },
     [user, mutate]
@@ -151,7 +166,8 @@ export function useBookmarks() {
           body: JSON.stringify({ pmid }),
         }).catch(() => mutate());
       } else {
-        setLocalPmids((prev) => prev.filter((p) => p !== pmid));
+        const current = readLocalBookmarks();
+        writeLocalBookmarks(current.filter((p) => p !== pmid));
       }
     },
     [user, mutate]

@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Tag, BarChart2, Bookmark, User } from "lucide-react";
+import { Home, TrendingUp, BarChart2, Bookmark, User } from "lucide-react";
 
 const tabs = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/", label: "Topics", icon: Tag },
+  { href: "/trending", label: "Trending", icon: TrendingUp },
   { href: "/insights", label: "Insights", icon: BarChart2 },
   { href: "/bookmarks", label: "Saved", icon: Bookmark },
   { href: "/auth", label: "Account", icon: User },

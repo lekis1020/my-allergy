@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { AuthorLocationPoint } from "@/lib/utils/author-location";
 
 interface AuthorWorldMapProps {
@@ -12,10 +13,11 @@ export function AuthorWorldMap({ points }: AuthorWorldMapProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       <div className="relative aspect-[950/620] w-full">
-        <img
+        <Image
           src="/world-map.svg"
           alt="World map"
-          className="h-full w-full object-cover opacity-95 dark:opacity-80"
+          fill
+          className="object-cover opacity-95 dark:opacity-80"
         />
 
         {points.map((point) => {

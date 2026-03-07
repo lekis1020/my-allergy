@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, FolderTree, Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,18 +20,13 @@ export function TopicMonitorPanel({
   onActivate,
   onClearActive,
 }: TopicMonitorPanelProps) {
-  const [customTopics, setCustomTopics] = useState<string[]>([]);
-  const [input, setInput] = useState("");
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const normalizedActive = normalizeTopic(activeQuery || "");
-
-  // Load custom topics from localStorage (migrating away built-in duplicates)
-  useEffect(() => {
+  const [customTopics, setCustomTopics] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return;
+      if (!stored) return [];
       const parsed = JSON.parse(stored);
-      if (!Array.isArray(parsed)) return;
+      if (!Array.isArray(parsed)) return [];
 
       const clean = parsed
         .filter((v): v is string => typeof v === "string")
@@ -40,40 +35,41 @@ export function TopicMonitorPanel({
         .filter((v) => !BUILTIN_QUERIES.has(v.toLowerCase()))
         .slice(0, 30);
 
-      if (clean.length > 0) {
-        setCustomTopics(dedupeTopics(clean));
-      }
-
       // Persist migrated list (remove built-in dupes)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
+      return clean.length > 0 ? dedupeTopics(clean) : [];
     } catch {
-      // Ignore malformed localStorage values
+      return [];
     }
-  }, []);
+  });
+  const [input, setInput] = useState("");
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const normalizedActive = normalizeTopic(activeQuery || "");
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(customTopics));
   }, [customTopics]);
 
   // Auto-expand category that contains the active query
-  useEffect(() => {
-    if (!normalizedActive) return;
-    for (const cat of TOPIC_TREE) {
-      const catMatch = normalizeTopic(cat.searchQuery) === normalizedActive;
-      const subMatch = cat.subtopics.some(
-        (s) => normalizeTopic(s.searchQuery) === normalizedActive
-      );
-      if (catMatch || subMatch) {
-        setExpandedIds((prev) => {
-          if (prev.has(cat.id)) return prev;
-          const next = new Set(prev);
+  // Uses React "store previous value in state" pattern (no refs during render)
+  const [prevNormalizedActive, setPrevNormalizedActive] = useState(normalizedActive);
+  if (prevNormalizedActive !== normalizedActive) {
+    setPrevNormalizedActive(normalizedActive);
+    if (normalizedActive) {
+      for (const cat of TOPIC_TREE) {
+        const catMatch = normalizeTopic(cat.searchQuery) === normalizedActive;
+        const subMatch = cat.subtopics.some(
+          (s) => normalizeTopic(s.searchQuery) === normalizedActive
+        );
+        if ((catMatch || subMatch) && !expandedIds.has(cat.id)) {
+          const next = new Set(expandedIds);
           next.add(cat.id);
-          return next;
-        });
-        break;
+          setExpandedIds(next);
+          break;
+        }
       }
     }
-  }, [normalizedActive]);
+  }
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedIds((prev) => {
@@ -104,7 +100,7 @@ export function TopicMonitorPanel({
     }
   };
 
-  const hasActiveMonitor = useMemo(() => {
+  const hasActiveMonitor = (() => {
     // Check built-in topics
     for (const cat of TOPIC_TREE) {
       if (normalizeTopic(cat.searchQuery) === normalizedActive) return true;
@@ -113,7 +109,7 @@ export function TopicMonitorPanel({
     }
     // Check custom topics
     return customTopics.some((t) => normalizeTopic(t) === normalizedActive);
-  }, [normalizedActive, customTopics]);
+  })();
 
   return (
     <aside className="space-y-4">

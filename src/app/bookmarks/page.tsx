@@ -1,53 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Bookmark } from "lucide-react";
+import useSWR from "swr";
 import { PaperCard } from "@/components/papers/paper-card";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
 import { useBookmarks } from "@/hooks/use-bookmarks";
 import { buildApiUrl } from "@/lib/utils/url";
 import type { PaperWithJournal, PapersResponse } from "@/types/filters";
 
+const fetcher = (url: string) =>
+  fetch(url)
+    .then((res) => res.json())
+    .then((data: PapersResponse) => data.papers);
+
 export default function BookmarksPage() {
   const { pmids, loading: bookmarksLoading } = useBookmarks();
-  const [papers, setPapers] = useState<PaperWithJournal[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (bookmarksLoading) return;
+  const url =
+    !bookmarksLoading && pmids.length > 0
+      ? buildApiUrl("/api/papers", { pmids: pmids.join(","), limit: 100 })
+      : null;
 
-    if (pmids.length === 0) {
-      setPapers([]);
-      setIsLoading(false);
-      return;
-    }
+  const { data: papers = [], isLoading: swrLoading } = useSWR<PaperWithJournal[]>(
+    url,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
-    let cancelled = false;
-    setIsLoading(true);
-
-    const url = buildApiUrl("/api/papers", {
-      pmids: pmids.join(","),
-      limit: 100,
-    });
-
-    fetch(url)
-      .then((res) => res.json())
-      .then((data: PapersResponse) => {
-        if (!cancelled) setPapers(data.papers);
-      })
-      .catch(() => {
-        if (!cancelled) setPapers([]);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [pmids, bookmarksLoading]);
-
-  const showSkeleton = bookmarksLoading || isLoading;
+  const showSkeleton = bookmarksLoading || swrLoading;
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-0 sm:px-4 sm:py-4">
