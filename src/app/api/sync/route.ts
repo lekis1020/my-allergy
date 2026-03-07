@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
-import { createServiceClient } from "@/lib/supabase/server";
-import { syncAllJournals } from "@/lib/sync/orchestrator";
+import { inngest } from "@/lib/inngest/client";
 
 function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -13,7 +12,6 @@ function safeCompare(a: string, b: string): boolean {
   return timingSafeEqual(bufA, bufB);
 }
 
-export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
@@ -38,25 +36,21 @@ export async function POST(request: NextRequest) {
       ? Math.min(Math.floor(rawDays), 365)
       : 180;
 
-    const supabase = createServiceClient();
-    const results = await syncAllJournals(supabase, { days, fullSync });
+    await inngest.send({ name: "sync/all.requested", data: { fullSync, days } });
 
-    const totalInserted = results.reduce((sum, r) => sum + r.inserted, 0);
-    const totalUpdated = results.reduce((sum, r) => sum + r.updated, 0);
-
-    return NextResponse.json({
-      success: true,
-      summary: {
-        journals: results.length,
-        totalInserted,
-        totalUpdated,
-      },
-      details: results,
-    });
-  } catch (error) {
-    console.error("Sync error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Sync failed" },
+      {
+        success: true,
+        message: "Sync dispatched to Inngest queue",
+        fullSync,
+        days,
+      },
+      { status: 202 }
+    );
+  } catch (error) {
+    console.error("Sync dispatch error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to dispatch sync" },
       { status: 500 }
     );
   }

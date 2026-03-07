@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
-import { createServiceClient } from "@/lib/supabase/server";
-import { syncAllJournals } from "@/lib/sync/orchestrator";
+import { inngest } from "@/lib/inngest/client";
 
 function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -13,7 +12,6 @@ function safeCompare(a: string, b: string): boolean {
   return timingSafeEqual(bufA, bufB);
 }
 
-export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
@@ -35,18 +33,17 @@ export async function GET(request: NextRequest) {
         ? Math.min(Math.floor(cronSyncDaysRaw), 180)
         : 180;
 
-    const supabase = createServiceClient();
-    const results = await syncAllJournals(supabase, { days: cronSyncDays });
+    await inngest.send({ name: "sync/all.requested", data: { days: cronSyncDays } });
 
     return NextResponse.json({
       success: true,
+      message: "Cron sync dispatched to Inngest queue",
       days: cronSyncDays,
-      results,
     });
   } catch (error) {
-    console.error("Cron sync error:", error);
+    console.error("Cron sync dispatch error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Cron sync failed" },
+      { error: error instanceof Error ? error.message : "Failed to dispatch cron sync" },
       { status: 500 }
     );
   }
