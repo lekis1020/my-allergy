@@ -5,6 +5,7 @@ import { storePapers } from "@/lib/sync/store";
 import { enrichPapersWithCrossRef } from "@/lib/sync/enricher";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getDateRange } from "@/lib/utils/date";
+import { sendJournalAlerts, sendKeywordAlerts } from "@/lib/email/notify";
 
 /**
  * Syncs a single journal: fetch from PubMed, store, then enrich with CrossRef.
@@ -124,6 +125,14 @@ export const syncAllFn = inngest.createFunction(
 
     await step.sendEvent("fan-out-journals", events);
 
+    // Trigger email notifications after a delay to allow journal syncs to complete
+    await step.sendEvent("trigger-notifications", [
+      {
+        name: "sync/notifications.requested" as const,
+        data: { journalCount: JOURNALS.length },
+      },
+    ]);
+
     return {
       message: `Dispatched sync for ${JOURNALS.length} journals`,
       journalCount: JOURNALS.length,
@@ -131,4 +140,82 @@ export const syncAllFn = inngest.createFunction(
       days,
     };
   }
+);
+
+/**
+ * Sends email notifications after sync completes.
+ * Queries papers inserted in the last 7 hours (sync runs every 6h with buffer).
+ */
+export const sendNotificationsFn = inngest.createFunction(
+  { id: "send-notifications", retries: 2 },
+  { event: "sync/notifications.requested" },
+  async ({ step }) => {
+    // Wait 10 minutes for journal syncs to complete
+    await step.sleep("wait-for-syncs", "10m");
+
+    const newPapers = await step.run("fetch-new-papers", async () => {
+      const supabase = createServiceClient();
+      const sevenHoursAgo = new Date(
+        Date.now() - 7 * 60 * 60 * 1000,
+      ).toISOString();
+
+      const { data: papers } = await supabase
+        .from("papers")
+        .select(
+          "pmid, title, journal_id, journals!inner(slug, name), paper_authors(last_name, initials, position)",
+        )
+        .gte("created_at", sevenHoursAgo)
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (!papers || papers.length === 0) return [];
+
+      return papers.map((p: Record<string, unknown>) => {
+        const journal = p.journals as Record<string, unknown>;
+        const authors = (
+          p.paper_authors as Array<{
+            last_name: string;
+            initials: string;
+            position: number;
+          }>
+        )
+          .sort((a, b) => a.position - b.position)
+          .slice(0, 3)
+          .map((a) => `${a.last_name} ${a.initials}`)
+          .join(", ");
+
+        return {
+          pmid: p.pmid as string,
+          title: p.title as string,
+          journal_slug: journal.slug as string,
+          journal_name: journal.name as string,
+          authors: authors + ((p.paper_authors as unknown[]).length > 3 ? " et al." : ""),
+        };
+      });
+    });
+
+    if (newPapers.length === 0) {
+      return { message: "No new papers found", journalAlerts: 0, keywordAlerts: 0 };
+    }
+
+    // Send journal subscription alerts
+    const journalResult = await step.run("send-journal-alerts", async () => {
+      return sendJournalAlerts(newPapers);
+    });
+
+    // Send keyword alerts
+    const keywordResult = await step.run("send-keyword-alerts", async () => {
+      return sendKeywordAlerts(newPapers);
+    });
+
+    console.log(
+      `[Notifications] Journal alerts: ${journalResult.sent} sent, ${journalResult.errors} errors. Keyword alerts: ${keywordResult.sent} sent, ${keywordResult.errors} errors.`,
+    );
+
+    return {
+      message: `Processed ${newPapers.length} new papers`,
+      journalAlerts: journalResult,
+      keywordAlerts: keywordResult,
+    };
+  },
 );
