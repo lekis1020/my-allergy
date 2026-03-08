@@ -8,6 +8,7 @@ export interface Conference {
   tags: string[];
   website?: string;
   isKorean: boolean;
+  dateConfirmed?: boolean; // false = 날짜 미정 (작년 기준 월 포지셔닝)
 }
 
 export const CONFERENCES: Conference[] = [

@@ -1,0 +1,1 @@
+ALTER TABLE conferences ADD COLUMN IF NOT EXISTS date_confirmed BOOLEAN DEFAULT true;
