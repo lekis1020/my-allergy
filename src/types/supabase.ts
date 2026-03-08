@@ -75,6 +75,7 @@ export type Database = {
           scraped_at: string | null
           created_at: string
           updated_at: string
+          date_confirmed: boolean
         }
         Insert: {
           id?: string
@@ -91,6 +92,7 @@ export type Database = {
           scraped_at?: string | null
           created_at?: string
           updated_at?: string
+          date_confirmed?: boolean
         }
         Update: {
           id?: string
@@ -107,6 +109,7 @@ export type Database = {
           scraped_at?: string | null
           created_at?: string
           updated_at?: string
+          date_confirmed?: boolean
         }
         Relationships: []
       }
