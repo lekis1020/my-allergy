@@ -20,18 +20,21 @@ export type Database = {
           user_id: string
           pmid: string
           created_at: string
+          ai_summary: string | null
         }
         Insert: {
           id?: string
           user_id: string
           pmid: string
           created_at?: string
+          ai_summary?: string | null
         }
         Update: {
           id?: string
           user_id?: string
           pmid?: string
           created_at?: string
+          ai_summary?: string | null
         }
         Relationships: []
       }
@@ -53,6 +56,57 @@ export type Database = {
           user_id?: string
           journal_slug?: string
           created_at?: string
+        }
+        Relationships: []
+      }
+      conferences: {
+        Row: {
+          id: string
+          name: string
+          name_ko: string | null
+          start_date: string | null
+          end_date: string | null
+          location: string | null
+          country: string | null
+          tags: string[]
+          website: string | null
+          is_korean: boolean
+          source_url: string | null
+          scraped_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          name_ko?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          location?: string | null
+          country?: string | null
+          tags?: string[]
+          website?: string | null
+          is_korean?: boolean
+          source_url?: string | null
+          scraped_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          name_ko?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          location?: string | null
+          country?: string | null
+          tags?: string[]
+          website?: string | null
+          is_korean?: boolean
+          source_url?: string | null
+          scraped_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }

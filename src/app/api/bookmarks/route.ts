@@ -38,6 +38,7 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const pmid = body.pmid as string | undefined;
+  const aiSummary = body.ai_summary as string | null | undefined;
 
   if (!pmid) {
     return NextResponse.json({ error: "pmid is required" }, { status: 400 });
@@ -45,7 +46,10 @@ export async function POST(request: Request) {
 
   const { error } = await supabase
     .from("bookmarks")
-    .upsert({ user_id: user.id, pmid }, { onConflict: "user_id,pmid" });
+    .upsert(
+      { user_id: user.id, pmid, ai_summary: aiSummary ?? null },
+      { onConflict: "user_id,pmid" }
+    );
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -9,9 +9,10 @@ interface AbstractSummaryProps {
   abstract: string;
   title: string;
   pmid: string;
+  onSummaryGenerated?: (summary: string) => void;
 }
 
-export function AbstractSummary({ abstract, title, pmid }: AbstractSummaryProps) {
+export function AbstractSummary({ abstract, title, pmid, onSummaryGenerated }: AbstractSummaryProps) {
   const [summary, setSummary] = useState<string | null>(
     cache.get(pmid) ?? null
   );
@@ -43,6 +44,7 @@ export function AbstractSummary({ abstract, title, pmid }: AbstractSummaryProps)
       cache.set(pmid, data.summary);
       setSummary(data.summary);
       setOpen(true);
+      onSummaryGenerated?.(data.summary);
     } catch (err) {
       fetchedRef.current = false;
       setError(err instanceof Error ? err.message : "요약 생성에 실패했습니다");
