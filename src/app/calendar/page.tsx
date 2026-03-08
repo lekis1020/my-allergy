@@ -33,6 +33,7 @@ export default async function CalendarPage() {
         tags: (c.tags as string[]) ?? [],
         website: c.website ?? undefined,
         isKorean: c.is_korean ?? false,
+        dateConfirmed: c.date_confirmed ?? true,
       }));
     }
   } catch {

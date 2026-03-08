@@ -2,18 +2,22 @@
 
 import { useState, useMemo } from "react";
 import { type Conference } from "@/lib/constants/conferences";
-import { MapPin, CalendarDays, ExternalLink } from "lucide-react";
+import { MapPin, CalendarDays, ExternalLink, HelpCircle } from "lucide-react";
 
-function formatDateRange(start: string, end: string): string {
-  if (!start || !end) return "날짜 미정";
+// ── Date helpers ──────────────────────────────────────────────────────────────
+
+function formatDateRange(start: string, end: string, confirmed: boolean): string {
+  if (!confirmed) return "날짜 미정";
   const s = new Date(start + "T00:00:00");
   const e = new Date(end + "T00:00:00");
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-  const startStr = s.toLocaleDateString("en-US", opts);
-  if (s.getMonth() === e.getMonth()) {
-    return `${startStr}–${e.getDate()}, ${e.getFullYear()}`;
+  if (s.getMonth() === e.getMonth() && s.getDate() === e.getDate()) {
+    return s.toLocaleDateString("en-US", { ...opts, year: "numeric" });
   }
-  return `${startStr} – ${e.toLocaleDateString("en-US", { ...opts, year: "numeric" })}`;
+  if (s.getMonth() === e.getMonth()) {
+    return `${s.toLocaleDateString("en-US", opts)}–${e.getDate()}, ${e.getFullYear()}`;
+  }
+  return `${s.toLocaleDateString("en-US", opts)} – ${e.toLocaleDateString("en-US", { ...opts, year: "numeric" })}`;
 }
 
 function getMonthKey(dateStr: string): string {
@@ -26,6 +30,11 @@ function formatMonthLabel(monthKey: string): string {
   const [year, month] = monthKey.split("-");
   const d = new Date(Number(year), Number(month) - 1, 1);
   return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+function getMonthTimestamp(monthKey: string): number {
+  const [year, month] = monthKey.split("-");
+  return new Date(Number(year), Number(month) - 1, 1).getTime();
 }
 
 function isPast(endDate: string): boolean {
@@ -45,24 +54,22 @@ function ConferenceCard({
   align: "left" | "right";
 }) {
   const past = isPast(conference.endDate);
-  const unconfirmed = !conference.startDate;
+  const confirmed = conference.dateConfirmed !== false;
+  const isRight = align === "right";
 
   return (
-    <div
-      className={`mb-3 rounded-xl border p-3 transition-colors ${
-        past
-          ? "border-gray-200 bg-gray-50 opacity-60 dark:border-gray-800 dark:bg-gray-900/50"
-          : unconfirmed
-          ? "border-orange-200 bg-orange-50 shadow-sm dark:border-orange-900/40 dark:bg-orange-900/10"
-          : "border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900"
-      } ${align === "right" ? "text-left" : "text-right"}`}
-    >
-      <div className={`flex items-start gap-1 ${align === "right" ? "" : "flex-row-reverse"}`}>
-        <h3
-          className={`flex-1 text-sm font-semibold leading-snug ${
-            past ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-gray-100"
-          }`}
-        >
+    <div className={`mb-3 rounded-xl border p-3.5 transition-colors ${
+      past
+        ? "border-gray-100 bg-gray-50 opacity-55 dark:border-gray-800 dark:bg-gray-900/40"
+        : confirmed
+          ? "border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900"
+          : "border-amber-200 bg-amber-50/50 shadow-sm dark:border-amber-800/50 dark:bg-amber-950/20"
+    }`}>
+      {/* Header */}
+      <div className={`flex items-start gap-1.5 ${isRight ? "" : "flex-row-reverse"}`}>
+        <h3 className={`flex-1 text-sm font-semibold leading-snug ${
+          past ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-gray-100"
+        } ${isRight ? "text-left" : "text-right"}`}>
           {conference.name}
         </h3>
         {conference.website && (
@@ -70,34 +77,37 @@ function ConferenceCard({
             href={conference.website}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-shrink-0 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400"
+            className="flex-shrink-0 text-gray-300 hover:text-blue-500 dark:text-gray-600 dark:hover:text-blue-400"
           >
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
         )}
       </div>
 
-      <div
-        className={`mt-1.5 space-y-0.5 text-xs text-gray-500 dark:text-gray-400 ${
-          align === "right" ? "" : "flex flex-col items-end"
-        }`}
-      >
-        <div className={`flex items-center gap-1 ${align === "right" ? "" : "flex-row-reverse"}`}>
-          <CalendarDays className="h-3 w-3 flex-shrink-0" />
-          <span>{formatDateRange(conference.startDate, conference.endDate)}</span>
+      {/* Meta */}
+      <div className={`mt-1.5 space-y-0.5 ${isRight ? "" : "flex flex-col items-end"}`}>
+        <div className={`flex items-center gap-1 text-xs ${
+          !confirmed ? "text-amber-600 dark:text-amber-400" : "text-gray-500 dark:text-gray-400"
+        } ${isRight ? "" : "flex-row-reverse"}`}>
+          {!confirmed
+            ? <HelpCircle className="h-3 w-3 flex-shrink-0" />
+            : <CalendarDays className="h-3 w-3 flex-shrink-0" />
+          }
+          <span>{formatDateRange(conference.startDate, conference.endDate, confirmed)}</span>
+          {!confirmed && (
+            <span className="rounded-full bg-amber-100 px-1.5 py-0 text-[9px] font-semibold uppercase text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+              미정
+            </span>
+          )}
         </div>
-        <div className={`flex items-center gap-1 ${align === "right" ? "" : "flex-row-reverse"}`}>
+        <div className={`flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 ${isRight ? "" : "flex-row-reverse"}`}>
           <MapPin className="h-3 w-3 flex-shrink-0" />
-          <span>{conference.location || "장소 미정"}</span>
+          <span>{conference.location}</span>
         </div>
       </div>
 
-      <div className={`mt-2 flex flex-wrap gap-1 ${align === "right" ? "" : "justify-end"}`}>
-        {unconfirmed && (
-          <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-600 dark:bg-orange-900/40 dark:text-orange-400">
-            미정
-          </span>
-        )}
+      {/* Tags */}
+      <div className={`mt-2 flex flex-wrap gap-1 ${isRight ? "" : "justify-end"}`}>
         {conference.tags.map((tag) => (
           <span
             key={tag}
@@ -111,20 +121,25 @@ function ConferenceCard({
   );
 }
 
-// ── Single column timeline (mobile) ──────────────────────────────────────────
+// ── Mobile timeline column ────────────────────────────────────────────────────
 
-function MobileTimelineColumn({
-  conferences,
-}: {
-  conferences: Conference[];
-}) {
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const PX_PER_DAY = 1.8;
+const MIN_GAP_PX = 12;
+const MAX_GAP_PX = 80;
+
+function MobileTimelineColumn({ conferences }: { conferences: Conference[] }) {
   const grouped = useMemo(() => {
-    const map = new Map<string, Conference[]>();
+    const map = new Map<string, { ts: number; confs: Conference[] }>();
     for (const c of conferences) {
       const key = getMonthKey(c.startDate);
-      map.set(key, [...(map.get(key) ?? []), c]);
+      const ts = getMonthTimestamp(key);
+      if (!map.has(key)) map.set(key, { ts, confs: [] });
+      map.get(key)!.confs.push(c);
     }
-    return new Map([...map.entries()].sort());
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, v]) => ({ key, ...v }));
   }, [conferences]);
 
   if (conferences.length === 0) {
@@ -132,29 +147,32 @@ function MobileTimelineColumn({
   }
 
   return (
-    <div className="relative border-l border-gray-200 pl-4 dark:border-gray-700">
-      {Array.from(grouped.entries()).map(([monthKey, confs]) => (
-        <div key={monthKey}>
-          <div className="relative mb-3">
-            <div className="absolute -left-[21px] flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-              <div className="h-1.5 w-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
+    <div className="relative border-l border-gray-200 pl-5 dark:border-gray-700">
+      {grouped.map(({ key, ts, confs }, i) => {
+        const prevTs = i > 0 ? grouped[i - 1].ts : ts;
+        const diffDays = (ts - prevTs) / MS_PER_DAY;
+        const gapPx = i === 0 ? 0 : Math.min(MAX_GAP_PX, Math.max(MIN_GAP_PX, Math.round(diffDays * PX_PER_DAY)));
+        return (
+          <div key={key} style={{ paddingTop: gapPx }}>
+            <div className="relative mb-3 flex items-center">
+              <div className="absolute -left-[25px] flex h-4 w-4 items-center justify-center rounded-full bg-gray-100 ring-2 ring-white dark:bg-gray-800 dark:ring-gray-900">
+                <div className="h-1.5 w-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
+              </div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                {formatMonthLabel(key)}
+              </span>
             </div>
-            <span className="ml-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              {formatMonthLabel(monthKey)}
-            </span>
-          </div>
-          <div className="ml-1 space-y-2">
             {confs.map((conf) => (
               <ConferenceCard key={conf.name + conf.startDate} conference={conf} align="right" />
             ))}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-// ── Center axis split timeline (desktop) ─────────────────────────────────────
+// ── Desktop center-axis split timeline ───────────────────────────────────────
 
 function CenterAxisTimeline({
   international,
@@ -163,7 +181,7 @@ function CenterAxisTimeline({
   international: Conference[];
   korean: Conference[];
 }) {
-  // Merge all months from both sides
+  // Merge all months from both sides, sorted
   const allMonths = useMemo(() => {
     const monthSet = new Set<string>();
     for (const c of international) if (c.startDate) monthSet.add(getMonthKey(c.startDate));
@@ -171,7 +189,6 @@ function CenterAxisTimeline({
     return Array.from(monthSet).sort();
   }, [international, korean]);
 
-  // Group by month
   const intlByMonth = useMemo(() => {
     const map = new Map<string, Conference[]>();
     for (const c of international) {
@@ -193,7 +210,7 @@ function CenterAxisTimeline({
   return (
     <div className="relative">
       {/* Column headers */}
-      <div className="mb-6 grid grid-cols-[1fr_120px_1fr] items-center gap-0">
+      <div className="mb-6 grid grid-cols-[1fr_128px_1fr] items-center">
         <div className="flex items-center justify-end gap-2 pr-4">
           <span className="text-xl">🌍</span>
           <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">International</h2>
@@ -213,35 +230,42 @@ function CenterAxisTimeline({
         </div>
       </div>
 
-      {/* Timeline rows */}
-      {allMonths.map((monthKey) => {
+      {/* Timeline rows with proportional gaps */}
+      {allMonths.map((monthKey, i) => {
         const intlConfs = intlByMonth.get(monthKey) ?? [];
         const koreanConfs = koreanByMonth.get(monthKey) ?? [];
+        const ts = getMonthTimestamp(monthKey);
+        const prevTs = i > 0 ? getMonthTimestamp(allMonths[i - 1]) : ts;
+        const diffDays = (ts - prevTs) / MS_PER_DAY;
+        const gapPx = i === 0 ? 0 : Math.min(MAX_GAP_PX, Math.max(MIN_GAP_PX, Math.round(diffDays * PX_PER_DAY)));
+
         return (
-          <div key={monthKey} className="grid grid-cols-[1fr_120px_1fr] items-start gap-0">
-            {/* Left: international cards */}
-            <div className="pr-4 pb-6">
+          <div
+            key={monthKey}
+            className="grid grid-cols-[1fr_128px_1fr] items-start"
+            style={{ paddingTop: gapPx }}
+          >
+            {/* Left: international */}
+            <div className="pr-4">
               {intlConfs.map((conf) => (
                 <ConferenceCard key={conf.name + conf.startDate} conference={conf} align="left" />
               ))}
             </div>
 
-            {/* Center: axis */}
+            {/* Center axis */}
             <div className="relative flex flex-col items-center">
-              {/* Continuous vertical line */}
               <div className="absolute inset-0 flex justify-center">
                 <div className="w-px bg-gray-200 dark:bg-gray-700" />
               </div>
-              {/* Month badge */}
               <div className="relative z-10 mt-1 rounded-full border border-gray-200 bg-white px-3 py-1 dark:border-gray-700 dark:bg-gray-900">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
                   {formatMonthLabel(monthKey)}
                 </span>
               </div>
             </div>
 
-            {/* Right: korean cards */}
-            <div className="pl-4 pb-6">
+            {/* Right: korean */}
+            <div className="pl-4">
               {koreanConfs.map((conf) => (
                 <ConferenceCard key={conf.name + conf.startDate} conference={conf} align="right" />
               ))}
@@ -262,60 +286,45 @@ interface ConferenceListProps {
 export function ConferenceList({ conferences }: ConferenceListProps) {
   const [mobileTab, setMobileTab] = useState<"international" | "korean">("international");
 
-  const international = useMemo(
-    () => conferences.filter((c) => !c.isKorean),
-    [conferences]
-  );
-  const korean = useMemo(
-    () => conferences.filter((c) => c.isKorean),
-    [conferences]
-  );
+  const international = useMemo(() => conferences.filter((c) => !c.isKorean), [conferences]);
+  const korean = useMemo(() => conferences.filter((c) => c.isKorean), [conferences]);
 
   return (
     <div>
       {/* Legend */}
-      <div className="mb-6 flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-        <div className="flex items-center gap-1.5">
-          <div className="h-2.5 w-2.5 rounded-full border-2 border-blue-500 bg-white dark:border-blue-400 dark:bg-gray-900" />
-          <span>날짜 확정</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-2.5 w-2.5 rounded-full border-2 border-orange-400 bg-orange-50 dark:border-orange-500 dark:bg-orange-900/20" />
-          <span>날짜 미정 (작년 기준 배치)</span>
-        </div>
+      <div className="mb-5 flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-blue-500 bg-white dark:border-blue-400 dark:bg-gray-900" />
+          날짜 확정
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-amber-400 bg-white dark:border-amber-500 dark:bg-gray-900" />
+          날짜 미정 (작년 기준 월)
+        </span>
       </div>
 
-      {/* Mobile: tabs */}
+      {/* Mobile tabs */}
       <div className="mb-6 flex gap-2 md:hidden">
-        <button
-          onClick={() => setMobileTab("international")}
-          className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-            mobileTab === "international"
-              ? "bg-blue-600 text-white dark:bg-blue-500"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
-          }`}
-        >
-          🌍 International
-        </button>
-        <button
-          onClick={() => setMobileTab("korean")}
-          className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-            mobileTab === "korean"
-              ? "bg-blue-600 text-white dark:bg-blue-500"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
-          }`}
-        >
-          🇰🇷 Korean
-        </button>
+        {(["international", "korean"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setMobileTab(tab)}
+            className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              mobileTab === tab
+                ? "bg-blue-600 text-white dark:bg-blue-500"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
+            }`}
+          >
+            {tab === "international" ? "🌍 International" : "🇰🇷 Korean"}
+          </button>
+        ))}
       </div>
 
-      {/* Mobile: single column */}
+      {/* Mobile single column */}
       <div className="md:hidden">
-        {mobileTab === "international" ? (
-          <MobileTimelineColumn conferences={international} />
-        ) : (
-          <MobileTimelineColumn conferences={korean} />
-        )}
+        {mobileTab === "international"
+          ? <MobileTimelineColumn conferences={international} />
+          : <MobileTimelineColumn conferences={korean} />}
       </div>
 
       {/* Desktop: center axis split timeline */}
