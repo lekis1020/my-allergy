@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, TrendingUp, BarChart2, Bookmark, User } from "lucide-react";
+import { Home, TrendingUp, BarChart2, Bookmark, CalendarDays } from "lucide-react";
 
 const tabs = [
   { href: "/", label: "Home", icon: Home },
   { href: "/trending", label: "Trending", icon: TrendingUp },
   { href: "/insights", label: "Insights", icon: BarChart2 },
   { href: "/bookmarks", label: "Saved", icon: Bookmark },
-  { href: "/login", label: "Account", icon: User },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
 ] as const;
 
 export function MobileBottomNav() {
