@@ -6,9 +6,10 @@ import { useBookmarks } from "@/hooks/use-bookmarks";
 interface BookmarkButtonProps {
   pmid: string;
   size?: "sm" | "md";
+  aiSummary?: string | null;
 }
 
-export function BookmarkButton({ pmid, size = "sm" }: BookmarkButtonProps) {
+export function BookmarkButton({ pmid, size = "sm", aiSummary }: BookmarkButtonProps) {
   const { isBookmarked, toggleBookmark, loading } = useBookmarks();
   const saved = isBookmarked(pmid);
 
@@ -27,7 +28,7 @@ export function BookmarkButton({ pmid, size = "sm" }: BookmarkButtonProps) {
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        toggleBookmark(pmid);
+        toggleBookmark(pmid, aiSummary ?? undefined);
       }}
       className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-500 dark:text-gray-500 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
       aria-label={saved ? "Remove bookmark" : "Save paper"}

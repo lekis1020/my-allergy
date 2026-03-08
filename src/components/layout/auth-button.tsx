@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { LogIn, LogOut } from "lucide-react";
@@ -10,8 +11,18 @@ import { useRouter } from "next/navigation";
 export function AuthButton() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [timedOut, setTimedOut] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading) {
+      setTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setTimedOut(true), 3000);
+    return () => clearTimeout(t);
+  }, [loading]);
+
+  if (loading && !timedOut) {
     return (
       <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
     );

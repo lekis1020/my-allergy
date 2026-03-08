@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { CONFERENCES, type Conference } from "@/lib/constants/conferences";
+import { type Conference } from "@/lib/constants/conferences";
 import { MapPin, CalendarDays, ExternalLink } from "lucide-react";
 
 type Filter = "all" | "international" | "korean";
@@ -96,14 +96,18 @@ function ConferenceCard({ conference }: { conference: Conference }) {
   );
 }
 
-export function ConferenceList() {
+interface ConferenceListProps {
+  conferences: Conference[];
+}
+
+export function ConferenceList({ conferences }: ConferenceListProps) {
   const [filter, setFilter] = useState<Filter>("all");
 
   const filtered = useMemo(() => {
-    if (filter === "all") return CONFERENCES;
-    if (filter === "korean") return CONFERENCES.filter((c) => c.isKorean);
-    return CONFERENCES.filter((c) => !c.isKorean);
-  }, [filter]);
+    if (filter === "all") return conferences;
+    if (filter === "korean") return conferences.filter((c) => c.isKorean);
+    return conferences.filter((c) => !c.isKorean);
+  }, [filter, conferences]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Conference[]>();

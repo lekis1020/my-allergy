@@ -134,7 +134,7 @@ export function useBookmarks() {
   const loading = authLoading || (user ? swrLoading : false);
 
   const addBookmark = useCallback(
-    (pmid: string) => {
+    (pmid: string, aiSummary?: string) => {
       if (user) {
         mutate((prev) => (prev ? [...prev, pmid] : [pmid]), {
           revalidate: false,
@@ -142,7 +142,7 @@ export function useBookmarks() {
         fetch("/api/bookmarks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pmid }),
+          body: JSON.stringify({ pmid, ai_summary: aiSummary ?? null }),
         }).catch(() => mutate());
       } else {
         const current = readLocalBookmarks();
@@ -174,11 +174,11 @@ export function useBookmarks() {
   );
 
   const toggleBookmark = useCallback(
-    (pmid: string) => {
+    (pmid: string, aiSummary?: string) => {
       if (bookmarks.has(pmid)) {
         removeBookmark(pmid);
       } else {
-        addBookmark(pmid);
+        addBookmark(pmid, aiSummary);
       }
     },
     [bookmarks, addBookmark, removeBookmark]
