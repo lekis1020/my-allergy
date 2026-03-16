@@ -12,6 +12,7 @@ export function usePaperFilters() {
   const filters: PaperFilters = useMemo(
     () => ({
       q: searchParams.get("q") || undefined,
+      trial: searchParams.get("trial") || undefined,
       journals: searchParams.get("journals")?.split(",").filter(Boolean) || undefined,
       from: searchParams.get("from") || undefined,
       to: searchParams.get("to") || undefined,
@@ -54,7 +55,7 @@ export function usePaperFilters() {
   }, [router, pathname]);
 
   const hasActiveFilters = useMemo(
-    () => !!(filters.q || filters.journals?.length || filters.from || filters.to),
+    () => !!(filters.q || filters.trial || filters.journals?.length || filters.from || filters.to),
     [filters]
   );
 

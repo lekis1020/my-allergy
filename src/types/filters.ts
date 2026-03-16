@@ -1,5 +1,6 @@
 export interface PaperFilters {
   q?: string;
+  trial?: string;
   journals?: string[];
   from?: string;
   to?: string;

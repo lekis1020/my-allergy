@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import { Microscope, X } from "lucide-react";
 import { RightRail } from "@/components/layout/right-rail";
 import { TopicMonitorPanel } from "@/components/layout/topic-monitor-panel";
 import { MobileDrawer } from "@/components/layout/mobile-drawer";
@@ -9,6 +10,7 @@ import { PaperFeed } from "@/components/papers/paper-feed";
 import { TrendingTopicsPanel } from "@/components/papers/trending-topics-panel";
 import { FilterBar } from "@/components/papers/filter-bar";
 import { SearchInput } from "@/components/papers/search-input";
+import { ClinicalTrialMonitorPanel } from "@/components/layout/clinical-trial-monitor-panel";
 import { usePaperFilters } from "@/hooks/use-paper-filters";
 import { usePapers } from "@/hooks/use-papers";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
@@ -28,6 +30,8 @@ function HomePage() {
     if (key === "journals" && value) {
       const updated = (filters.journals || []).filter((s) => s !== value);
       setFilters({ journals: updated.length > 0 ? updated : undefined });
+    } else if (key === "q" && filters.trial) {
+      setFilters({ q: undefined, trial: undefined });
     } else {
       setFilters({ [key]: undefined });
     }
@@ -35,13 +39,18 @@ function HomePage() {
 
   const handleTabChange = (tab: MainTab) => {
     setActiveTab(tab);
-    if (tab === "for_you") setFilters({ sort: "date_desc" });
-    if (tab === "most_cited") setFilters({ sort: "citations" });
+    if (tab === "for_you") setFilters({ sort: "date_desc", trial: undefined });
+    if (tab === "most_cited") setFilters({ sort: "citations", trial: undefined });
   };
 
   const handleTrendingTopicClick = (keyword: string) => {
     setActiveTab("for_you");
-    setFilters({ q: keyword, sort: "date_desc" });
+    setFilters({ q: keyword, sort: "date_desc", trial: undefined });
+  };
+
+  const handleTrialSelect = (relatedQuery: string, title: string) => {
+    setActiveTab("for_you");
+    setFilters({ q: relatedQuery, trial: title, sort: "date_desc" });
   };
 
   const toggleJournal = (slug: string) => {
@@ -55,7 +64,7 @@ function HomePage() {
 
   const handleDrawerActivate = (topic: string) => {
     setActiveTab("for_you");
-    setFilters({ q: topic, sort: "date_desc" });
+    setFilters({ q: topic, sort: "date_desc", trial: undefined });
     closeDrawer();
   };
 
@@ -84,9 +93,9 @@ function HomePage() {
               activeQuery={filters.q}
               onActivate={(topic) => {
                 setActiveTab("for_you");
-                setFilters({ q: topic, sort: "date_desc" });
+                setFilters({ q: topic, sort: "date_desc", trial: undefined });
               }}
-              onClearActive={() => setFilters({ q: undefined })}
+              onClearActive={() => setFilters({ q: undefined, trial: undefined })}
             />
           </div>
         </div>
@@ -123,7 +132,7 @@ function HomePage() {
                 <div className="px-4 pb-3 pt-2">
                   <SearchInput
                     value={filters.q || ""}
-                    onChange={(q) => setFilters({ q: q || undefined })}
+                    onChange={(q) => setFilters({ q: q || undefined, trial: undefined })}
                     placeholder="Search topic, PMID, DOI"
                   />
                 </div>
@@ -157,7 +166,35 @@ function HomePage() {
                 </div>
               </>
             )}
+
+            {filters.trial && (
+              <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-800">
+                <div className="flex items-start justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-3 py-3 dark:border-emerald-900/70 dark:bg-emerald-950/30">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-300">
+                      <Microscope className="h-3.5 w-3.5" />
+                      Active trial filter
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {filters.trial}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                      Timeline is showing papers matched from this trial&apos;s intervention and condition keywords.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setFilters({ q: undefined, trial: undefined })}
+                    className="rounded-full p-1 text-emerald-700 transition-colors hover:bg-emerald-100 hover:text-emerald-900 dark:text-emerald-300 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-100"
+                    aria-label="Clear active trial filter"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
+
+          <ClinicalTrialMonitorPanel onSelectStudy={handleTrialSelect} />
 
           {activeTab === "topics" ? (
             <TrendingTopicsPanel onTopicClick={handleTrendingTopicClick} />
