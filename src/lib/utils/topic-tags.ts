@@ -117,6 +117,17 @@ const TOPIC_CONFIG: Record<Exclude<TopicTag, "others">, TopicConfig> = {
       "oral immunotherapy",
     ],
   },
+  anaphylaxis: {
+    label: "Anaphylaxis",
+    terms: [
+      "anaphylaxis",
+      "anaphylactic",
+      "anaphylactic shock",
+      "anaphylactic reaction",
+      "epinephrine auto-injector",
+      "biphasic anaphylaxis",
+    ],
+  },
 };
 
 const SOURCE_WEIGHT = {
@@ -160,6 +171,10 @@ export const TOPIC_META: Record<TopicTag, { label: string; className: string }> 
   food_allergy: {
     label: "Food Allergy",
     className: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+  },
+  anaphylaxis: {
+    label: "Anaphylaxis",
+    className: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
   },
   others: {
     label: "others",

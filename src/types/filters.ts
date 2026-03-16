@@ -12,6 +12,7 @@ export type TopicTag =
   | "asthma"
   | "rhinitis"
   | "urticaria"
+  | "anaphylaxis"
   | "atopic_dermatitis"
   | "drug_allergy"
   | "eosinophilic_disorders"

@@ -53,6 +53,20 @@ export const TOPIC_TREE: TopicCategory[] = [
     ],
   },
   {
+    id: "anaphylaxis",
+    label: "Anaphylaxis",
+    searchQuery: "anaphylaxis",
+    colorClass: "text-rose-500",
+    subtopics: [
+      { label: "Food-Induced Anaphylaxis", searchQuery: "food induced anaphylaxis" },
+      { label: "Drug-Induced Anaphylaxis", searchQuery: "drug induced anaphylaxis" },
+      { label: "Venom Anaphylaxis", searchQuery: "venom anaphylaxis" },
+      { label: "Exercise-Induced", searchQuery: "exercise induced anaphylaxis" },
+      { label: "Idiopathic Anaphylaxis", searchQuery: "idiopathic anaphylaxis" },
+      { label: "Epinephrine", searchQuery: "epinephrine anaphylaxis" },
+    ],
+  },
+  {
     id: "atopic_dermatitis",
     label: "Atopic Dermatitis",
     searchQuery: "atopic dermatitis",
