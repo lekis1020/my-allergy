@@ -1,20 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Activity, ArrowUpRight, Microscope, TimerReset } from "lucide-react";
+import { Activity, ArrowUpRight, ChevronRight, Microscope, TimerReset } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useClinicalTrials } from "@/hooks/use-clinical-trials";
 import { formatDate, formatRelativeDate } from "@/lib/utils/date";
-
-const AREA_ACCENTS: Record<string, string> = {
-  asthma: "bg-red-500",
-  food_allergy: "bg-emerald-500",
-  atopic_dermatitis: "bg-violet-500",
-  rhinitis: "bg-amber-500",
-  urticaria: "bg-pink-500",
-  immunodeficiency: "bg-blue-500",
-};
 
 const STATUS_STYLES: Record<string, string> = {
   RECRUITING: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900",
@@ -139,151 +130,107 @@ export function ClinicalTrialMonitorPanel({ onSelectStudy }: ClinicalTrialMonito
 
   return (
     <section className="border-b border-gray-200 px-4 py-4 dark:border-gray-800">
-      <div className="rounded-3xl border border-emerald-200/70 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(239,246,255,0.95))] p-4 shadow-sm dark:border-emerald-900/60 dark:bg-[linear-gradient(135deg,rgba(6,24,18,0.96),rgba(8,19,38,0.96))]">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/80 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-emerald-200">
-              <Microscope className="h-3.5 w-3.5" />
-              Clinical Trial Monitor
-            </div>
-            <div>
-              <h2 className="text-base font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-                Ongoing allergy & clinical immunology trials
-              </h2>
-              <p className="mt-1 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
-                Official ClinicalTrials.gov feed across the portal&apos;s core focus areas, surfaced as recent updates with projected study progress.
-              </p>
-            </div>
-          </div>
+      <div className="mb-3 flex items-center gap-2">
+        <Microscope className="h-4 w-4 text-emerald-500" />
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          Clinical Trial Monitor
+        </h2>
+        {trackedAt && (
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            Updated {formatRelativeDate(trackedAt)}
+          </span>
+        )}
+      </div>
 
-          <div className="flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 dark:bg-white/5">
-              <Activity className="h-3.5 w-3.5 text-emerald-500" />
-              {statuses.length > 0 ? statuses.join(" · ") : "Ongoing only"}
-            </span>
-            {trackedAt && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 dark:bg-white/5">
-                <TimerReset className="h-3.5 w-3.5 text-blue-500" />
-                Updated {formatRelativeDate(trackedAt)}
-              </span>
-            )}
-          </div>
-        </div>
+      <div className="relative">
+        <div
+          className="-mb-px flex gap-0.5 overflow-x-auto border-b border-gray-200 dark:border-gray-800"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {sections.map((section) => {
+            const style = SECTION_STYLES[section.id] ?? DEFAULT_SECTION_STYLE;
+            const isActive = resolvedActiveSection === section.id;
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
-            {isLoading && areas.length === 0 && (
-              Array.from({ length: 6 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="h-20 animate-pulse rounded-2xl bg-white/70 dark:bg-white/5"
-                />
-              ))
-            )}
-
-            {!isLoading && areas.map((area) => (
-              <div
-                key={area.id}
-                className="rounded-2xl border border-white/70 bg-white/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/5"
+            return (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={`relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-lg border border-b-0 px-3 py-2 text-xs font-medium transition-colors ${
+                  isActive
+                    ? `${style.active} ${style.activeBorder} z-10`
+                    : "border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-900 dark:hover:text-gray-300"
+                }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className={`h-2.5 w-2.5 rounded-full ${AREA_ACCENTS[area.id] ?? "bg-gray-400"}`} />
-                  <p className="truncate text-xs font-medium uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
-                    {area.label}
-                  </p>
-                </div>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-                  {area.totalCount.toLocaleString()}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  ongoing studies
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-4">
-            {isLoading && studies.length === 0 && (
-              Array.from({ length: 3 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="h-36 animate-pulse rounded-2xl bg-white/70 dark:bg-white/5"
-                />
-              ))
-            )}
-
-            {!isLoading && studies.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/80 bg-white/60 px-4 py-6 text-sm text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
-                Unable to load the trial monitor right now.
-              </div>
-            )}
-
-            {sections.length > 0 && currentSection && (
-              <div className="relative">
-                <div
-                  className="-mb-px flex gap-0.5 overflow-x-auto border-b border-white/60 dark:border-white/10"
-                  style={{ scrollbarWidth: "none" }}
-                >
-                  {sections.map((section) => {
-                    const style = SECTION_STYLES[section.id] ?? DEFAULT_SECTION_STYLE;
-                    const isActive = resolvedActiveSection === section.id;
-
-                    return (
-                      <button
-                        key={section.id}
-                        onClick={() => setActiveSection(section.id)}
-                        className={`relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-xl border border-b-0 px-3 py-2 text-xs font-medium transition-colors ${
-                          isActive
-                            ? `${style.active} ${style.activeBorder} z-10`
-                            : "border-transparent text-gray-500 hover:bg-white/60 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-200"
-                        }`}
-                      >
-                        <span className={`inline-block h-2 w-2 rounded-full ${style.dot}`} />
-                        {section.label}
-                        <span className="rounded-full bg-black/5 px-1.5 py-0.5 text-[11px] tabular-nums dark:bg-white/10">
-                          {section.studies.length}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className={`rounded-b-2xl border border-t-0 ${currentStyle.activeBorder} p-4`}>
-                  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${currentStyle.active}`}>
-                        {currentSection.badgeLabel}
-                      </span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {currentSection.description}
-                      </p>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {currentSection.studies.length} visible studies
-                    </p>
-                  </div>
-                  <div className="space-y-3">
-                    {currentSection.studies.map((study) => (
-                      <TrialCard key={study.nctId} study={study} onSelectStudy={onSelectStudy} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+                <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+                {section.label}
+                <span className="rounded-full bg-black/5 px-1.5 py-0.5 text-[11px] tabular-nums dark:bg-white/10">
+                  {section.studies.length}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {partial && (
-          <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
-            Partial data: {missingAreas.join(", ")} could not be refreshed from ClinicalTrials.gov.
-          </p>
-        )}
+        <div className={`rounded-b-xl border border-t-0 ${currentStyle.activeBorder} p-4`}>
+          {isLoading ? (
+            <TrialListSkeleton />
+          ) : sections.length === 0 || !currentSection ? (
+            <p className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+              No ongoing trials found for this period.
+            </p>
+          ) : (
+            <>
+              <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                <span className="inline-flex items-center gap-1">
+                  <Activity className="h-3.5 w-3.5 text-emerald-500" />
+                  {statuses.length > 0 ? statuses.join(" · ") : "Ongoing only"}
+                </span>
+                <span>{currentSection.description}</span>
+                <span>{currentSection.studies.length} visible studies</span>
+              </div>
 
-        {error && !partial && (
-          <p className="mt-3 text-xs text-rose-700 dark:text-rose-300">
-            Trial monitor temporarily unavailable.
-          </p>
-        )}
+              <ul className="space-y-1">
+                {currentSection.studies.map((study, index) => (
+                  <li key={study.nctId}>
+                    <TrialListItem
+                      index={index}
+                      study={study}
+                      onSelectStudy={onSelectStudy}
+                    />
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+                {currentSection.id !== "pipeline" &&
+                  areas.find((area) => area.id === currentSection.id) && (
+                    <span>
+                      Based on{" "}
+                      {areas
+                        .find((area) => area.id === currentSection.id)
+                        ?.totalCount.toLocaleString()}{" "}
+                      ongoing studies
+                    </span>
+                  )}
+                {currentSection.id === "pipeline" && (
+                  <span>
+                    Prioritized from {studies.length.toLocaleString()} tracked ongoing studies
+                  </span>
+                )}
+                {partial && (
+                  <span className="text-amber-600 dark:text-amber-300">
+                    Partial data: {missingAreas.join(", ")}
+                  </span>
+                )}
+                {error && !partial && (
+                  <span className="text-rose-600 dark:text-rose-300">
+                    Trial monitor temporarily unavailable
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -308,99 +255,108 @@ interface TrialCardStudy {
   targetDateLabel: string;
 }
 
-function TrialCard({
+function TrialListItem({
+  index,
   study,
   onSelectStudy,
 }: {
+  index: number;
   study: TrialCardStudy;
   onSelectStudy?: (relatedQuery: string, title: string) => void;
 }) {
-  const progress = study.progressPercent ?? 0;
-  const statusStyle = STATUS_STYLES[study.status] ?? STATUS_STYLES.UNKNOWN;
-
   return (
-    <article className="rounded-2xl border border-white/70 bg-white/88 p-4 shadow-sm transition-colors hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/[0.07]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyle}`}>
+    <div className="group rounded-lg px-2 py-2.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+          {index + 1}
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_STYLES[study.status] ?? STATUS_STYLES.UNKNOWN}`}>
               {study.statusLabel}
             </span>
-            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
               {study.phaseLabel}
             </span>
             {study.focusAreaLabels.slice(0, 2).map((label) => (
-              <Badge key={label} className="border border-white/60 bg-white/80 text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
+              <span
+                key={label}
+                className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+              >
                 {label}
-              </Badge>
+              </span>
             ))}
           </div>
 
-          <h3 className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-gray-900 dark:text-gray-100">
+          <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900 dark:text-gray-100">
             {study.title}
-          </h3>
+          </p>
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
             <span>{study.nctId}</span>
             {study.sponsor && <span>{study.sponsor}</span>}
             {study.lastUpdated && <span>Updated {formatDate(study.lastUpdated)}</span>}
           </div>
 
           {study.interventions.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {study.interventions.slice(0, 3).map((intervention) => (
                 <Badge
                   key={intervention}
-                  className="border border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+                  className="border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
                 >
                   {intervention}
                 </Badge>
               ))}
             </div>
           )}
+
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-400 dark:text-gray-500">
+            <span>{study.progressLabel}</span>
+            {study.startDate && <span>Start {formatDate(study.startDate)}</span>}
+            {study.targetDate && <span>{study.targetDateLabel} {formatDate(study.targetDate)}</span>}
+          </div>
         </div>
 
-        <div className="flex shrink-0 flex-row gap-2 sm:flex-col sm:items-end">
+        <div className="flex shrink-0 items-center gap-2">
           <Button
-            variant="secondary"
+            variant="ghost"
             size="sm"
             onClick={() => onSelectStudy?.(study.relatedQuery, study.title)}
-            className="border border-white/70 bg-white/80 text-gray-700 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
+            className="h-auto px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
-            Show related papers
+            Filter
           </Button>
           <a
             href={study.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 text-sm font-medium text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
+            className="shrink-0 text-gray-300 transition-colors group-hover:text-gray-500 dark:text-gray-600 dark:group-hover:text-gray-400"
+            aria-label={`Open trial ${study.nctId}`}
           >
-            View trial
             <ArrowUpRight className="h-4 w-4" />
           </a>
+          <ChevronRight className="h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover:text-gray-500 dark:text-gray-600 dark:group-hover:text-gray-400" />
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="mt-4">
-        <div className="mb-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-          <span>{study.progressLabel}</span>
-          <span>{study.progressPercent !== null ? `${progress}%` : "TBD"}</span>
+function TrialListSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-2 py-2.5">
+          <div className="h-5 w-5 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          </div>
+          <div className="h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-emerald-100/80 dark:bg-emerald-950/40">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 transition-[width]"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-          {study.startDate && <span>Start {formatDate(study.startDate)}</span>}
-          {study.targetDate && (
-            <span>
-              {study.targetDateLabel} {formatDate(study.targetDate)}
-            </span>
-          )}
-        </div>
-      </div>
-    </article>
+      ))}
+    </div>
   );
 }
