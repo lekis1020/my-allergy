@@ -1,12 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Bookmark, CalendarDays, Home, Menu, Stethoscope, TrendingUp } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Bell, Bookmark, CalendarDays, Home, Menu, Microscope, Stethoscope, TrendingUp } from "lucide-react";
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { AuthButton } from "@/components/layout/auth-button";
 
 export function Header() {
   const { toggle } = useMobileDrawer();
+  const pathname = usePathname();
+
+  const linkClass = (href: string) => {
+    const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+    return `hidden items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium transition-colors sm:inline-flex ${
+      isActive
+        ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+        : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+    }`;
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-gray-800 dark:bg-gray-950/90">
@@ -30,38 +41,27 @@ export function Header() {
         </div>
 
         <nav className="flex items-center gap-1 sm:gap-2">
-          <Link
-            href="/"
-            className="hidden items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 sm:inline-flex"
-          >
+          <Link href="/" className={linkClass("/")}>
             <Home className="h-4 w-4" />
             Home
           </Link>
-          <Link
-            href="/trending"
-            className="hidden items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 sm:inline-flex"
-          >
+          <Link href="/trending" className={linkClass("/trending")}>
             <TrendingUp className="h-4 w-4" />
             Trending
           </Link>
-          <Link
-            href="/bookmarks"
-            className="hidden items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 sm:inline-flex"
-          >
+          <Link href="/clinical-trials" className={linkClass("/clinical-trials")}>
+            <Microscope className="h-4 w-4" />
+            Trials
+          </Link>
+          <Link href="/bookmarks" className={linkClass("/bookmarks")}>
             <Bookmark className="h-4 w-4" />
             Bookmarks
           </Link>
-          <Link
-            href="/calendar"
-            className="hidden items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 sm:inline-flex"
-          >
+          <Link href="/calendar" className={linkClass("/calendar")}>
             <CalendarDays className="h-4 w-4" />
             Calendar
           </Link>
-          <Link
-            href="/alerts"
-            className="hidden items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 sm:inline-flex"
-          >
+          <Link href="/alerts" className={linkClass("/alerts")}>
             <Bell className="h-4 w-4" />
             Alerts
           </Link>

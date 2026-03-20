@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Microscope, X } from "lucide-react";
 import { RightRail } from "@/components/layout/right-rail";
 import { TopicMonitorPanel } from "@/components/layout/topic-monitor-panel";
@@ -8,9 +9,9 @@ import { MobileDrawer } from "@/components/layout/mobile-drawer";
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { PaperFeed } from "@/components/papers/paper-feed";
 import { TrendingTopicsPanel } from "@/components/papers/trending-topics-panel";
+import { ClinicalTrialSummary } from "@/components/papers/clinical-trial-summary";
 import { FilterBar } from "@/components/papers/filter-bar";
 import { SearchInput } from "@/components/papers/search-input";
-import { ClinicalTrialMonitorPanel } from "@/components/layout/clinical-trial-monitor-panel";
 import { usePaperFilters } from "@/hooks/use-paper-filters";
 import { usePapers } from "@/hooks/use-papers";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
@@ -20,11 +21,27 @@ import { JournalCloud } from "@/components/papers/journal-cloud";
 type MainTab = "topics" | "for_you" | "most_cited";
 
 function HomePage() {
+  const searchParams = useSearchParams();
   const { filters, setFilters, clearFilters, hasActiveFilters } = usePaperFilters();
   const { papers, total, hasMore, isLoading, isLoadingMore, loadMore } = usePapers(filters);
   const { open: drawerOpen, close: closeDrawer } = useMobileDrawer();
   const [cloudOpen, setCloudOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MainTab>("for_you");
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    const trial = searchParams.get("trial");
+    if (q || trial) {
+      setActiveTab("for_you");
+      setFilters({
+        q: q || undefined,
+        trial: trial || undefined,
+        sort: "date_desc",
+      });
+    }
+    // Only run on mount to read initial URL params
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleRemoveFilter = (key: string, value?: string) => {
     if (key === "journals" && value) {
@@ -194,10 +211,16 @@ function HomePage() {
             )}
           </div>
 
-          <ClinicalTrialMonitorPanel onSelectStudy={handleTrialSelect} />
-
           {activeTab === "topics" ? (
-            <TrendingTopicsPanel onTopicClick={handleTrendingTopicClick} />
+            <>
+              <TrendingTopicsPanel onTopicClick={handleTrendingTopicClick} />
+              <ClinicalTrialSummary
+                onItemClick={(name) => {
+                  setActiveTab("for_you");
+                  setFilters({ q: name, sort: "date_desc", trial: undefined });
+                }}
+              />
+            </>
           ) : (
             <>
               {hasActiveFilters && (

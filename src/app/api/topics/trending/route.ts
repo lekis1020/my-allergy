@@ -16,6 +16,13 @@ const GLOBAL_EXCLUDE = new Set([
   "case reports", "clinical trials", "double-blind method",
   "quality of life", "severity of illness index",
   "immunoglobulin e", "ige", "skin tests",
+  "allergens", "immunotherapy", "inflammation", "cytokines",
+  "biomarkers", "antibodies", "antigens", "phenotype",
+  "genotype", "polymorphism", "mutation", "gene expression",
+  "cell line", "cells", "serum", "blood", "plasma",
+  "sensitivity and specificity", "predictive value of tests",
+  "disease progression", "comorbidity", "age factors",
+  "time factors", "dose-response relationship",
 ]);
 
 const LOWERCASE_WORDS = new Set([
@@ -58,7 +65,7 @@ export async function GET(request: NextRequest) {
     .textSearch("search_vector", category.searchQuery, { type: "websearch" })
     .gte("publication_date", fromDate)
     .order("publication_date", { ascending: false })
-    .limit(300);
+    .limit(500);
 
   if (error) {
     console.error("Trending topics query error:", error);
@@ -72,7 +79,7 @@ export async function GET(request: NextRequest) {
     category.excludeTerms.map((t) => t.toLowerCase()),
   );
 
-  const keywordCounts = new Map<string, number>();
+  const keywordScores = new Map<string, { score: number; rawCount: number; source: "author" | "mesh" }>();
 
   for (const paper of data || []) {
     const rawKeywords = Array.isArray(paper.keywords)
@@ -82,38 +89,62 @@ export async function GET(request: NextRequest) {
       ? paper.mesh_terms.filter((t): t is string => typeof t === "string")
       : [];
 
-    const allTerms = [
-      ...rawKeywords.map((k) => decodeHtmlEntities(k)),
-      ...rawMesh.map((t) => decodeHtmlEntities(t)),
-    ];
-
     const seen = new Set<string>();
-    for (const raw of allTerms) {
-      const kw = raw.toLowerCase().trim();
-      if (kw.length < 3) continue;
-      if (excludeSet.has(kw)) continue;
-      if (GLOBAL_EXCLUDE.has(kw)) continue;
-      if (seen.has(kw)) continue;
+
+    // Author keywords get 1.5x weight
+    for (const raw of rawKeywords) {
+      const kw = decodeHtmlEntities(raw).toLowerCase().trim();
+      if (kw.length < 3 || excludeSet.has(kw) || GLOBAL_EXCLUDE.has(kw) || seen.has(kw)) continue;
       seen.add(kw);
-      keywordCounts.set(kw, (keywordCounts.get(kw) || 0) + 1);
+      const existing = keywordScores.get(kw);
+      if (existing) {
+        existing.score += 1.5;
+        existing.rawCount += 1;
+      } else {
+        keywordScores.set(kw, { score: 1.5, rawCount: 1, source: "author" });
+      }
+    }
+
+    // MeSH terms get 1x weight
+    for (const raw of rawMesh) {
+      const kw = decodeHtmlEntities(raw).toLowerCase().trim();
+      if (kw.length < 3 || excludeSet.has(kw) || GLOBAL_EXCLUDE.has(kw) || seen.has(kw)) continue;
+      seen.add(kw);
+      const existing = keywordScores.get(kw);
+      if (existing) {
+        existing.score += 1;
+        existing.rawCount += 1;
+      } else {
+        keywordScores.set(kw, { score: 1, rawCount: 1, source: "mesh" });
+      }
     }
   }
 
-  const trending = [...keywordCounts.entries()]
-    .map(([keyword, count]) => ({
-      keyword,
-      count,
-      wordCount: keyword.split(/\s+/).length,
-    }))
-    .sort((a, b) => {
-      const scoreA = a.count + (a.wordCount >= 2 ? 2 : 0);
-      const scoreB = b.count + (b.wordCount >= 2 ? 2 : 0);
-      return scoreB - scoreA;
-    })
-    .slice(0, 5)
-    .map(({ keyword, count }) => ({
+  // Apply word-count bonuses and single-word penalty
+  const scored = [...keywordScores.entries()].map(([keyword, { score, rawCount }]) => {
+    const wordCount = keyword.split(/\s+/).length;
+    let finalScore = score;
+    if (wordCount >= 3) finalScore += 5;
+    else if (wordCount === 2) finalScore += 3;
+    else finalScore *= 0.7; // single-word 30% penalty
+    return { keyword, score: finalScore, rawCount, wordCount };
+  });
+
+  // Deduplicate similar keywords (60%+ word overlap)
+  const deduped = deduplicateSimilar(scored);
+
+  // Filter: single-word keywords need score >= 10
+  const filtered = deduped.filter(
+    (entry) => entry.wordCount >= 2 || entry.score >= 10,
+  );
+
+  // Sort by score descending, take top 8
+  const trending = filtered
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map(({ keyword, rawCount }) => ({
       keyword: capitalizePhrase(keyword),
-      count,
+      count: rawCount,
     }));
 
   const response = NextResponse.json({
@@ -130,6 +161,30 @@ export async function GET(request: NextRequest) {
   );
 
   return response;
+}
+
+function deduplicateSimilar(
+  entries: Array<{ keyword: string; score: number; rawCount: number; wordCount: number }>,
+): Array<{ keyword: string; score: number; rawCount: number; wordCount: number }> {
+  const sorted = [...entries].sort((a, b) => b.score - a.score);
+  const kept: typeof sorted = [];
+
+  for (const entry of sorted) {
+    const entryWords = new Set(entry.keyword.split(/\s+/));
+    const isDuplicate = kept.some((existing) => {
+      const existingWords = new Set(existing.keyword.split(/\s+/));
+      const smaller = Math.min(entryWords.size, existingWords.size);
+      if (smaller === 0) return false;
+      let overlap = 0;
+      for (const word of entryWords) {
+        if (existingWords.has(word)) overlap++;
+      }
+      return overlap / smaller >= 0.6;
+    });
+    if (!isDuplicate) kept.push(entry);
+  }
+
+  return kept;
 }
 
 function capitalizePhrase(phrase: string): string {

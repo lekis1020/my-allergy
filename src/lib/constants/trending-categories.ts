@@ -12,6 +12,8 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     searchQuery: "asthma",
     excludeTerms: [
       "asthma", "asthmatic", "bronchial asthma", "asthma bronchiale",
+      "allergens", "immunotherapy", "inflammation", "cytokines",
+      "biomarkers",
     ],
   },
   {
@@ -20,7 +22,8 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     searchQuery: "rhinitis",
     excludeTerms: [
       "rhinitis", "allergic rhinitis", "rhinoconjunctivitis", "hay fever",
-      "nasal allergy",
+      "nasal allergy", "allergens", "immunotherapy", "inflammation",
+      "cytokines", "biomarkers",
     ],
   },
   {
@@ -29,6 +32,8 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     searchQuery: "urticaria OR angioedema",
     excludeTerms: [
       "urticaria", "chronic urticaria", "hives", "angioedema",
+      "allergens", "immunotherapy", "inflammation", "cytokines",
+      "biomarkers",
     ],
   },
   {
@@ -37,7 +42,8 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     searchQuery: "anaphylaxis",
     excludeTerms: [
       "anaphylaxis", "anaphylactic", "anaphylactic reaction",
-      "anaphylactic shock",
+      "anaphylactic shock", "allergens", "immunotherapy", "inflammation",
+      "cytokines", "biomarkers",
     ],
   },
   {
@@ -46,6 +52,8 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     searchQuery: '"food allergy" OR "food hypersensitivity"',
     excludeTerms: [
       "food allergy", "food allergies", "food hypersensitivity",
+      "allergens", "immunotherapy", "inflammation", "cytokines",
+      "biomarkers",
     ],
   },
   {
@@ -54,6 +62,8 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     searchQuery: '"atopic dermatitis" OR eczema',
     excludeTerms: [
       "atopic dermatitis", "eczema", "atopic eczema", "dermatitis",
+      "allergens", "immunotherapy", "inflammation", "cytokines",
+      "biomarkers",
     ],
   },
   {
@@ -62,6 +72,8 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     searchQuery: '"drug allergy" OR "drug hypersensitivity"',
     excludeTerms: [
       "drug allergy", "drug allergies", "drug hypersensitivity",
+      "allergens", "immunotherapy", "inflammation", "cytokines",
+      "biomarkers",
     ],
   },
   {
@@ -70,6 +82,8 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     searchQuery: "eosinophilic",
     excludeTerms: [
       "eosinophilic", "eosinophil", "eosinophilia", "eosinophils",
+      "allergens", "immunotherapy", "inflammation", "cytokines",
+      "biomarkers",
     ],
   },
   {
@@ -81,6 +95,8 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
       "hypersensitivity", "asthma", "rhinitis", "urticaria", "angioedema",
       "anaphylaxis", "food allergy", "atopic dermatitis", "eczema",
       "drug allergy", "eosinophilic", "eosinophil",
+      "allergens", "immunotherapy", "inflammation", "cytokines",
+      "biomarkers",
     ],
   },
 ];
