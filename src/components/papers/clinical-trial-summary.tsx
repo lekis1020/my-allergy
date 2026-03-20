@@ -29,12 +29,12 @@ export function ClinicalTrialSummary({ onItemClick }: ClinicalTrialSummaryProps)
   for (const study of studies) {
     for (const intervention of study.interventions) {
       const key = intervention.toLowerCase().trim();
-      if (key.length < 3) continue;
+      if (key.length < 3 || shouldExcludeTrialHighlightTerm(key)) continue;
       interventionCounts.set(key, (interventionCounts.get(key) || 0) + 1);
     }
     for (const condition of study.conditions) {
       const key = condition.toLowerCase().trim();
-      if (key.length < 3) continue;
+      if (key.length < 3 || shouldExcludeTrialHighlightTerm(key)) continue;
       conditionCounts.set(key, (conditionCounts.get(key) || 0) + 1);
     }
   }
@@ -122,4 +122,8 @@ function ClinicalTrialSummarySkeleton() {
       </div>
     </div>
   );
+}
+
+function shouldExcludeTrialHighlightTerm(term: string): boolean {
+  return /\bplacebo\b/i.test(term);
 }

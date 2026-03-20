@@ -1,28 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAnonClient } from "@/lib/supabase/server";
+import { ONGOING_STATUSES } from "@/lib/clinical-trials/monitor";
 import { TRENDING_CATEGORIES } from "@/lib/constants/trending-categories";
-import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 
-const GLOBAL_EXCLUDE = new Set([
-  "humans", "male", "female", "adult", "child", "children",
-  "adolescent", "infant", "aged", "middle aged", "young adult",
-  "animals", "mice", "rats", "mouse", "rat",
-  "prospective studies", "retrospective studies", "cohort studies",
-  "cross-sectional studies", "randomized controlled trials",
-  "treatment outcome", "risk factors", "prevalence", "incidence",
-  "diagnosis", "therapy", "prognosis", "epidemiology",
-  "review", "meta-analysis", "systematic review",
-  "surveys and questionnaires", "follow-up studies",
-  "case reports", "clinical trials", "double-blind method",
-  "quality of life", "severity of illness index",
-  "immunoglobulin e", "ige", "skin tests",
-  "allergens", "immunotherapy", "inflammation", "cytokines",
-  "biomarkers", "antibodies", "antigens", "phenotype",
-  "genotype", "polymorphism", "mutation", "gene expression",
-  "cell line", "cells", "serum", "blood", "plasma",
-  "sensitivity and specificity", "predictive value of tests",
-  "disease progression", "comorbidity", "age factors",
-  "time factors", "dose-response relationship",
+const OUTCOME_EXCLUDE = new Set([
+  "safety",
+  "efficacy",
+  "tolerability",
+  "adverse events",
+  "serious adverse events",
+  "pharmacokinetics",
+  "pharmacodynamics",
+  "quality of life",
+  "patient reported outcomes",
+  "biomarker",
+  "biomarkers",
+  "placebo",
 ]);
 
 const LOWERCASE_WORDS = new Set([
@@ -47,120 +39,79 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const now = new Date();
-  const sixMonthsAgo = new Date(
-    now.getFullYear(),
-    now.getMonth() - 6,
-    now.getDate(),
-  );
-  const fromDate = sixMonthsAgo.toISOString().split("T")[0];
+  try {
+    const { studies, totalStudies } = await fetchTrialOutcomes(category.searchQuery);
+    const excludeSet = new Set(category.excludeTerms.map((t) => t.toLowerCase()));
+    const outcomeScores = new Map<string, { score: number; rawCount: number }>();
 
-  const supabase = createAnonClient();
+    for (const study of studies) {
+      const seen = new Set<string>();
 
-  const { data, error } = await supabase
-    .from("papers")
-    .select("keywords, mesh_terms")
-    .not("abstract", "is", null)
-    .neq("abstract", "")
-    .textSearch("search_vector", category.searchQuery, { type: "websearch" })
-    .gte("publication_date", fromDate)
-    .order("publication_date", { ascending: false })
-    .limit(500);
+      for (const outcome of study.primary) {
+        const normalized = normalizeOutcome(outcome, excludeSet);
+        if (!normalized || seen.has(normalized)) continue;
+        seen.add(normalized);
+        const existing = outcomeScores.get(normalized);
+        if (existing) {
+          existing.score += 2;
+          existing.rawCount += 1;
+        } else {
+          outcomeScores.set(normalized, { score: 2, rawCount: 1 });
+        }
+      }
 
-  if (error) {
-    console.error("Trending topics query error:", error);
+      for (const outcome of study.secondary) {
+        const normalized = normalizeOutcome(outcome, excludeSet);
+        if (!normalized || seen.has(normalized)) continue;
+        seen.add(normalized);
+        const existing = outcomeScores.get(normalized);
+        if (existing) {
+          existing.score += 1;
+          existing.rawCount += 1;
+        } else {
+          outcomeScores.set(normalized, { score: 1, rawCount: 1 });
+        }
+      }
+    }
+
+    const ranked = [...outcomeScores.entries()].map(([keyword, { score, rawCount }]) => ({
+      keyword,
+      score,
+      rawCount,
+      wordCount: keyword.split(/\s+/).length,
+    }));
+
+    const deduped = deduplicateSimilar(ranked);
+
+    const trending = deduped
+      .sort((a, b) => b.score - a.score || b.rawCount - a.rawCount)
+      .slice(0, 8)
+      .map(({ keyword, rawCount }) => ({
+        keyword: capitalizePhrase(keyword),
+        count: rawCount,
+      }));
+
+    const response = NextResponse.json({
+      category: category.id,
+      label: category.label,
+      topics: trending,
+      totalStudies,
+      source: "clinicaltrials.gov-outcomes",
+    });
+
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=3600, stale-while-revalidate=7200",
+    );
+
+    return response;
+  } catch (error) {
+    console.error("Trending topics outcome query error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch trending topics" },
+      { error: "Failed to fetch trending outcome topics" },
       { status: 500 },
     );
   }
-
-  const excludeSet = new Set(
-    category.excludeTerms.map((t) => t.toLowerCase()),
-  );
-
-  const keywordScores = new Map<string, { score: number; rawCount: number; source: "author" | "mesh" }>();
-
-  for (const paper of data || []) {
-    const rawKeywords = Array.isArray(paper.keywords)
-      ? paper.keywords.filter((k): k is string => typeof k === "string")
-      : [];
-    const rawMesh = Array.isArray(paper.mesh_terms)
-      ? paper.mesh_terms.filter((t): t is string => typeof t === "string")
-      : [];
-
-    const seen = new Set<string>();
-
-    // Author keywords get 1.5x weight
-    for (const raw of rawKeywords) {
-      const kw = decodeHtmlEntities(raw).toLowerCase().trim();
-      if (kw.length < 3 || excludeSet.has(kw) || GLOBAL_EXCLUDE.has(kw) || seen.has(kw)) continue;
-      seen.add(kw);
-      const existing = keywordScores.get(kw);
-      if (existing) {
-        existing.score += 1.5;
-        existing.rawCount += 1;
-      } else {
-        keywordScores.set(kw, { score: 1.5, rawCount: 1, source: "author" });
-      }
-    }
-
-    // MeSH terms get 1x weight
-    for (const raw of rawMesh) {
-      const kw = decodeHtmlEntities(raw).toLowerCase().trim();
-      if (kw.length < 3 || excludeSet.has(kw) || GLOBAL_EXCLUDE.has(kw) || seen.has(kw)) continue;
-      seen.add(kw);
-      const existing = keywordScores.get(kw);
-      if (existing) {
-        existing.score += 1;
-        existing.rawCount += 1;
-      } else {
-        keywordScores.set(kw, { score: 1, rawCount: 1, source: "mesh" });
-      }
-    }
-  }
-
-  // Apply word-count bonuses and single-word penalty
-  const scored = [...keywordScores.entries()].map(([keyword, { score, rawCount }]) => {
-    const wordCount = keyword.split(/\s+/).length;
-    let finalScore = score;
-    if (wordCount >= 3) finalScore += 5;
-    else if (wordCount === 2) finalScore += 3;
-    else finalScore *= 0.7; // single-word 30% penalty
-    return { keyword, score: finalScore, rawCount, wordCount };
-  });
-
-  // Deduplicate similar keywords (60%+ word overlap)
-  const deduped = deduplicateSimilar(scored);
-
-  // Filter: single-word keywords need score >= 10
-  const filtered = deduped.filter(
-    (entry) => entry.wordCount >= 2 || entry.score >= 10,
-  );
-
-  // Sort by score descending, take top 8
-  const trending = filtered
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 8)
-    .map(({ keyword, rawCount }) => ({
-      keyword: capitalizePhrase(keyword),
-      count: rawCount,
-    }));
-
-  const response = NextResponse.json({
-    category: category.id,
-    label: category.label,
-    topics: trending,
-    totalPapers: (data || []).length,
-    period: { from: fromDate, to: now.toISOString().split("T")[0] },
-  });
-
-  response.headers.set(
-    "Cache-Control",
-    "public, s-maxage=3600, stale-while-revalidate=7200",
-  );
-
-  return response;
 }
 
 function deduplicateSimilar(
@@ -195,4 +146,121 @@ function capitalizePhrase(phrase: string): string {
       return word.charAt(0).toUpperCase() + word.slice(1);
     })
     .join(" ");
+}
+
+interface ClinicalTrialsOutcomeResponse {
+  totalCount?: number;
+  nextPageToken?: string;
+  studies?: Array<{
+    protocolSection?: {
+      outcomesModule?: {
+        primaryOutcomes?: Array<{ measure?: string; description?: string }>;
+        secondaryOutcomes?: Array<{ measure?: string; description?: string }>;
+      };
+    };
+  }>;
+}
+
+interface ParsedStudyOutcomes {
+  primary: string[];
+  secondary: string[];
+}
+
+async function fetchTrialOutcomes(query: string): Promise<{
+  studies: ParsedStudyOutcomes[];
+  totalStudies: number;
+}> {
+  const studies: ParsedStudyOutcomes[] = [];
+  let totalStudies = 0;
+  let pageToken: string | null = null;
+
+  for (let page = 0; page < 3; page++) {
+    const url = buildClinicalTrialsOutcomesUrl(query, pageToken);
+    const response = await fetch(url, {
+      headers: { accept: "application/json" },
+      next: { revalidate: 3_600 },
+    });
+
+    if (!response.ok) {
+      throw new Error(`clinicaltrials.gov outcomes request failed (${response.status})`);
+    }
+
+    const payload = (await response.json()) as ClinicalTrialsOutcomeResponse;
+    if (page === 0) {
+      totalStudies = payload.totalCount ?? 0;
+    }
+
+    for (const study of payload.studies ?? []) {
+      const primary = extractOutcomeTexts(
+        study.protocolSection?.outcomesModule?.primaryOutcomes,
+      );
+      const secondary = extractOutcomeTexts(
+        study.protocolSection?.outcomesModule?.secondaryOutcomes,
+      );
+      if (primary.length === 0 && secondary.length === 0) continue;
+      studies.push({ primary, secondary });
+    }
+
+    if (!payload.nextPageToken) break;
+    pageToken = payload.nextPageToken;
+  }
+
+  return { studies, totalStudies: totalStudies || studies.length };
+}
+
+function buildClinicalTrialsOutcomesUrl(query: string, pageToken?: string | null): string {
+  const url = new URL("https://clinicaltrials.gov/api/v2/studies");
+  url.searchParams.set("query.cond", query);
+  url.searchParams.set("filter.overallStatus", ONGOING_STATUSES.join(","));
+  url.searchParams.set("countTotal", "true");
+  url.searchParams.set("pageSize", "100");
+  url.searchParams.set("format", "json");
+  if (pageToken) {
+    url.searchParams.set("pageToken", pageToken);
+  }
+  return url.toString();
+}
+
+function extractOutcomeTexts(
+  outcomes?: Array<{ measure?: string; description?: string }>,
+): string[] {
+  if (!Array.isArray(outcomes)) return [];
+  return outcomes
+    .map((outcome) => outcome.measure?.trim() || outcome.description?.trim() || "")
+    .filter((text): text is string => text.length > 0);
+}
+
+function normalizeOutcome(raw: string, categoryExclude: Set<string>): string | null {
+  const lowered = raw
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[^a-z0-9%/+ -]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!lowered || lowered.length < 6) return null;
+
+  const stripped = stripGenericPrefixes(lowered);
+  if (!stripped || stripped.length < 6) return null;
+  if (categoryExclude.has(stripped)) return null;
+  if (stripped.includes("placebo")) return null;
+  if (OUTCOME_EXCLUDE.has(stripped)) return null;
+  if (stripped.split(/\s+/).length < 2) return null;
+
+  return stripped;
+}
+
+function stripGenericPrefixes(text: string): string {
+  return text
+    .replace(
+      /^(change|mean change|percent change|difference|improvement|reduction)\s+(from baseline\s+)?(in|of)\s+/,
+      "",
+    )
+    .replace(
+      /^(proportion|percentage|number|rate)\s+(of\s+)?(participants|patients|subjects)\s+(with|who)\s+/,
+      "",
+    )
+    .replace(/^(time to|incidence of|frequency of)\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }

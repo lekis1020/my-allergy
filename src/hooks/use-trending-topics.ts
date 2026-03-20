@@ -11,8 +11,8 @@ interface TrendingTopicsResponse {
   category: string;
   label: string;
   topics: TrendingTopic[];
-  totalPapers: number;
-  period: { from: string; to: string };
+  totalStudies: number;
+  source: string;
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -30,8 +30,8 @@ export function useTrendingTopics(category: string) {
   return {
     data,
     topics: data?.topics || [],
-    totalPapers: data?.totalPapers || 0,
-    period: data?.period,
+    totalStudies: data?.totalStudies || 0,
+    source: data?.source || "",
     isLoading,
     error,
   };

@@ -75,7 +75,7 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
   const [activeCategory, setActiveCategory] = useState(
     TRENDING_CATEGORIES[0].id,
   );
-  const { topics, totalPapers, period, isLoading } =
+  const { topics, totalStudies, isLoading } =
     useTrendingTopics(activeCategory);
 
   const contentStyle =
@@ -86,13 +86,11 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
       <div className="mb-3 flex items-center gap-2">
         <Flame className="h-4 w-4 text-orange-500" />
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          Trending Research Topics
+          Trending Trial Outcomes
         </h2>
-        {period && (
-          <span className="text-xs text-gray-400 dark:text-gray-500">
-            Last 6 months
-          </span>
-        )}
+        <span className="text-xs text-gray-400 dark:text-gray-500">
+          Primary + secondary outcomes
+        </span>
       </div>
 
       {/* Bookmark-style category tabs */}
@@ -132,7 +130,7 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
             <TrendingTopicsSkeleton />
           ) : topics.length === 0 ? (
             <p className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
-              No trending topics found for this period.
+              No ranked outcomes found for this category.
             </p>
           ) : (
             <>
@@ -157,9 +155,9 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
                   </li>
                 ))}
               </ul>
-              {totalPapers > 0 && (
+              {totalStudies > 0 && (
                 <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-                  Based on {totalPapers} papers
+                  Based on {totalStudies} ongoing trials
                 </p>
               )}
             </>
