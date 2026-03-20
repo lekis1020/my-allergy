@@ -5,6 +5,10 @@ export const TRIAL_MONITOR_AREAS = [
   { id: "rhinitis", label: "Allergic Rhinitis", query: "allergic rhinitis" },
   { id: "urticaria", label: "Urticaria", query: "urticaria" },
   { id: "immunodeficiency", label: "Immunodeficiency", query: "immunodeficiency" },
+  { id: "hypereosinophilia", label: "Hypereosinophilia", query: "hypereosinophilic syndrome" },
+  { id: "chronic_rhinosinusitis", label: "Chronic Rhinosinusitis", query: "chronic rhinosinusitis" },
+  { id: "chronic_urticaria", label: "Chronic Urticaria", query: "chronic urticaria" },
+  { id: "anaphylaxis", label: "Anaphylaxis", query: "anaphylaxis" },
 ] as const;
 
 export const ONGOING_STATUSES = [

@@ -58,6 +58,26 @@ const SECTION_STYLES: Record<
     active: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
     activeBorder: "border-blue-200 dark:border-blue-900",
   },
+  hypereosinophilia: {
+    dot: "bg-cyan-500",
+    active: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300",
+    activeBorder: "border-cyan-200 dark:border-cyan-900",
+  },
+  chronic_rhinosinusitis: {
+    dot: "bg-orange-500",
+    active: "bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+    activeBorder: "border-orange-200 dark:border-orange-900",
+  },
+  chronic_urticaria: {
+    dot: "bg-fuchsia-500",
+    active: "bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-950 dark:text-fuchsia-300",
+    activeBorder: "border-fuchsia-200 dark:border-fuchsia-900",
+  },
+  anaphylaxis: {
+    dot: "bg-rose-500",
+    active: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
+    activeBorder: "border-rose-200 dark:border-rose-900",
+  },
 };
 
 const DEFAULT_SECTION_STYLE = {
