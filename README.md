@@ -112,6 +112,8 @@ Vercel Project Settings → Environment Variables에 아래 값 등록:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `CRON_SECRET`
 - `CRON_SYNC_DAYS` (권장 `180`)
+- `INNGEST_EVENT_KEY`
+- `INNGEST_SIGNING_KEY`
 - `PUBMED_API_KEY` (선택, 있으면 PubMed rate limit 개선)
 - `CROSSREF_EMAIL` (권장)
 

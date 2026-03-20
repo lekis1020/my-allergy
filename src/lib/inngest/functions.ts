@@ -41,42 +41,119 @@ export const syncJournalFn = inngest.createFunction(
       return data.id as string;
     });
 
-    // Fetch papers from PubMed
-    const articles = await step.run("fetch-papers", async () => {
-      const dateRange = fullSync
-        ? { from: "2020/01/01", to: getDateRange(0).to }
-        : getDateRange(days);
+    const syncLogId = await step.run("create-sync-log", async () => {
+      const { data, error } = await supabase
+        .from("sync_logs")
+        .insert({
+          journal_id: journalId,
+          sync_type: fullSync ? "full" : "incremental",
+          status: "running",
+          papers_found: 0,
+          papers_inserted: 0,
+          papers_updated: 0,
+          started_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
 
-      return fetchPapersForJournal(journal, {
-        mindate: dateRange.from,
-        maxdate: dateRange.to,
+      if (error || !data) {
+        throw new Error(error?.message ?? `Failed to create sync log for ${journalSlug}`);
+      }
+
+      return data.id as string;
+    });
+
+    try {
+      // Fetch papers from PubMed
+      const articles = await step.run("fetch-papers", async () => {
+        const dateRange = fullSync
+          ? { from: "2020/01/01", to: getDateRange(0).to }
+          : getDateRange(days);
+
+        return fetchPapersForJournal(journal, {
+          mindate: dateRange.from,
+          maxdate: dateRange.to,
+        });
       });
-    });
 
-    if (articles.length === 0) {
-      return { journal: journal.abbreviation, found: 0, inserted: 0, updated: 0, errors: 0 };
+      if (articles.length === 0) {
+        await step.run("mark-sync-success-empty", async () => {
+          const { error } = await supabase
+            .from("sync_logs")
+            .update({
+              status: "success",
+              papers_found: 0,
+              papers_inserted: 0,
+              papers_updated: 0,
+              error_message: null,
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", syncLogId);
+
+          if (error) {
+            throw new Error(error.message);
+          }
+        });
+
+        return { journal: journal.abbreviation, found: 0, inserted: 0, updated: 0, errors: 0 };
+      }
+
+      // Store papers in Supabase
+      const storeResult = await step.run("store-papers", async () => {
+        return storePapers(supabase, journalId, articles);
+      });
+
+      // Enrich with CrossRef data
+      const enrichResult = await step.run("enrich-crossref", async () => {
+        return enrichPapersWithCrossRef(supabase, 100);
+      });
+
+      await step.run("mark-sync-success", async () => {
+        const { error } = await supabase
+          .from("sync_logs")
+          .update({
+            status: "success",
+            papers_found: articles.length,
+            papers_inserted: storeResult.inserted,
+            papers_updated: storeResult.updated,
+            error_message: null,
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", syncLogId);
+
+        if (error) {
+          throw new Error(error.message);
+        }
+      });
+
+      console.log(`[Inngest] Synced ${journal.abbreviation}: ${articles.length} found, ${storeResult.inserted} inserted, enriched ${enrichResult.enriched}`);
+
+      return {
+        journal: journal.abbreviation,
+        found: articles.length,
+        inserted: storeResult.inserted,
+        updated: storeResult.updated,
+        errors: storeResult.errors,
+        enriched: enrichResult.enriched,
+      };
+    } catch (error) {
+      await step.run("mark-sync-error", async () => {
+        const { error: updateError } = await supabase
+          .from("sync_logs")
+          .update({
+            status: "error",
+            error_message: error instanceof Error ? error.message : String(error),
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", syncLogId);
+
+        if (updateError) {
+          throw new Error(updateError.message);
+        }
+      });
+
+      throw error;
     }
-
-    // Store papers in Supabase
-    const storeResult = await step.run("store-papers", async () => {
-      return storePapers(supabase, journalId, articles);
-    });
-
-    // Enrich with CrossRef data
-    const enrichResult = await step.run("enrich-crossref", async () => {
-      return enrichPapersWithCrossRef(supabase, 100);
-    });
-
-    console.log(`[Inngest] Synced ${journal.abbreviation}: ${articles.length} found, ${storeResult.inserted} inserted, enriched ${enrichResult.enriched}`);
-
-    return {
-      journal: journal.abbreviation,
-      found: articles.length,
-      inserted: storeResult.inserted,
-      updated: storeResult.updated,
-      errors: storeResult.errors,
-      enriched: enrichResult.enriched,
-    };
   }
 );
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SUCCESSFUL_SYNC_STATUSES, isSyncHealthOk } from "@/lib/sync/status";
 import { createAnonClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/rate-limit";
 
@@ -43,22 +44,20 @@ export async function GET(request: NextRequest) {
     // paperCount stays null
   }
 
-  // Last sync: most recent completed sync_logs entry
+  // Last sync: most recent successful sync_logs entry (supports legacy "completed")
   let lastSyncCheck: { status: "ok" | "stale" | "error"; lastSyncAt: string | null; minutesAgo: number | null };
   try {
     const { data, error } = await supabase
       .from("sync_logs")
       .select("completed_at")
-      .eq("status", "completed")
+      .in("status", [...SUCCESSFUL_SYNC_STATUSES])
       .order("completed_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== "PGRST116") {
+    if (error) {
       lastSyncCheck = { status: "error", lastSyncAt: null, minutesAgo: null };
-    } else if (!data) {
-      lastSyncCheck = { status: "stale", lastSyncAt: null, minutesAgo: null };
-    } else if (!data.completed_at) {
+    } else if (!data?.completed_at) {
       lastSyncCheck = { status: "stale", lastSyncAt: null, minutesAgo: null };
     } else {
       const ageMs = Date.now() - new Date(data.completed_at).getTime();
@@ -69,11 +68,11 @@ export async function GET(request: NextRequest) {
         minutesAgo,
       };
     }
-  } catch (err) {
+  } catch {
     lastSyncCheck = { status: "error", lastSyncAt: null, minutesAgo: null };
   }
 
-  const allOk = databaseCheck.status === "ok" && lastSyncCheck.status !== "error";
+  const allOk = isSyncHealthOk(databaseCheck.status, lastSyncCheck.status);
 
   const response = NextResponse.json(
     {

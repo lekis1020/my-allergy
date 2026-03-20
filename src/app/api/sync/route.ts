@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { inngest } from "@/lib/inngest/client";
+import { getMissingSyncEnvVars, parseSyncDays } from "@/lib/sync/config";
 
 function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -17,9 +18,13 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
+  const missingEnvVars = getMissingSyncEnvVars(process.env);
 
-  if (!cronSecret || cronSecret === "your_cron_secret") {
-    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+  if (missingEnvVars.length > 0) {
+    return NextResponse.json(
+      { error: `Missing sync configuration: ${missingEnvVars.join(", ")}` },
+      { status: 500 },
+    );
   }
 
   if (!safeCompare(authHeader ?? "", `Bearer ${cronSecret}`)) {
@@ -29,12 +34,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const fullSync = (body as Record<string, unknown>).fullSync === true;
-    const rawDays = typeof (body as Record<string, unknown>).days === "number"
-      ? (body as Record<string, number>).days
-      : 180;
-    const days = Number.isFinite(rawDays) && rawDays >= 1
-      ? Math.min(Math.floor(rawDays), 365)
-      : 180;
+    const rawDays = (body as Record<string, unknown>).days;
+    const days = parseSyncDays(
+      typeof rawDays === "number" || typeof rawDays === "string" ? rawDays : undefined,
+      { max: 365 },
+    );
 
     await inngest.send({ name: "sync/all.requested", data: { fullSync, days } });
 
