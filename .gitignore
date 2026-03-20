@@ -43,5 +43,9 @@ next-env.d.ts
 
 # local agent/runtime metadata
 .omc/
+.omx/
 .superset/
 supabase/.temp/
+
+# playwright MCP
+.playwright-mcp/
