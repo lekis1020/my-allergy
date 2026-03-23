@@ -125,7 +125,7 @@ describe('parsePubMedXml', () => {
 
     it('parses publication date correctly', () => {
       const results = parsePubMedXml(SINGLE_ARTICLE_XML);
-      expect(results[0].publicationDate).toBe('2023-03-15');
+      expect(results[0].publicationDate).toBe('2023-01-05');
     });
 
     it('parses epub date correctly', () => {
@@ -146,6 +146,48 @@ describe('parsePubMedXml', () => {
     it('parses mesh terms correctly', () => {
       const results = parsePubMedXml(SINGLE_ARTICLE_XML);
       expect(results[0].meshTerms).toEqual(['Hypersensitivity', 'Child']);
+    });
+  });
+
+  describe('epub date fallback behavior', () => {
+    it('uses ArticleDate when History/epublish is absent', () => {
+      const xml = wrapInSet(`
+<PubmedArticle>
+  <MedlineCitation>
+    <PMID>12121212</PMID>
+    <Article>
+      <Journal>
+        <JournalIssue CitedMedium="Internet">
+          <PubDate>
+            <Year>2024</Year>
+            <Month>Mar</Month>
+            <Day>15</Day>
+          </PubDate>
+        </JournalIssue>
+        <Title>Electronic First Journal</Title>
+        <ISOAbbreviation>EFirst J</ISOAbbreviation>
+      </Journal>
+      <ArticleTitle>Electronic date fallback article</ArticleTitle>
+      <ArticleDate DateType="Electronic">
+        <Year>2024</Year>
+        <Month>01</Month>
+        <Day>07</Day>
+      </ArticleDate>
+      <Abstract><AbstractText>Abstract.</AbstractText></Abstract>
+      <AuthorList><Author><LastName>EpubFallback</LastName></Author></AuthorList>
+    </Article>
+  </MedlineCitation>
+  <PubmedData>
+    <History />
+    <ArticleIdList><ArticleId IdType="pubmed">12121212</ArticleId></ArticleIdList>
+  </PubmedData>
+</PubmedArticle>
+`);
+
+      const results = parsePubMedXml(xml);
+      expect(results).toHaveLength(1);
+      expect(results[0].epubDate).toBe('2024-01-07');
+      expect(results[0].publicationDate).toBe('2024-01-07');
     });
   });
 

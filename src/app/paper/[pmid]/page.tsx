@@ -31,6 +31,7 @@ interface LinkedPaper {
   pmid: string;
   title: string;
   publication_date: string;
+  epub_date: string | null;
   citation_count: number | null;
   journal_abbreviation: string;
   journal_color: string;
@@ -66,6 +67,10 @@ export default async function PaperDetailPage({ params }: PageProps) {
 
   const journal = paper.journals;
   const authors = paper.paper_authors || [];
+  const displayPublicationDate = resolveDisplayedPublicationDate(
+    paper.epub_date as string | null | undefined,
+    paper.publication_date as string | null | undefined,
+  );
   const [relatedIds, referencedIds, citedByIds] = await Promise.all([
     fetchLinkedPmids(pmid, "pubmed_pubmed", 30),
     fetchLinkedPmids(pmid, "pubmed_pubmed_refs", 30),
@@ -110,7 +115,7 @@ export default async function PaperDetailPage({ params }: PageProps) {
         <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
           <span className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
-            {formatDate(String(paper.publication_date))}
+            {formatDate(displayPublicationDate)}
           </span>
           {paper.citation_count !== null && Number(paper.citation_count) > 0 && (
             <span className="flex items-center gap-1">
@@ -268,7 +273,7 @@ function PaperListSection({
               <div className="mb-1 flex items-center gap-2">
                 <Badge color={paper.journal_color}>{paper.journal_abbreviation}</Badge>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {formatDate(paper.publication_date)}
+                  {formatDate(resolveDisplayedPublicationDate(paper.epub_date, paper.publication_date))}
                 </span>
                 {paper.citation_count !== null && paper.citation_count > 0 && (
                   <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -297,7 +302,7 @@ async function getLinkedPapersMap(
     .from("papers")
     .select(
       `
-      pmid, title, publication_date, citation_count,
+      pmid, title, publication_date, epub_date, citation_count,
       journals!inner (abbreviation, color)
     `
     )
@@ -311,6 +316,10 @@ async function getLinkedPapersMap(
       pmid: String(row.pmid),
       title: String(row.title ?? ""),
       publication_date: String(row.publication_date ?? "1970-01-01"),
+      epub_date:
+        typeof row.epub_date === "string" && row.epub_date.length > 0
+          ? row.epub_date
+          : null,
       citation_count:
         typeof row.citation_count === "number" ? row.citation_count : null,
       journal_abbreviation: String(journal.abbreviation ?? ""),
@@ -319,6 +328,13 @@ async function getLinkedPapersMap(
   }
 
   return map;
+}
+
+function resolveDisplayedPublicationDate(
+  epubDate: string | null | undefined,
+  publicationDate: string | null | undefined,
+): string {
+  return epubDate || publicationDate || "1970-01-01";
 }
 
 function mapLinkedPapersByOrder(ids: string[], paperMap: Map<string, LinkedPaper>): LinkedPaper[] {

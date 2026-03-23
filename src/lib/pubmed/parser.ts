@@ -74,33 +74,9 @@ function parseArticle(entry: Record<string, unknown>): PubMedArticle | null {
     const journalIssue = journal?.JournalIssue as Record<string, unknown>;
     const pubDate = journalIssue?.PubDate as Record<string, unknown>;
 
-    const year = extractText(pubDate?.Year ?? "");
-    const month = extractText(pubDate?.Month ?? "01");
-    const day = extractText(pubDate?.Day ?? "01");
-    const medlineDate = extractText(pubDate?.MedlineDate ?? "");
-
-    let publicationDate: string;
-    if (year) {
-      const monthNum = parseMonth(month);
-      publicationDate = `${year}-${monthNum}-${day.padStart(2, "0")}`;
-    } else if (medlineDate) {
-      const yearMatch = medlineDate.match(/(\d{4})/);
-      publicationDate = yearMatch ? `${yearMatch[1]}-01-01` : "1970-01-01";
-    } else {
-      publicationDate = "1970-01-01";
-    }
-
-    const articleHistory = (entry.PubmedData as Record<string, unknown>)
-      ?.History as Record<string, unknown>;
-    const pubmedPubDates = ensureArray(
-      articleHistory?.PubMedPubDate
-    ) as Record<string, unknown>[];
-    const epubEntry = pubmedPubDates.find(
-      (d) => d?.["@_PubStatus"] === "epublish"
-    );
-    const epubDate = epubEntry
-      ? `${extractText(epubEntry.Year)}-${parseMonth(extractText(epubEntry.Month))}-${extractText(epubEntry.Day).padStart(2, "0")}`
-      : null;
+    const publicationDateFromIssue = parsePublicationDateFromIssue(pubDate);
+    const epubDate = parseEpubDate(article, entry);
+    const publicationDate = epubDate ?? publicationDateFromIssue ?? "1970-01-01";
 
     const authorList = ensureArray(
       (article.AuthorList as Record<string, unknown>)?.Author
@@ -161,13 +137,123 @@ function parseArticle(entry: Record<string, unknown>): PubMedArticle | null {
 }
 
 function parseMonth(month: string): string {
+  const normalized = month.trim().toLowerCase();
   const months: Record<string, string> = {
-    Jan: "01", Feb: "02", Mar: "03", Apr: "04",
-    May: "05", Jun: "06", Jul: "07", Aug: "08",
-    Sep: "09", Oct: "10", Nov: "11", Dec: "12",
+    jan: "01",
+    january: "01",
+    feb: "02",
+    february: "02",
+    mar: "03",
+    march: "03",
+    apr: "04",
+    april: "04",
+    may: "05",
+    jun: "06",
+    june: "06",
+    jul: "07",
+    july: "07",
+    aug: "08",
+    august: "08",
+    sep: "09",
+    sept: "09",
+    september: "09",
+    oct: "10",
+    october: "10",
+    nov: "11",
+    november: "11",
+    dec: "12",
+    december: "12",
+    spring: "03",
+    summer: "06",
+    fall: "09",
+    autumn: "09",
+    winter: "12",
   };
-  if (months[month]) return months[month];
-  const num = parseInt(month, 10);
+
+  if (months[normalized]) return months[normalized];
+
+  const leadingToken = normalized.split(/[^a-z0-9]+/).find(Boolean);
+  if (leadingToken && months[leadingToken]) {
+    return months[leadingToken];
+  }
+
+  const num = parseInt(normalized, 10);
   if (!isNaN(num) && num >= 1 && num <= 12) return String(num).padStart(2, "0");
   return "01";
+}
+
+function parseDay(day: string): string {
+  const num = parseInt(day.trim(), 10);
+  if (Number.isFinite(num) && num >= 1 && num <= 31) {
+    return String(num).padStart(2, "0");
+  }
+  return "01";
+}
+
+function parseDateFromParts(
+  yearRaw: string,
+  monthRaw: string,
+  dayRaw: string,
+): string | null {
+  const year = yearRaw.trim();
+  if (!/^\d{4}$/.test(year)) return null;
+  const month = parseMonth(monthRaw);
+  const day = parseDay(dayRaw);
+  return `${year}-${month}-${day}`;
+}
+
+function parsePublicationDateFromIssue(pubDate: Record<string, unknown> | undefined): string | null {
+  const year = extractText(pubDate?.Year ?? "");
+  const month = extractText(pubDate?.Month ?? "01");
+  const day = extractText(pubDate?.Day ?? "01");
+  const medlineDate = extractText(pubDate?.MedlineDate ?? "");
+
+  const dated = parseDateFromParts(year, month, day);
+  if (dated) return dated;
+
+  if (medlineDate) {
+    const yearMatch = medlineDate.match(/(\d{4})/);
+    if (yearMatch) return `${yearMatch[1]}-01-01`;
+  }
+
+  return null;
+}
+
+function parseEpubDate(
+  article: Record<string, unknown>,
+  entry: Record<string, unknown>,
+): string | null {
+  const articleHistory = (entry.PubmedData as Record<string, unknown>)
+    ?.History as Record<string, unknown>;
+  const pubmedPubDates = ensureArray(
+    articleHistory?.PubMedPubDate,
+  ) as Record<string, unknown>[];
+
+  const statusPriority = ["epublish", "aheadofprint", "pubmed"];
+  for (const status of statusPriority) {
+    const match = pubmedPubDates.find(
+      (d) => String(d?.["@_PubStatus"] ?? "").toLowerCase() === status,
+    );
+    if (!match) continue;
+    const dated = parseDateFromParts(
+      extractText(match.Year),
+      extractText(match.Month),
+      extractText(match.Day),
+    );
+    if (dated) return dated;
+  }
+
+  const articleDates = ensureArray(article.ArticleDate) as Record<string, unknown>[];
+  if (articleDates.length === 0) return null;
+
+  const electronic =
+    articleDates.find((d) =>
+      String(d?.["@_DateType"] ?? "").toLowerCase().includes("electronic"),
+    ) ?? articleDates[0];
+
+  return parseDateFromParts(
+    extractText(electronic.Year),
+    extractText(electronic.Month),
+    extractText(electronic.Day),
+  );
 }

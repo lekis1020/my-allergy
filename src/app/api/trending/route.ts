@@ -14,7 +14,7 @@ export async function GET() {
     .from("papers")
     .select(
       `
-      id, pmid, doi, title, abstract, publication_date,
+      id, pmid, doi, title, abstract, publication_date, epub_date,
       volume, issue, pages, keywords, mesh_terms, citation_count, journal_id,
       journals!inner (id, name, abbreviation, color, slug),
       paper_authors (last_name, first_name, initials, affiliation, position)
@@ -67,7 +67,7 @@ export async function GET() {
       doi: paper.doi,
       title: decodedTitle,
       abstract: decodedAbstract,
-      publication_date: paper.publication_date,
+      publication_date: resolveDisplayedPublicationDate(paper.epub_date, paper.publication_date),
       volume: paper.volume,
       issue: paper.issue,
       pages: paper.pages,
@@ -101,4 +101,11 @@ export async function GET() {
   );
 
   return response;
+}
+
+function resolveDisplayedPublicationDate(
+  epubDate: string | null | undefined,
+  publicationDate: string | null | undefined,
+): string {
+  return epubDate || publicationDate || "1970-01-01";
 }
