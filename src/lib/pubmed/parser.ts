@@ -229,7 +229,9 @@ function parseEpubDate(
     articleHistory?.PubMedPubDate,
   ) as Record<string, unknown>[];
 
-  const statusPriority = ["epublish", "aheadofprint", "pubmed"];
+  // Prefer true online publication dates first.
+  // `pubmed`/`medline` are indexing dates and can be later than actual online release.
+  const statusPriority = ["epublish", "aheadofprint", "pmc-release"];
   for (const status of statusPriority) {
     const match = pubmedPubDates.find(
       (d) => String(d?.["@_PubStatus"] ?? "").toLowerCase() === status,
@@ -244,16 +246,31 @@ function parseEpubDate(
   }
 
   const articleDates = ensureArray(article.ArticleDate) as Record<string, unknown>[];
-  if (articleDates.length === 0) return null;
+  if (articleDates.length > 0) {
+    const electronic =
+      articleDates.find((d) =>
+        String(d?.["@_DateType"] ?? "").toLowerCase().includes("electronic"),
+      ) ?? articleDates[0];
 
-  const electronic =
-    articleDates.find((d) =>
-      String(d?.["@_DateType"] ?? "").toLowerCase().includes("electronic"),
-    ) ?? articleDates[0];
+    const articleDate = parseDateFromParts(
+      extractText(electronic.Year),
+      extractText(electronic.Month),
+      extractText(electronic.Day),
+    );
+    if (articleDate) return articleDate;
+  }
 
-  return parseDateFromParts(
-    extractText(electronic.Year),
-    extractText(electronic.Month),
-    extractText(electronic.Day),
+  // Final fallback: indexing date in PubMed history
+  const pubmedMatch = pubmedPubDates.find(
+    (d) => String(d?.["@_PubStatus"] ?? "").toLowerCase() === "pubmed",
   );
+  if (pubmedMatch) {
+    return parseDateFromParts(
+      extractText(pubmedMatch.Year),
+      extractText(pubmedMatch.Month),
+      extractText(pubmedMatch.Day),
+    );
+  }
+
+  return null;
 }

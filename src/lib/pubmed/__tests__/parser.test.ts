@@ -189,6 +189,51 @@ describe('parsePubMedXml', () => {
       expect(results[0].epubDate).toBe('2024-01-07');
       expect(results[0].publicationDate).toBe('2024-01-07');
     });
+
+    it('prefers ArticleDate electronic over PubMed indexing date', () => {
+      const xml = wrapInSet(`
+<PubmedArticle>
+  <MedlineCitation>
+    <PMID>41783448</PMID>
+    <Article>
+      <Journal>
+        <JournalIssue CitedMedium="Internet">
+          <PubDate>
+            <Year>2026</Year>
+            <Month>May</Month>
+          </PubDate>
+        </JournalIssue>
+        <Title>The journal of allergy and clinical immunology. Global</Title>
+        <ISOAbbreviation>J Allergy Clin Immunol Glob</ISOAbbreviation>
+      </Journal>
+      <ArticleTitle>Implementation of early peanut introduction among providers.</ArticleTitle>
+      <ArticleDate DateType="Electronic">
+        <Year>2026</Year>
+        <Month>02</Month>
+        <Day>09</Day>
+      </ArticleDate>
+      <Abstract><AbstractText>Abstract.</AbstractText></Abstract>
+      <AuthorList><Author><LastName>Tester</LastName></Author></AuthorList>
+    </Article>
+  </MedlineCitation>
+  <PubmedData>
+    <History>
+      <PubMedPubDate PubStatus="pubmed">
+        <Year>2026</Year>
+        <Month>03</Month>
+        <Day>05</Day>
+      </PubMedPubDate>
+    </History>
+    <ArticleIdList><ArticleId IdType="pubmed">41783448</ArticleId></ArticleIdList>
+  </PubmedData>
+</PubmedArticle>
+`);
+
+      const results = parsePubMedXml(xml);
+      expect(results).toHaveLength(1);
+      expect(results[0].epubDate).toBe('2026-02-09');
+      expect(results[0].publicationDate).toBe('2026-02-09');
+    });
   });
 
   describe('batch parsing (multiple articles)', () => {
