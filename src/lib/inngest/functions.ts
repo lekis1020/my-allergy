@@ -221,7 +221,7 @@ export const syncAllFn = inngest.createFunction(
 
 /**
  * Sends email notifications after sync completes.
- * Queries papers inserted in the last 7 hours (sync runs every 6h with buffer).
+ * Queries papers inserted in the last N hours (default 25h for daily sync + buffer).
  */
 export const sendNotificationsFn = inngest.createFunction(
   { id: "send-notifications", retries: 2 },
@@ -232,16 +232,18 @@ export const sendNotificationsFn = inngest.createFunction(
 
     const newPapers = await step.run("fetch-new-papers", async () => {
       const supabase = createServiceClient();
-      const sevenHoursAgo = new Date(
-        Date.now() - 7 * 60 * 60 * 1000,
-      ).toISOString();
+      const notificationLookbackHours = Number(process.env.NOTIFICATION_LOOKBACK_HOURS ?? "25");
+      const lookbackHours = Number.isFinite(notificationLookbackHours) && notificationLookbackHours > 0
+        ? notificationLookbackHours
+        : 25;
+      const lookbackTime = new Date(Date.now() - lookbackHours * 60 * 60 * 1000).toISOString();
 
       const { data: papers } = await supabase
         .from("papers")
         .select(
           "pmid, title, journal_id, journals!inner(slug, name), paper_authors(last_name, initials, position)",
         )
-        .gte("created_at", sevenHoursAgo)
+        .gte("created_at", lookbackTime)
         .order("created_at", { ascending: false })
         .limit(500);
 

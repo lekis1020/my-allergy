@@ -1,13 +1,13 @@
 # My Allergy
 
 알레르기/임상면역학 저널 논문을 X(Twitter) 스타일 타임라인으로 모아보는 리서치 포털입니다.
-PubMed + CrossRef + Supabase를 기반으로 6시간마다 데이터를 동기화합니다.
+PubMed + CrossRef + Supabase를 기반으로 하루 1회 데이터를 동기화합니다.
 홈 타임라인에는 `Trending Research Topics`와 `Clinical Trial Monitor`가 함께 배치되어, 논문 피드와 진행 중인 임상시험을 한 화면에서 탐색할 수 있습니다.
 
 ## 소개
 
 - 대상: 알레르기/면역학 전문 저널 23종 + 종합/호흡기 상위 저널 14종 (총 37종)
-- 동기화 주기: 6시간 (`vercel.json` cron)
+- 동기화 주기: 하루 1회 (`vercel.json` cron, 기본)
 - 기본 동기화 범위: 최근 180일 (`CRON_SYNC_DAYS`)
 - 피드 표시 조건: 초록(abstract)이 있는 논문만 노출
 - 정렬: 기본 출간일 최신순, 인용순 정렬 지원
@@ -131,6 +131,7 @@ Vercel Project Settings → Environment Variables에 아래 값 등록:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `CRON_SECRET`
 - `CRON_SYNC_DAYS` (권장 `180`)
+- `NOTIFICATION_LOOKBACK_HOURS` (권장 `25`)
 - `INNGEST_EVENT_KEY`
 - `INNGEST_SIGNING_KEY`
 - `PUBMED_API_KEY` (선택, 있으면 PubMed rate limit 개선)
@@ -141,12 +142,24 @@ Vercel Project Settings → Environment Variables에 아래 값 등록:
 
 ### 3) Cron 동기화
 
-`vercel.json`에 아래 스케줄이 이미 포함되어 있습니다.
+`vercel.json`에 아래 스케줄이 포함되어 있습니다.
 
 - `/api/cron/sync-papers`
-- `0 */6 * * *` (6시간마다)
+- `0 0 * * *` (매일 1회, UTC 기준)
 
 `CRON_SECRET`이 설정되어 있으면 cron 요청 인증이 적용됩니다.
+
+### 3-1) GitHub Actions 백업 동기화 (권장)
+
+Vercel cron이 실패해도 하루 1회 동기화를 보장하려면 `.github/workflows/daily-sync-fallback.yml`을 함께 사용하세요.
+
+- 실행 시각: 매일 `01:15 UTC` (KST 10:15)
+- 동작: `/api/health` 확인 후 최근 동기화가 20시간 이상 지났을 때만 `/api/sync` 호출
+- 필요한 GitHub Secrets:
+  - `SYNC_BASE_URL` (예: `https://your-domain.vercel.app`)
+  - `CRON_SECRET` (Vercel과 동일한 값)
+- 선택 GitHub Variable:
+  - `CRON_SYNC_DAYS` (미설정 시 `180`)
 
 ### 4) 배포 후 점검
 

@@ -1,0 +1,78 @@
+name: Daily Sync Fallback
+
+on:
+  schedule:
+    # Runs daily at 10:15 KST (01:15 UTC), after Vercel cron window
+    - cron: "15 1 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: daily-sync-fallback
+  cancel-in-progress: false
+
+jobs:
+  fallback-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check recent sync status
+        id: health
+        env:
+          SYNC_BASE_URL: ${{ secrets.SYNC_BASE_URL }}
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          async function main() {
+            const baseUrl = process.env.SYNC_BASE_URL?.replace(/\/$/, "");
+            if (!baseUrl) {
+              console.error("Missing required secret: SYNC_BASE_URL");
+              process.exit(1);
+            }
+
+            const res = await fetch(`${baseUrl}/api/health`, { method: "GET" });
+            const json = await res.json().catch(() => ({}));
+            const minutesAgo = json?.checks?.lastSync?.minutesAgo;
+
+            // Trigger fallback only if last successful sync is older than 20h
+            const shouldRun = !(typeof minutesAgo === "number" && minutesAgo < 20 * 60);
+
+            console.log(`lastSync.minutesAgo=${minutesAgo ?? "null"}`);
+            console.log(`shouldRun=${shouldRun}`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `should_run=${shouldRun}\n`);
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Trigger sync fallback
+        if: steps.health.outputs.should_run == 'true'
+        env:
+          SYNC_BASE_URL: ${{ secrets.SYNC_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CRON_SYNC_DAYS: ${{ vars.CRON_SYNC_DAYS }}
+        run: |
+          set -euo pipefail
+          DAYS="${CRON_SYNC_DAYS:-180}"
+
+          RESPONSE_FILE="$(mktemp)"
+          HTTP_CODE="$(
+            curl -sS -o "$RESPONSE_FILE" -w "%{http_code}" \
+              -X POST "${SYNC_BASE_URL%/}/api/sync" \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              -H "Content-Type: application/json" \
+              --data "{\"days\":${DAYS}}"
+          )"
+
+          cat "$RESPONSE_FILE"
+
+          if [ "$HTTP_CODE" -ne 202 ] && [ "$HTTP_CODE" -ne 200 ]; then
+            echo "Fallback sync failed with HTTP ${HTTP_CODE}"
+            exit 1
+          fi
+
+      - name: Skip fallback (recent sync already exists)
+        if: steps.health.outputs.should_run != 'true'
+        run: echo "Skipping fallback sync because a recent successful sync already exists."
