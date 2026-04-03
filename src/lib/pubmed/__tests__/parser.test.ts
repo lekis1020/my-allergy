@@ -125,7 +125,7 @@ describe('parsePubMedXml', () => {
 
     it('parses publication date correctly', () => {
       const results = parsePubMedXml(SINGLE_ARTICLE_XML);
-      expect(results[0].publicationDate).toBe('2023-01-05');
+      expect(results[0].publicationDate).toBe('2023-03-15');
     });
 
     it('parses epub date correctly', () => {
@@ -187,7 +187,7 @@ describe('parsePubMedXml', () => {
       const results = parsePubMedXml(xml);
       expect(results).toHaveLength(1);
       expect(results[0].epubDate).toBe('2024-01-07');
-      expect(results[0].publicationDate).toBe('2024-01-07');
+      expect(results[0].publicationDate).toBe('2024-03-15');
     });
 
     it('prefers ArticleDate electronic over PubMed indexing date', () => {
@@ -232,7 +232,7 @@ describe('parsePubMedXml', () => {
       const results = parsePubMedXml(xml);
       expect(results).toHaveLength(1);
       expect(results[0].epubDate).toBe('2026-02-09');
-      expect(results[0].publicationDate).toBe('2026-02-09');
+      expect(results[0].publicationDate).toBe('2026-05-01');
     });
   });
 

@@ -84,23 +84,23 @@ export async function GET(request: NextRequest) {
   }
 
   if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) {
-    query = query.gte("publication_date", from);
+    query = query.gte("epub_date", from);
   }
 
   if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) {
-    query = query.lte("publication_date", to);
+    query = query.lte("epub_date", to);
   }
 
   switch (sort) {
     case "date_asc":
-      query = query.order("publication_date", { ascending: true });
+      query = query.order("epub_date", { ascending: true, nullsFirst: false });
       break;
     case "citations":
       query = query.order("citation_count", { ascending: false, nullsFirst: false });
       break;
     case "date_desc":
     default:
-      query = query.order("publication_date", { ascending: false });
+      query = query.order("epub_date", { ascending: false, nullsFirst: false });
       break;
   }
 
