@@ -75,8 +75,9 @@ function parseArticle(entry: Record<string, unknown>): PubMedArticle | null {
     const pubDate = journalIssue?.PubDate as Record<string, unknown>;
 
     const publicationDateFromIssue = parsePublicationDateFromIssue(pubDate);
-    const epubDate = parseEpubDate(article, entry);
-    const publicationDate = epubDate ?? publicationDateFromIssue ?? "1970-01-01";
+    const parsedEpubDate = parseEpubDate(article, entry);
+    const publicationDate = publicationDateFromIssue ?? parsedEpubDate ?? "1970-01-01";
+    const epubDate = parsedEpubDate ?? publicationDateFromIssue ?? null;
 
     const authorList = ensureArray(
       (article.AuthorList as Record<string, unknown>)?.Author
