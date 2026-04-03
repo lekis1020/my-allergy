@@ -17,7 +17,7 @@ export async function GET() {
       supabase
         .from("sync_logs")
         .select("completed_at")
-        .eq("status", "completed")
+        .eq("status", "success")
         .order("completed_at", { ascending: false })
         .limit(1),
       supabase
