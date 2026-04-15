@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { MobileDrawerProvider } from "@/components/layout/mobile-drawer-context";
+import { CommentNotificationsProvider } from "@/components/comments/comment-notifications-provider";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -41,12 +42,14 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
         <MobileDrawerProvider>
-          <div className="flex min-h-screen flex-col">
-            <Header />
-            <main className="flex-1 pb-16 md:pb-0">{children}</main>
-            <Footer />
-          </div>
-          <MobileBottomNav />
+          <CommentNotificationsProvider>
+            <div className="flex min-h-screen flex-col">
+              <Header />
+              <main className="flex-1 pb-16 md:pb-0">{children}</main>
+              <Footer />
+            </div>
+            <MobileBottomNav />
+          </CommentNotificationsProvider>
         </MobileDrawerProvider>
       </body>
     </html>

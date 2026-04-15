@@ -59,6 +59,69 @@ export type Database = {
         }
         Relationships: []
       }
+      paper_comments: {
+        Row: {
+          id: string
+          paper_pmid: string
+          user_id: string | null
+          parent_id: string | null
+          anon_id: string
+          content: string
+          report_count: number
+          deleted_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          paper_pmid: string
+          user_id?: string | null
+          parent_id?: string | null
+          anon_id: string
+          content: string
+          report_count?: number
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          paper_pmid?: string
+          user_id?: string | null
+          parent_id?: string | null
+          anon_id?: string
+          content?: string
+          report_count?: number
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      comment_reports: {
+        Row: {
+          id: string
+          comment_id: string
+          reporter_id: string
+          reason: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          comment_id: string
+          reporter_id: string
+          reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          comment_id?: string
+          reporter_id?: string
+          reason?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       conferences: {
         Row: {
           id: string

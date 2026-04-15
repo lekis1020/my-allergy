@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Bell, Bookmark, CalendarDays, Home, Menu, Microscope, Stethoscope, TrendingUp } from "lucide-react";
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { AuthButton } from "@/components/layout/auth-button";
+import { UnreadRepliesBadge } from "@/components/comments/unread-badge";
 
 export function Header() {
   const { toggle } = useMobileDrawer();
@@ -56,6 +57,7 @@ export function Header() {
           <Link href="/bookmarks" className={linkClass("/bookmarks")}>
             <Bookmark className="h-4 w-4" />
             Bookmarks
+            <UnreadRepliesBadge />
           </Link>
           <Link href="/calendar" className={linkClass("/calendar")}>
             <CalendarDays className="h-4 w-4" />

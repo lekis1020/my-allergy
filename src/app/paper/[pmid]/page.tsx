@@ -9,6 +9,7 @@ import { ArrowLeft, ExternalLink, Calendar, Quote, BookOpen } from "lucide-react
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PaperActions } from "@/components/papers/paper-actions";
+import { CommentThread } from "@/components/comments/comment-thread";
 
 interface AuthorData {
   last_name: string;
@@ -239,6 +240,8 @@ export default async function PaperDetailPage({ params }: PageProps) {
             papers={citedByPapers}
           />
         </div>
+
+        <CommentThread pmid={pmid} />
       </article>
     </div>
   );
