@@ -22,7 +22,6 @@ export function generateAnonId(pmid: string, userId: string): string {
     .slice(0, 6);
 }
 
-/** Format for UI display: "익명 #a2f3c9" */
-export function formatAnonId(anonId: string): string {
-  return `익명 #${anonId}`;
-}
+// Note: a client-safe `formatAnonId` helper lives in ./anon-id-client.ts.
+// Keeping it out of this module ensures client bundles never import the
+// server-only crypto path.
