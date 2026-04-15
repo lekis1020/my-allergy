@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Loader2, Send } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { registerOwnComment } from "@/hooks/use-comment-notifications";
 
 interface CommentFormProps {
   pmid: string;
@@ -77,6 +78,11 @@ export function CommentForm({
       if (!res.ok) {
         setError(json.error ?? "댓글을 저장하지 못했습니다.");
         return;
+      }
+      if (json?.comment?.id) {
+        // Keep the realtime notification filter in sync without exposing
+        // user_id in the Realtime payload (see migration 00019_harden.sql).
+        registerOwnComment(json.comment.id);
       }
       setContent("");
       onSubmitted?.();
