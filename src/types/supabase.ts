@@ -113,6 +113,30 @@ export type Database = {
         }
         Relationships: []
       }
+      paper_feedback: {
+        Row: {
+          user_id: string
+          paper_pmid: string
+          feedback: "interested" | "not_interested"
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          paper_pmid: string
+          feedback: "interested" | "not_interested"
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          paper_pmid?: string
+          feedback?: "interested" | "not_interested"
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       keyword_alerts: {
         Row: {
           id: string
@@ -367,7 +391,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      paper_feedback_kind: "interested" | "not_interested"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -494,6 +518,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      paper_feedback_kind: ["interested", "not_interested"],
+    },
   },
 } as const

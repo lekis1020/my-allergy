@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAnonClient } from "@/lib/supabase/server";
+import { createAnonClient, createServerAuthClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/rate-limit";
 import { classifyPaperTopics } from "@/lib/utils/topic-tags";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
+import { loadUserAffinity } from "@/lib/recommend/affinity";
+import { scorePaper } from "@/lib/recommend/score";
 
 const limiter = rateLimit({ windowMs: 60_000, maxRequests: 60 });
 
@@ -36,9 +38,23 @@ export async function GET(request: NextRequest) {
   const from = searchParams.get("from") || "";
   const to = searchParams.get("to") || "";
   const sortParam = searchParams.get("sort") || "date_desc";
+  const personalized = searchParams.get("personalized") === "true";
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
   const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20), 100);
   const offset = (page - 1) * limit;
+
+  // Personalized mode needs an authenticated user — fall through to the default
+  // anon/RLS client if unauthenticated so the flag is silently ignored.
+  let personalizedUserId: string | null = null;
+  let authedSupabase: Awaited<ReturnType<typeof createServerAuthClient>> | null = null;
+  if (personalized) {
+    authedSupabase = await createServerAuthClient();
+    const {
+      data: { user },
+    } = await authedSupabase.auth.getUser();
+    if (user) personalizedUserId = user.id;
+  }
+  const personalizedActive = personalized && personalizedUserId !== null && authedSupabase !== null;
 
   // Validate sort parameter
   const validSorts = ["date_desc", "date_asc", "citations"] as const;
@@ -91,22 +107,35 @@ export async function GET(request: NextRequest) {
     query = query.lte("epub_date", to);
   }
 
-  switch (sort) {
-    case "date_asc":
-      query = query.order("epub_date", { ascending: true, nullsFirst: false });
-      break;
-    case "citations":
-      query = query.order("citation_count", { ascending: false, nullsFirst: false });
-      break;
-    case "date_desc":
-    default:
-      query = query.order("epub_date", { ascending: false, nullsFirst: false });
-      break;
+  if (personalizedActive) {
+    // Pull a recency-ordered candidate pool — we re-rank in memory.
+    query = query.order("epub_date", { ascending: false, nullsFirst: false });
+  } else {
+    switch (sort) {
+      case "date_asc":
+        query = query.order("epub_date", { ascending: true, nullsFirst: false });
+        break;
+      case "citations":
+        query = query.order("citation_count", { ascending: false, nullsFirst: false });
+        break;
+      case "date_desc":
+      default:
+        query = query.order("epub_date", { ascending: false, nullsFirst: false });
+        break;
+    }
   }
 
-  query = query
-    .order("position", { referencedTable: "paper_authors", ascending: true })
-    .range(offset, offset + limit - 1);
+  if (personalizedActive) {
+    // Candidate pool large enough to support a few pages of re-ranked results.
+    const POOL_SIZE = 300;
+    query = query
+      .order("position", { referencedTable: "paper_authors", ascending: true })
+      .range(0, POOL_SIZE - 1);
+  } else {
+    query = query
+      .order("position", { referencedTable: "paper_authors", ascending: true })
+      .range(offset, offset + limit - 1);
+  }
 
   const { data, error, count } = await query;
 
@@ -115,7 +144,44 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch papers" }, { status: 500 });
   }
 
-  const papers = (data || []).map((paper) => {
+  let rawRows = data || [];
+
+  // Apply personalization re-ranking, then slice for the current page.
+  let personalizedTotal: number | null = null;
+  if (personalizedActive && authedSupabase && personalizedUserId) {
+    const affinity = await loadUserAffinity(authedSupabase, personalizedUserId);
+    const now = new Date();
+    const scored = rawRows.map((paper) => {
+      const journal = paper.journals;
+      const journalSlug = journal?.slug ?? "";
+      const keywords = Array.isArray(paper.keywords)
+        ? paper.keywords.filter((k): k is string => typeof k === "string")
+        : [];
+      const meshTerms = Array.isArray(paper.mesh_terms)
+        ? paper.mesh_terms.filter((t): t is string => typeof t === "string")
+        : [];
+      const score = scorePaper(
+        {
+          pmid: paper.pmid,
+          journalSlug,
+          publicationDate: paper.epub_date || paper.publication_date,
+          citationCount: paper.citation_count,
+          keywords,
+          meshTerms,
+          title: String(paper.title ?? ""),
+          abstract: typeof paper.abstract === "string" ? paper.abstract : null,
+        },
+        affinity,
+        now
+      );
+      return { paper, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    personalizedTotal = scored.length;
+    rawRows = scored.slice(offset, offset + limit).map((s) => s.paper);
+  }
+
+  const papers = rawRows.map((paper) => {
     const journal = paper.journals;
     const authors = paper.paper_authors || [];
     const keywords = Array.isArray(paper.keywords)
@@ -167,20 +233,27 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  const total = count || 0;
+  const total = personalizedActive ? personalizedTotal ?? 0 : count || 0;
+  const hasMore = personalizedActive
+    ? offset + limit < (personalizedTotal ?? 0)
+    : offset + limit < total;
 
   const response = NextResponse.json({
     papers,
     total,
     page,
     limit,
-    hasMore: offset + limit < total,
+    hasMore,
+    personalized: personalizedActive,
   });
 
-  // CDN cache: 5 min fresh, 10 min stale-while-revalidate
+  // CDN cache: 5 min fresh, 10 min stale-while-revalidate.
+  // Personalized responses are per-user, so keep them private.
   response.headers.set(
     "Cache-Control",
-    "public, s-maxage=300, stale-while-revalidate=600"
+    personalizedActive
+      ? "private, no-store"
+      : "public, s-maxage=300, stale-while-revalidate=600"
   );
   response.headers.set("RateLimit-Remaining", String(remaining));
   response.headers.set("RateLimit-Reset", String(Math.ceil(resetAt / 1000)));

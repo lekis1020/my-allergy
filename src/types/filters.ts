@@ -7,6 +7,7 @@ export interface PaperFilters {
   sort?: "date_desc" | "date_asc" | "citations";
   page?: number;
   limit?: number;
+  personalized?: boolean;
 }
 
 export type TopicTag =
