@@ -37,7 +37,16 @@ function HomePage() {
     ...filters,
     personalized: Boolean(user) && feedMode === "personalized",
   };
-  const { papers, total, hasMore, isLoading, isLoadingMore, loadMore } = usePapers(effectiveFilters);
+  const {
+    papers,
+    total,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    isValidating,
+    loadMore,
+    dataSource,
+  } = usePapers(effectiveFilters);
   const { open: drawerOpen, close: closeDrawer } = useMobileDrawer();
   const [cloudOpen, setCloudOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MainTab>("for_you");
@@ -258,6 +267,8 @@ function HomePage() {
                   mode={feedMode}
                   showModeToggle={Boolean(user)}
                   onModeChange={setFeedMode}
+                  dataSource={dataSource}
+                  isLiveLoading={isValidating && Boolean(filters.q)}
                 />
               </div>
             </>

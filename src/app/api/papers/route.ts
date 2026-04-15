@@ -5,8 +5,96 @@ import { classifyPaperTopics } from "@/lib/utils/topic-tags";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 import { loadUserAffinity } from "@/lib/recommend/affinity";
 import { scorePaper } from "@/lib/recommend/score";
+import { fetchOnDemand } from "@/lib/pubmed/on-demand";
 
 const limiter = rateLimit({ windowMs: 60_000, maxRequests: 60 });
+
+// Stricter per-user limit for on-demand PubMed fetch (3/min).
+const onDemandLimiter = rateLimit({ windowMs: 60_000, maxRequests: 3 });
+
+const ON_DEMAND_TIMEOUT_MS = 8_000;
+const BUFFER_DAYS = 365;
+const POOL_SIZE = 300;
+
+function isBeyondBuffer(from?: string | null): boolean {
+  if (!from || !/^\d{4}-\d{2}-\d{2}$/.test(from)) return false;
+  const cutoff = Date.now() - BUFFER_DAYS * 24 * 60 * 60 * 1000;
+  return new Date(from).getTime() < cutoff;
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("timeout")), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
+interface QueryArgs {
+  q: string;
+  pmids: string;
+  journals: string;
+  from: string;
+  to: string;
+  sort: string;
+}
+
+function buildPapersQuery(args: QueryArgs) {
+  const supabase = createAnonClient();
+  let query = supabase
+    .from("papers")
+    .select(
+      `
+      id, pmid, doi, title, abstract, publication_date, epub_date,
+      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id,
+      journals!inner (id, name, abbreviation, color, slug),
+      paper_authors (last_name, first_name, initials, affiliation, position)
+    `,
+      { count: "exact" },
+    )
+    .not("abstract", "is", null)
+    .neq("abstract", "");
+
+  if (args.q) query = query.textSearch("search_vector", args.q, { type: "websearch" });
+
+  if (args.pmids) {
+    const list = args.pmids.split(",").filter(Boolean).slice(0, 100);
+    if (list.length > 0) query = query.in("pmid", list);
+  }
+
+  if (args.journals) {
+    const slugs = args.journals.split(",").filter(Boolean).slice(0, 30);
+    if (slugs.length > 0) query = query.in("journals.slug", slugs);
+  }
+
+  if (args.from && /^\d{4}-\d{2}-\d{2}$/.test(args.from)) {
+    query = query.gte("epub_date", args.from);
+  }
+  if (args.to && /^\d{4}-\d{2}-\d{2}$/.test(args.to)) {
+    query = query.lte("epub_date", args.to);
+  }
+
+  switch (args.sort) {
+    case "date_asc":
+      query = query.order("epub_date", { ascending: true, nullsFirst: false });
+      break;
+    case "citations":
+      query = query.order("citation_count", { ascending: false, nullsFirst: false });
+      break;
+    default:
+      query = query.order("epub_date", { ascending: false, nullsFirst: false });
+  }
+
+  return query.order("position", { referencedTable: "paper_authors", ascending: true });
+}
 
 export async function GET(request: NextRequest) {
   const ip =
@@ -43,101 +131,30 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20), 100);
   const offset = (page - 1) * limit;
 
-  // Personalized mode needs an authenticated user — fall through to the default
-  // anon/RLS client if unauthenticated so the flag is silently ignored.
-  let personalizedUserId: string | null = null;
-  let authedSupabase: Awaited<ReturnType<typeof createServerAuthClient>> | null = null;
-  if (personalized) {
-    authedSupabase = await createServerAuthClient();
-    const {
-      data: { user },
-    } = await authedSupabase.auth.getUser();
-    if (user) personalizedUserId = user.id;
-  }
-  const personalizedActive = personalized && personalizedUserId !== null && authedSupabase !== null;
-
-  // Validate sort parameter
   const validSorts = ["date_desc", "date_asc", "citations"] as const;
-  const sort = validSorts.includes(sortParam as typeof validSorts[number])
+  const sort = validSorts.includes(sortParam as (typeof validSorts)[number])
     ? sortParam
     : "date_desc";
 
-  const supabase = createAnonClient();
+  // Resolve authenticated user once — reused for personalization + on-demand gating.
+  const authClient = await createServerAuthClient();
+  const {
+    data: { user },
+  } = await authClient.auth.getUser();
+  const personalizedActive = personalized && !!user;
 
-  let query = supabase
-    .from("papers")
-    .select(
-      `
-      id, pmid, doi, title, abstract, publication_date, epub_date,
-      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id,
-      journals!inner (id, name, abbreviation, color, slug),
-      paper_authors (last_name, first_name, initials, affiliation, position)
-    `,
-      { count: "exact" }
-    );
+  const queryArgs: QueryArgs = { q, pmids, journals, from, to, sort };
 
-  // Timeline should only contain papers with visible abstract text.
-  query = query.not("abstract", "is", null).neq("abstract", "");
+  // Initial read
+  const runInitialQuery = async () => {
+    const base = buildPapersQuery(queryArgs);
+    const ranged = personalizedActive
+      ? base.range(0, POOL_SIZE - 1)
+      : base.range(offset, offset + limit - 1);
+    return ranged;
+  };
 
-  // Full-text search using stored tsvector column with weighted GIN index
-  if (q) {
-    query = query.textSearch('search_vector', q, { type: 'websearch' });
-  }
-
-  // Filter by specific PMIDs (used by bookmarks page)
-  if (pmids) {
-    const pmidList = pmids.split(",").filter(Boolean).slice(0, 100);
-    if (pmidList.length > 0) {
-      query = query.in("pmid", pmidList);
-    }
-  }
-
-  if (journals) {
-    const slugs = journals.split(",").filter(Boolean).slice(0, 30);
-    if (slugs.length > 0) {
-      query = query.in("journals.slug", slugs);
-    }
-  }
-
-  if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) {
-    query = query.gte("epub_date", from);
-  }
-
-  if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) {
-    query = query.lte("epub_date", to);
-  }
-
-  if (personalizedActive) {
-    // Pull a recency-ordered candidate pool — we re-rank in memory.
-    query = query.order("epub_date", { ascending: false, nullsFirst: false });
-  } else {
-    switch (sort) {
-      case "date_asc":
-        query = query.order("epub_date", { ascending: true, nullsFirst: false });
-        break;
-      case "citations":
-        query = query.order("citation_count", { ascending: false, nullsFirst: false });
-        break;
-      case "date_desc":
-      default:
-        query = query.order("epub_date", { ascending: false, nullsFirst: false });
-        break;
-    }
-  }
-
-  if (personalizedActive) {
-    // Candidate pool large enough to support a few pages of re-ranked results.
-    const POOL_SIZE = 300;
-    query = query
-      .order("position", { referencedTable: "paper_authors", ascending: true })
-      .range(0, POOL_SIZE - 1);
-  } else {
-    query = query
-      .order("position", { referencedTable: "paper_authors", ascending: true })
-      .range(offset, offset + limit - 1);
-  }
-
-  const { data, error, count } = await query;
+  let { data, error, count } = await runInitialQuery();
 
   if (error) {
     console.error("Papers query error:", error);
@@ -145,11 +162,50 @@ export async function GET(request: NextRequest) {
   }
 
   let rawRows = data || [];
+  let dbTotal = count || 0;
+  let dataSource: "db" | "db+live" | "db (timeout)" = "db";
 
-  // Apply personalization re-ranking, then slice for the current page.
+  // ---- On-demand PubMed fetch (authenticated only, page 1) ----
+  const shouldAttempt =
+    page === 1 && ((q && (personalizedActive ? rawRows.length : dbTotal) < 20) || isBeyondBuffer(from));
+
+  if (shouldAttempt && user) {
+    const userKey = `user:${user.id}`;
+    const userLimit = onDemandLimiter.check(userKey);
+    if (userLimit.success) {
+      try {
+        const liveResult = await withTimeout(
+          fetchOnDemand({
+            query: q,
+            journals: journals ? journals.split(",").filter(Boolean) : undefined,
+            dateFrom: from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : undefined,
+            dateTo: to && /^\d{4}-\d{2}-\d{2}$/.test(to) ? to : undefined,
+          }),
+          ON_DEMAND_TIMEOUT_MS,
+        );
+
+        if (liveResult.inserted > 0) {
+          const refetch = await runInitialQuery();
+          if (!refetch.error && refetch.data) {
+            rawRows = refetch.data;
+            dbTotal = refetch.count || dbTotal;
+          }
+        }
+        dataSource = "db+live";
+      } catch (err) {
+        if (err instanceof Error && err.message === "timeout") {
+          dataSource = "db (timeout)";
+        } else {
+          console.warn("[Papers] on-demand fetch failed:", err);
+        }
+      }
+    }
+  }
+
+  // ---- Personalization re-rank (authed only) ----
   let personalizedTotal: number | null = null;
-  if (personalizedActive && authedSupabase && personalizedUserId) {
-    const affinity = await loadUserAffinity(authedSupabase, personalizedUserId);
+  if (personalizedActive && user) {
+    const affinity = await loadUserAffinity(authClient, user.id);
     const now = new Date();
     const scored = rawRows.map((paper) => {
       const journal = paper.journals;
@@ -172,7 +228,7 @@ export async function GET(request: NextRequest) {
           abstract: typeof paper.abstract === "string" ? paper.abstract : null,
         },
         affinity,
-        now
+        now,
       );
       return { paper, score };
     });
@@ -181,59 +237,8 @@ export async function GET(request: NextRequest) {
     rawRows = scored.slice(offset, offset + limit).map((s) => s.paper);
   }
 
-  const papers = rawRows.map((paper) => {
-    const journal = paper.journals;
-    const authors = paper.paper_authors || [];
-    const keywords = Array.isArray(paper.keywords)
-      ? paper.keywords
-          .filter((keyword): keyword is string => typeof keyword === "string")
-          .map((keyword) => decodeHtmlEntities(keyword))
-      : [];
-    const meshTerms = Array.isArray(paper.mesh_terms)
-      ? paper.mesh_terms
-          .filter((term): term is string => typeof term === "string")
-          .map((term) => decodeHtmlEntities(term))
-      : [];
-    const decodedTitle = decodeHtmlEntities(String(paper.title ?? ""));
-    const decodedAbstract =
-      typeof paper.abstract === "string" ? decodeHtmlEntities(paper.abstract) : null;
-    const topicTags = classifyPaperTopics({
-      title: decodedTitle,
-      abstract: decodedAbstract,
-      keywords,
-      meshTerms,
-    });
-
-    return {
-      id: paper.id,
-      pmid: paper.pmid,
-      doi: paper.doi,
-      title: decodedTitle,
-      abstract: decodedAbstract,
-      publication_date: resolveDisplayedPublicationDate(paper.epub_date, paper.publication_date),
-      volume: paper.volume,
-      issue: paper.issue,
-      pages: paper.pages,
-      keywords,
-      mesh_terms: meshTerms,
-      citation_count: paper.citation_count,
-      journal_id: paper.journal_id,
-      journal_name: journal.name,
-      journal_abbreviation: journal.abbreviation,
-      journal_color: journal.color,
-      journal_slug: journal.slug,
-      topic_tags: topicTags,
-      authors: authors.map((a) => ({
-        last_name: a.last_name,
-        first_name: a.first_name,
-        initials: a.initials,
-        affiliation: a.affiliation,
-        position: a.position,
-      })),
-    };
-  });
-
-  const total = personalizedActive ? personalizedTotal ?? 0 : count || 0;
+  const papers = rawRows.map(toPaperDto);
+  const total = personalizedActive ? (personalizedTotal ?? 0) : dbTotal;
   const hasMore = personalizedActive
     ? offset + limit < (personalizedTotal ?? 0)
     : offset + limit < total;
@@ -247,18 +252,97 @@ export async function GET(request: NextRequest) {
     personalized: personalizedActive,
   });
 
-  // CDN cache: 5 min fresh, 10 min stale-while-revalidate.
-  // Personalized responses are per-user, so keep them private.
-  response.headers.set(
-    "Cache-Control",
-    personalizedActive
-      ? "private, no-store"
-      : "public, s-maxage=300, stale-while-revalidate=600"
-  );
+  // CDN cache: personalized or live merged results must not be shared across users.
+  if (personalizedActive || dataSource !== "db") {
+    response.headers.set("Cache-Control", "private, no-store");
+  } else {
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=300, stale-while-revalidate=600",
+    );
+  }
+  response.headers.set("X-Data-Source", dataSource);
   response.headers.set("RateLimit-Remaining", String(remaining));
   response.headers.set("RateLimit-Reset", String(Math.ceil(resetAt / 1000)));
 
   return response;
+}
+
+interface PaperRow {
+  id: string;
+  pmid: string;
+  doi: string | null;
+  title: string;
+  abstract: string | null;
+  publication_date: string | null;
+  epub_date: string | null;
+  volume: string | null;
+  issue: string | null;
+  pages: string | null;
+  keywords: string[] | null;
+  mesh_terms: string[] | null;
+  citation_count: number | null;
+  journal_id: string;
+  journals: { id: string; name: string; abbreviation: string; color: string; slug: string };
+  paper_authors: Array<{
+    last_name: string;
+    first_name: string | null;
+    initials: string | null;
+    affiliation: string | null;
+    position: number;
+  }>;
+}
+
+function toPaperDto(paper: PaperRow) {
+  const journal = paper.journals;
+  const authors = paper.paper_authors || [];
+  const keywords = Array.isArray(paper.keywords)
+    ? paper.keywords
+        .filter((keyword): keyword is string => typeof keyword === "string")
+        .map((keyword) => decodeHtmlEntities(keyword))
+    : [];
+  const meshTerms = Array.isArray(paper.mesh_terms)
+    ? paper.mesh_terms
+        .filter((term): term is string => typeof term === "string")
+        .map((term) => decodeHtmlEntities(term))
+    : [];
+  const decodedTitle = decodeHtmlEntities(String(paper.title ?? ""));
+  const decodedAbstract =
+    typeof paper.abstract === "string" ? decodeHtmlEntities(paper.abstract) : null;
+  const topicTags = classifyPaperTopics({
+    title: decodedTitle,
+    abstract: decodedAbstract,
+    keywords,
+    meshTerms,
+  });
+
+  return {
+    id: paper.id,
+    pmid: paper.pmid,
+    doi: paper.doi,
+    title: decodedTitle,
+    abstract: decodedAbstract,
+    publication_date: resolveDisplayedPublicationDate(paper.epub_date, paper.publication_date),
+    volume: paper.volume,
+    issue: paper.issue,
+    pages: paper.pages,
+    keywords,
+    mesh_terms: meshTerms,
+    citation_count: paper.citation_count,
+    journal_id: paper.journal_id,
+    journal_name: journal.name,
+    journal_abbreviation: journal.abbreviation,
+    journal_color: journal.color,
+    journal_slug: journal.slug,
+    topic_tags: topicTags,
+    authors: authors.map((a) => ({
+      last_name: a.last_name,
+      first_name: a.first_name,
+      initials: a.initials,
+      affiliation: a.affiliation,
+      position: a.position,
+    })),
+  };
 }
 
 function resolveDisplayedPublicationDate(

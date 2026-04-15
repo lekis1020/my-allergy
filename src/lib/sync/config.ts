@@ -33,7 +33,7 @@ export function parseSyncDays(
   rawValue: string | number | undefined,
   options: { fallback?: number; max?: number } = {},
 ): number {
-  const { fallback = 180, max = 180 } = options;
+  const { fallback = 365, max = 365 } = options;
   const parsed = typeof rawValue === "number" ? rawValue : Number(rawValue ?? fallback);
 
   if (!Number.isFinite(parsed) || parsed < 1) {

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const cronSyncDays = parseSyncDays(process.env.CRON_SYNC_DAYS, { max: 180 });
+    const cronSyncDays = parseSyncDays(process.env.CRON_SYNC_DAYS, { max: 365 });
 
     await inngest.send({ name: "sync/all.requested", data: { days: cronSyncDays } });
 

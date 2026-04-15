@@ -1,12 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import useSWRInfinite from "swr/infinite";
 import type { PaperFilters, PapersResponse } from "@/types/filters";
 import { buildApiUrl } from "@/lib/utils/url";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+export type DataSource = "db" | "db+live" | "db (timeout)" | null;
+
+async function fetcher(url: string): Promise<PapersResponse & { __source: DataSource }> {
+  const res = await fetch(url);
+  const source = (res.headers.get("X-Data-Source") as DataSource) ?? null;
+  const json = (await res.json()) as PapersResponse;
+  return { ...json, __source: source };
+}
 
 export function usePapers(filters: PaperFilters) {
+  const [isLive, setIsLive] = useState(false);
+
   const getKey = (pageIndex: number, previousPageData: PapersResponse | null) => {
     if (previousPageData && !previousPageData.hasMore) return null;
 
@@ -23,15 +33,20 @@ export function usePapers(filters: PaperFilters) {
   };
 
   const { data, error, size, setSize, isLoading, isValidating, mutate } =
-    useSWRInfinite<PapersResponse>(getKey, fetcher, {
+    useSWRInfinite<PapersResponse & { __source: DataSource }>(getKey, fetcher, {
       revalidateFirstPage: false,
       revalidateOnFocus: false,
+      onSuccess: (pages) => {
+        const latest = pages?.[0]?.__source ?? null;
+        setIsLive(latest === "db+live");
+      },
     });
 
   const papers = data ? data.flatMap((page) => page.papers) : [];
   const total = data?.[0]?.total || 0;
   const hasMore = data ? data[data.length - 1]?.hasMore : false;
   const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
+  const dataSource: DataSource = data?.[0]?.__source ?? null;
 
   const loadMore = () => {
     if (hasMore && !isValidating) {
@@ -49,5 +64,7 @@ export function usePapers(filters: PaperFilters) {
     error,
     loadMore,
     mutate,
+    dataSource,
+    isLive,
   };
 }
