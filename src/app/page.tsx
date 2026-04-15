@@ -23,7 +23,7 @@ type MainTab = "topics" | "for_you" | "most_cited";
 function HomePage() {
   const searchParams = useSearchParams();
   const { filters, setFilters, clearFilters, hasActiveFilters } = usePaperFilters();
-  const { papers, total, hasMore, isLoading, isLoadingMore, loadMore } = usePapers(filters);
+  const { papers, total, hasMore, isLoading, isLoadingMore, isValidating, loadMore, dataSource } = usePapers(filters);
   const { open: drawerOpen, close: closeDrawer } = useMobileDrawer();
   const [cloudOpen, setCloudOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MainTab>("for_you");
@@ -241,6 +241,8 @@ function HomePage() {
                   isLoading={isLoading}
                   isLoadingMore={isLoadingMore ?? false}
                   onLoadMore={loadMore}
+                  dataSource={dataSource}
+                  isLiveLoading={isValidating && Boolean(filters.q)}
                 />
               </div>
             </>

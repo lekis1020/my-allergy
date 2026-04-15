@@ -6,6 +6,7 @@ import { PaperCardSkeleton } from "@/components/ui/skeleton";
 import { AdBanner } from "@/components/ads/ad-banner";
 import type { PaperWithJournal } from "@/types/filters";
 import { Loader2 } from "lucide-react";
+import type { DataSource } from "@/hooks/use-papers";
 
 const AD_INTERVAL = 5;
 
@@ -16,6 +17,8 @@ interface PaperFeedProps {
   isLoading: boolean;
   isLoadingMore: boolean;
   onLoadMore: () => void;
+  dataSource?: DataSource;
+  isLiveLoading?: boolean;
 }
 
 export function PaperFeed({
@@ -25,6 +28,8 @@ export function PaperFeed({
   isLoading,
   isLoadingMore,
   onLoadMore,
+  dataSource,
+  isLiveLoading,
 }: PaperFeedProps) {
   const observerRef = useRef<HTMLDivElement>(null);
 
@@ -76,8 +81,17 @@ export function PaperFeed({
 
   return (
     <div>
-      <div className="border-b border-gray-200 px-4 py-2 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
-        {total.toLocaleString()} papers in your timeline
+      <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-2 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+        <span>{total.toLocaleString()} papers in your timeline</span>
+        {(isLiveLoading || dataSource === "db+live") && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:bg-red-950/40 dark:text-red-300">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            </span>
+            PubMed 실시간 검색 중...
+          </span>
+        )}
       </div>
       <div className="divide-y divide-gray-200 dark:divide-gray-800">
         {papers.map((paper, index) => (
