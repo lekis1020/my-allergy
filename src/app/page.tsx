@@ -14,7 +14,9 @@ import { FilterBar } from "@/components/papers/filter-bar";
 import { SearchInput } from "@/components/papers/search-input";
 import { usePaperFilters } from "@/hooks/use-paper-filters";
 import { usePapers } from "@/hooks/use-papers";
+import { useAuth } from "@/hooks/use-auth";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
+import type { FeedMode } from "@/components/papers/paper-feed";
 import { JOURNALS } from "@/lib/constants/journals";
 import { JournalCloud } from "@/components/papers/journal-cloud";
 
@@ -23,7 +25,19 @@ type MainTab = "topics" | "for_you" | "most_cited";
 function HomePage() {
   const searchParams = useSearchParams();
   const { filters, setFilters, clearFilters, hasActiveFilters } = usePaperFilters();
-  const { papers, total, hasMore, isLoading, isLoadingMore, loadMore } = usePapers(filters);
+  const { user } = useAuth();
+  const [feedMode, setFeedMode] = useState<FeedMode>(user ? "personalized" : "latest");
+  useEffect(() => {
+    // Default to personalized once we know the user is logged in.
+    if (user && feedMode === "latest") setFeedMode("personalized");
+    if (!user && feedMode === "personalized") setFeedMode("latest");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+  const effectiveFilters = {
+    ...filters,
+    personalized: Boolean(user) && feedMode === "personalized",
+  };
+  const { papers, total, hasMore, isLoading, isLoadingMore, loadMore } = usePapers(effectiveFilters);
   const { open: drawerOpen, close: closeDrawer } = useMobileDrawer();
   const [cloudOpen, setCloudOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MainTab>("for_you");
@@ -241,6 +255,9 @@ function HomePage() {
                   isLoading={isLoading}
                   isLoadingMore={isLoadingMore ?? false}
                   onLoadMore={loadMore}
+                  mode={feedMode}
+                  showModeToggle={Boolean(user)}
+                  onModeChange={setFeedMode}
                 />
               </div>
             </>

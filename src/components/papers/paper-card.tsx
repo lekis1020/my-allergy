@@ -8,8 +8,9 @@ import { getPubMedUrl, getDoiUrl } from "@/lib/utils/url";
 import { TOPIC_META } from "@/lib/utils/topic-tags";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 import type { PaperWithJournal } from "@/types/filters";
-import { ExternalLink, Quote, Users } from "lucide-react";
+import { ExternalLink, Quote, Users, ThumbsDown } from "lucide-react";
 import { BookmarkButton } from "./bookmark-button";
+import { useFeedback } from "@/hooks/use-feedback";
 
 interface PaperCardProps {
   paper: PaperWithJournal;
@@ -17,6 +18,17 @@ interface PaperCardProps {
 
 export function PaperCard({ paper }: PaperCardProps) {
   const [isAbstractOpen, setIsAbstractOpen] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const { setFeedback, isLoggedIn } = useFeedback();
+
+  const handleNotInterested = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLoggedIn) return;
+    // Trigger fade-out first, then persist.
+    setDismissed(true);
+    void setFeedback(paper.pmid, "not_interested");
+  };
   const avatarLabel = paper.journal_abbreviation
     .split(" ")
     .slice(0, 2)
@@ -26,7 +38,23 @@ export function PaperCard({ paper }: PaperCardProps) {
   const hasAbstract = Boolean(paper.abstract && paper.abstract.trim().length > 0);
 
   return (
-    <article className="px-4 py-4 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-900/70">
+    <article
+      className={`relative px-4 py-4 transition-all duration-300 hover:bg-gray-50/70 dark:hover:bg-gray-900/70 ${
+        dismissed ? "pointer-events-none max-h-0 overflow-hidden py-0 opacity-0" : ""
+      }`}
+      aria-hidden={dismissed}
+    >
+      {isLoggedIn && (
+        <button
+          type="button"
+          onClick={handleNotInterested}
+          className="absolute right-3 top-3 rounded-full p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-gray-500 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+          aria-label="Not interested"
+          title="Not interested in this paper"
+        >
+          <ThumbsDown className="h-4 w-4" />
+        </button>
+      )}
       <div className="flex gap-3">
         <div
           className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold"
