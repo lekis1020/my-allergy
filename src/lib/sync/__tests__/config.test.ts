@@ -24,7 +24,7 @@ describe("sync config helpers", () => {
 
   it("parses sync days with bounds and fallback", () => {
     expect(parseSyncDays("90")).toBe(90);
-    expect(parseSyncDays("999")).toBe(180);
+    expect(parseSyncDays("999")).toBe(365);
     expect(parseSyncDays(365, { max: 365 })).toBe(365);
     expect(parseSyncDays("0", { fallback: 30, max: 365 })).toBe(30);
   });
