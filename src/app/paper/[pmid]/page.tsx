@@ -10,6 +10,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PaperActions } from "@/components/papers/paper-actions";
 import { CommentThread } from "@/components/comments/comment-thread";
+import { AuthorsList } from "@/components/papers/authors-list";
+import { CitationGraph } from "@/components/papers/citation-graph";
 import {
   PaperListSection,
   type LinkedPaper,
@@ -163,38 +165,16 @@ export default async function PaperDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           {/* LEFT — main content */}
           <main className="min-w-0 space-y-6">
-            {/* Authors */}
-            <section>
-              <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Authors
-              </h2>
-              <div className="space-y-1">
-                {authors.map((author, i) => (
-                  <div key={i} className="text-sm">
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      {author.last_name}
-                      {author.first_name && `, ${author.first_name}`}
-                    </span>
-                    {author.affiliation && (
-                      <span className="text-gray-500 dark:text-gray-400">
-                        {" — "}
-                        {decodeHtmlEntities(author.affiliation)}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
+            {/* Authors — collapsible if ≥ 10 */}
+            <AuthorsList authors={authors} collapseThreshold={10} />
 
-            {/* PaperActions — mobile only (desktop has it in sidebar) */}
+            {/* AI summary + bookmark (all viewports, between Authors and Abstract) */}
             {paper.abstract && (
-              <div className="lg:hidden">
-                <PaperActions
-                  pmid={pmid}
-                  abstract={String(paper.abstract)}
-                  title={String(paper.title)}
-                />
-              </div>
+              <PaperActions
+                pmid={pmid}
+                abstract={String(paper.abstract)}
+                title={String(paper.title)}
+              />
             )}
 
             {/* Abstract */}
@@ -257,16 +237,6 @@ export default async function PaperDetailPage({ params }: PageProps) {
           {/* RIGHT — sticky sidebar, desktop only */}
           <aside className="hidden lg:block">
             <div className="sticky top-20 max-h-[calc(100vh-6rem)] space-y-6 overflow-y-auto overscroll-contain pr-1">
-              {paper.abstract && (
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
-                  <PaperActions
-                    pmid={pmid}
-                    abstract={String(paper.abstract)}
-                    title={String(paper.title)}
-                  />
-                </div>
-              )}
-
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
                 <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   External links
@@ -284,32 +254,16 @@ export default async function PaperDetailPage({ params }: PageProps) {
               )}
 
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
-                <PaperListSection
-                  title="Related"
-                  papers={relatedPapers}
-                  variant="compact"
-                  maxItems={5}
-                  emptyMessage="No related papers."
-                />
-              </div>
-
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
-                <PaperListSection
-                  title="Referenced"
-                  papers={referencedPapers}
-                  variant="compact"
-                  maxItems={5}
-                  emptyMessage="No references available."
-                />
-              </div>
-
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
-                <PaperListSection
-                  title="Cited by"
-                  papers={citedByPapers}
-                  variant="compact"
-                  maxItems={5}
-                  emptyMessage="No citations yet."
+                <CitationGraph
+                  thisPaper={{
+                    title: String(paper.title),
+                    journalAbbreviation: journal.abbreviation,
+                    journalColor: journal.color,
+                    publicationDate: displayPublicationDate,
+                  }}
+                  references={referencedPapers}
+                  citations={citedByPapers}
+                  maxPerSide={5}
                 />
               </div>
             </div>
