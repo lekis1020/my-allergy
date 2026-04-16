@@ -10,6 +10,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PaperActions } from "@/components/papers/paper-actions";
 import { CommentThread } from "@/components/comments/comment-thread";
+import {
+  PaperListSection,
+  type LinkedPaper,
+} from "@/components/papers/paper-list-section";
 
 interface AuthorData {
   last_name: string;
@@ -17,25 +21,6 @@ interface AuthorData {
   initials: string | null;
   affiliation: string | null;
   position: number;
-}
-
-interface JournalData {
-  id: string;
-  name: string;
-  abbreviation: string;
-  color: string;
-  slug: string;
-  impact_factor: number | null;
-}
-
-interface LinkedPaper {
-  pmid: string;
-  title: string;
-  publication_date: string;
-  epub_date: string | null;
-  citation_count: number | null;
-  journal_abbreviation: string;
-  journal_color: string;
 }
 
 // Revalidate every hour — paper data is essentially immutable once synced
@@ -67,7 +52,7 @@ export default async function PaperDetailPage({ params }: PageProps) {
   }
 
   const journal = paper.journals;
-  const authors = paper.paper_authors || [];
+  const authors: AuthorData[] = paper.paper_authors || [];
   const displayPublicationDate = resolveDisplayedPublicationDate(
     paper.epub_date as string | null | undefined,
     paper.publication_date as string | null | undefined,
@@ -87,211 +72,251 @@ export default async function PaperDetailPage({ params }: PageProps) {
   const referencedPapers = mapLinkedPapersByOrder(referencedIds, linkedPapersMap).slice(0, 10);
   const citedByPapers = mapLinkedPapersByOrder(citedByIds, linkedPapersMap).slice(0, 10);
 
+  const keywords = (paper.keywords as string[] | null) ?? [];
+  const meshTerms = (paper.mesh_terms as string[] | null) ?? [];
+  const allTags = [...keywords, ...meshTerms];
+  const hasLinkedPapers =
+    relatedPapers.length + referencedPapers.length + citedByPapers.length > 0;
+
+  const externalLinks = (
+    <div className="flex flex-wrap items-center gap-2">
+      <a
+        href={getPubMedUrl(pmid)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400"
+      >
+        PubMed <ExternalLink className="h-3 w-3" />
+      </a>
+      {paper.doi && (
+        <a
+          href={getDoiUrl(String(paper.doi))}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          Full Text (DOI) <ExternalLink className="h-3 w-3" />
+        </a>
+      )}
+    </div>
+  );
+
+  const keywordChips = allTags.length > 0 && (
+    <div className="flex flex-wrap gap-1.5">
+      {allTags.map((keyword, i) => (
+        <span
+          key={i}
+          className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+        >
+          {decodeHtmlEntities(keyword)}
+        </span>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="mx-auto max-w-7xl px-4 py-6">
       <Link
         href="/"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        className="mb-6 inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to feed
       </Link>
 
       <article>
-        <div className="mb-4 flex items-center gap-3">
-          <Badge color={journal.color}>
-            {journal.abbreviation}
-          </Badge>
-          {journal.impact_factor && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              IF {journal.impact_factor}
+        {/* Hero — full width on all viewports */}
+        <header className="mb-6 lg:mb-8">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <Badge color={journal.color}>{journal.abbreviation}</Badge>
+            {journal.impact_factor && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                IF {journal.impact_factor}
+              </span>
+            )}
+            <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+              <Calendar className="h-3.5 w-3.5" />
+              {formatDate(displayPublicationDate)}
             </span>
-          )}
-        </div>
+            {paper.citation_count !== null && Number(paper.citation_count) > 0 && (
+              <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                <Quote className="h-3.5 w-3.5" />
+                {formatCitationCount(Number(paper.citation_count))} citations
+              </span>
+            )}
+            {paper.volume && (
+              <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                <BookOpen className="h-3.5 w-3.5" />
+                Vol. {String(paper.volume)}
+                {paper.issue ? `(${paper.issue})` : ""}
+                {paper.pages ? `: ${paper.pages}` : ""}
+              </span>
+            )}
+          </div>
 
-        <h1 className="text-2xl font-bold leading-tight text-gray-900 dark:text-gray-100">
-          {decodeHtmlEntities(String(paper.title))}
-        </h1>
+          <h1 className="text-2xl font-bold leading-tight text-gray-900 lg:text-3xl dark:text-gray-100">
+            {decodeHtmlEntities(String(paper.title))}
+          </h1>
+        </header>
 
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-          <span className="flex items-center gap-1">
-            <Calendar className="h-4 w-4" />
-            {formatDate(displayPublicationDate)}
-          </span>
-          {paper.citation_count !== null && Number(paper.citation_count) > 0 && (
-            <span className="flex items-center gap-1">
-              <Quote className="h-4 w-4" />
-              {formatCitationCount(Number(paper.citation_count))} citations
-            </span>
-          )}
-          {paper.volume && (
-            <span className="flex items-center gap-1">
-              <BookOpen className="h-4 w-4" />
-              Vol. {String(paper.volume)}
-              {paper.issue && `(${paper.issue})`}
-              {paper.pages && `: ${paper.pages}`}
-            </span>
-          )}
-        </div>
-
-        {/* Authors */}
-        <div className="mt-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-2 dark:text-gray-100">
-            Authors
-          </h2>
-          <div className="space-y-1">
-            {authors.map((author, i) => (
-              <div key={i} className="text-sm">
-                <span className="font-medium text-gray-800 dark:text-gray-200">
-                  {author.last_name}
-                  {author.first_name && `, ${author.first_name}`}
-                </span>
-                {author.affiliation && (
-                  <span className="text-gray-500 dark:text-gray-400">
-                    {" — "}
-                    {decodeHtmlEntities(author.affiliation)}
-                  </span>
-                )}
+        {/* 2-column grid: content + sticky sidebar on lg+ */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          {/* LEFT — main content */}
+          <main className="min-w-0 space-y-6">
+            {/* Authors */}
+            <section>
+              <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Authors
+              </h2>
+              <div className="space-y-1">
+                {authors.map((author, i) => (
+                  <div key={i} className="text-sm">
+                    <span className="font-medium text-gray-800 dark:text-gray-200">
+                      {author.last_name}
+                      {author.first_name && `, ${author.first_name}`}
+                    </span>
+                    {author.affiliation && (
+                      <span className="text-gray-500 dark:text-gray-400">
+                        {" — "}
+                        {decodeHtmlEntities(author.affiliation)}
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </section>
 
-        {/* AI 요약 + 북마크 (abstract 위) */}
-        {paper.abstract && (
-          <PaperActions
-            pmid={pmid}
-            abstract={String(paper.abstract)}
-            title={String(paper.title)}
-          />
-        )}
+            {/* PaperActions — mobile only (desktop has it in sidebar) */}
+            {paper.abstract && (
+              <div className="lg:hidden">
+                <PaperActions
+                  pmid={pmid}
+                  abstract={String(paper.abstract)}
+                  title={String(paper.title)}
+                />
+              </div>
+            )}
 
-        {/* Abstract */}
-        {paper.abstract && (
-          <div className="mt-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-2 dark:text-gray-100">
-              Abstract
-            </h2>
-            <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-line dark:text-gray-300">
-              {decodeHtmlEntities(String(paper.abstract))}
-            </p>
-          </div>
-        )}
+            {/* Abstract */}
+            {paper.abstract && (
+              <section>
+                <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Abstract
+                </h2>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                  {decodeHtmlEntities(String(paper.abstract))}
+                </p>
+              </section>
+            )}
 
-        {/* Keywords / MeSH */}
-        {(((paper.keywords as string[]) ?? []).length > 0 || ((paper.mesh_terms as string[]) ?? []).length > 0) && (
-          <div className="mt-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-2 dark:text-gray-100">
-              Keywords
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {[...((paper.keywords as string[]) ?? []), ...((paper.mesh_terms as string[]) ?? [])].map(
-                (keyword, i) => (
-                  <span
-                    key={i}
-                    className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                  >
-                    {decodeHtmlEntities(keyword)}
-                  </span>
-                )
+            {/* Comments — moved up from bottom */}
+            <section id="comments">
+              <CommentThread pmid={pmid} />
+            </section>
+
+            {/* Mobile-only: keywords, external links, related papers (full cards) */}
+            <div className="space-y-8 lg:hidden">
+              {allTags.length > 0 && (
+                <section>
+                  <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Keywords
+                  </h2>
+                  {keywordChips}
+                </section>
+              )}
+
+              <section>
+                <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  External links
+                </h2>
+                {externalLinks}
+              </section>
+
+              {hasLinkedPapers && (
+                <>
+                  <PaperListSection
+                    title="Related Papers"
+                    description="PubMed similar articles that are contextually related."
+                    papers={relatedPapers}
+                  />
+                  <PaperListSection
+                    title="Referenced by This Paper"
+                    description="Papers listed in this article's PubMed reference links."
+                    papers={referencedPapers}
+                  />
+                  <PaperListSection
+                    title="Cited by This Paper"
+                    description="PubMed papers that cite this article."
+                    papers={citedByPapers}
+                  />
+                </>
               )}
             </div>
-          </div>
-        )}
+          </main>
 
-        {/* External links */}
-        <div className="mt-8 flex items-center gap-4">
-          <a
-            href={getPubMedUrl(pmid)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 transition-colors"
-          >
-            View on PubMed <ExternalLink className="h-4 w-4" />
-          </a>
-          {paper.doi && (
-            <a
-              href={getDoiUrl(String(paper.doi))}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-            >
-              Full Text (DOI) <ExternalLink className="h-4 w-4" />
-            </a>
-          )}
+          {/* RIGHT — sticky sidebar, desktop only */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-20 max-h-[calc(100vh-6rem)] space-y-6 overflow-y-auto overscroll-contain pr-1">
+              {paper.abstract && (
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+                  <PaperActions
+                    pmid={pmid}
+                    abstract={String(paper.abstract)}
+                    title={String(paper.title)}
+                  />
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+                <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  External links
+                </h2>
+                {externalLinks}
+              </div>
+
+              {allTags.length > 0 && (
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+                  <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Keywords
+                  </h2>
+                  {keywordChips}
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+                <PaperListSection
+                  title="Related"
+                  papers={relatedPapers}
+                  variant="compact"
+                  maxItems={5}
+                  emptyMessage="No related papers."
+                />
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+                <PaperListSection
+                  title="Referenced"
+                  papers={referencedPapers}
+                  variant="compact"
+                  maxItems={5}
+                  emptyMessage="No references available."
+                />
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+                <PaperListSection
+                  title="Cited by"
+                  papers={citedByPapers}
+                  variant="compact"
+                  maxItems={5}
+                  emptyMessage="No citations yet."
+                />
+              </div>
+            </div>
+          </aside>
         </div>
-
-        <div className="mt-10 space-y-8">
-          <PaperListSection
-            title="Related Papers"
-            description="PubMed similar articles that are contextually related."
-            papers={relatedPapers}
-          />
-
-          <PaperListSection
-            title="Referenced by This Paper"
-            description="Papers listed in this article's PubMed reference links."
-            papers={referencedPapers}
-          />
-
-          <PaperListSection
-            title="Cited by This Paper"
-            description="PubMed papers that cite this article."
-            papers={citedByPapers}
-          />
-        </div>
-
-        <CommentThread pmid={pmid} />
       </article>
     </div>
-  );
-}
-
-function PaperListSection({
-  title,
-  description,
-  papers,
-}: {
-  title: string;
-  description: string;
-  papers: LinkedPaper[];
-}) {
-  return (
-    <section>
-      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{description}</p>
-
-      {papers.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-          No linked papers found in the current database window.
-        </p>
-      ) : (
-        <div className="mt-3 space-y-2">
-          {papers.map((paper) => (
-            <Link
-              key={paper.pmid}
-              href={`/paper/${paper.pmid}`}
-              className="block rounded-xl border border-gray-200 p-3 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900"
-            >
-              <div className="mb-1 flex items-center gap-2">
-                <Badge color={paper.journal_color}>{paper.journal_abbreviation}</Badge>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {formatDate(resolveDisplayedPublicationDate(paper.epub_date, paper.publication_date))}
-                </span>
-                {paper.citation_count !== null && paper.citation_count > 0 && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    · {formatCitationCount(paper.citation_count)} citations
-                  </span>
-                )}
-              </div>
-              <p className="line-clamp-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-                {decodeHtmlEntities(paper.title)}
-              </p>
-            </Link>
-          ))}
-        </div>
-      )}
-    </section>
   );
 }
 
