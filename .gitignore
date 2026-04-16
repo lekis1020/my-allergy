@@ -46,6 +46,7 @@ next-env.d.ts
 .omx/
 .superset/
 supabase/.temp/
+.claude/worktrees/
 
 # playwright MCP
 .playwright-mcp/
