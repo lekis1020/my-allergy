@@ -50,6 +50,8 @@ export interface PaperWithJournal {
   journal_slug: string;
   topic_tags: TopicTag[];
   authors: AuthorSummary[];
+  comment_count?: number;
+  latest_comment_at?: string | null;
 }
 
 export interface AuthorSummary {

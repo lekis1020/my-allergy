@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Bookmark, CalendarDays, Home, Menu, Microscope, Stethoscope, TrendingUp } from "lucide-react";
+import { Bell, Bookmark, CalendarDays, Home, Menu, MessagesSquare, Microscope, Stethoscope, TrendingUp } from "lucide-react";
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { AuthButton } from "@/components/layout/auth-button";
 import { UnreadRepliesBadge } from "@/components/comments/unread-badge";
@@ -53,6 +53,10 @@ export function Header() {
           <Link href="/clinical-trials" className={linkClass("/clinical-trials")}>
             <Microscope className="h-4 w-4" />
             Trials
+          </Link>
+          <Link href="/agora" className={linkClass("/agora")}>
+            <MessagesSquare className="h-4 w-4" />
+            Agora
           </Link>
           <Link href="/bookmarks" className={linkClass("/bookmarks")}>
             <Bookmark className="h-4 w-4" />

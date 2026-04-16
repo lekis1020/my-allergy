@@ -8,7 +8,7 @@ import { getPubMedUrl, getDoiUrl } from "@/lib/utils/url";
 import { TOPIC_META } from "@/lib/utils/topic-tags";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 import type { PaperWithJournal } from "@/types/filters";
-import { ExternalLink, Quote, Users, ThumbsDown } from "lucide-react";
+import { ExternalLink, MessageCircle, Quote, Users, ThumbsDown } from "lucide-react";
 import { BookmarkButton } from "./bookmark-button";
 import { useFeedback } from "@/hooks/use-feedback";
 
@@ -168,6 +168,15 @@ export function PaperCard({ paper }: PaperCardProps) {
                 <Quote className="h-3.5 w-3.5" />
                 {formatCitationCount(paper.citation_count)} citations
               </span>
+            )}
+            {typeof paper.comment_count === "number" && paper.comment_count > 0 && (
+              <Link
+                href={`/paper/${paper.pmid}#comments`}
+                className="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                {paper.comment_count} {paper.comment_count === 1 ? "comment" : "comments"}
+              </Link>
             )}
           </div>
         </div>
