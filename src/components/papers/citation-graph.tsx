@@ -92,8 +92,7 @@ export function CitationGraph({
         />
       </div>
       <div
-        className="relative -ml-[1px] rounded-lg border-2 border-blue-400 bg-blue-50 px-3 py-2 shadow-sm dark:border-blue-500 dark:bg-blue-950/40"
-        style={{ marginLeft: 0 }}
+        className="rounded-lg border-2 border-blue-400 bg-blue-50 px-3 py-2 shadow-sm dark:border-blue-500 dark:bg-blue-950/40"
       >
         <div className="mb-0.5 flex items-center gap-1.5">
           <Badge color={thisPaper.journalColor}>
