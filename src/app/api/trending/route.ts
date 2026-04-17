@@ -6,9 +6,9 @@ import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 export async function GET() {
   const supabase = createAnonClient();
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const fromDate = sevenDaysAgo.toISOString().split("T")[0];
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const fromDate = cutoff.toISOString().split("T")[0];
 
   const { data, error } = await supabase
     .from("papers")
@@ -22,9 +22,11 @@ export async function GET() {
     )
     .not("abstract", "is", null)
     .neq("abstract", "")
-    .gte("publication_date", fromDate)
+    .gte("epub_date", fromDate)
+    .not("citation_count", "is", null)
+    .gt("citation_count", 0)
     .order("citation_count", { ascending: false, nullsFirst: false })
-    .order("publication_date", { ascending: false })
+    .order("epub_date", { ascending: false })
     .order("position", { referencedTable: "paper_authors", ascending: true })
     .limit(50);
 
