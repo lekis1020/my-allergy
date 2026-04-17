@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { BarChart3 } from "lucide-react";
 import { InsightsView } from "@/components/insights/insights-view";
+import { PageShell } from "@/components/layout/page-shell";
 
 export const metadata: Metadata = {
   title: "Insights | My Allergy",
@@ -8,11 +10,15 @@ export const metadata: Metadata = {
 
 export default function InsightsPage() {
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 pb-24 md:pb-8">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900 dark:text-gray-100">
-        Research Insights
-      </h1>
-      <InsightsView />
-    </main>
+    <PageShell
+      title="Research Insights"
+      subtitle="Author geography & research leaders"
+      icon={<BarChart3 className="h-5 w-5 text-violet-500" />}
+      variant="narrow"
+    >
+      <div className="px-4 py-6">
+        <InsightsView />
+      </div>
+    </PageShell>
   );
 }

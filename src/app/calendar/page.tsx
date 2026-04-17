@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { CalendarDays } from "lucide-react";
 import { ConferenceList } from "@/components/calendar/conference-list";
 import { createAnonClient } from "@/lib/supabase/server";
 import { CONFERENCES } from "@/lib/constants/conferences";
 import type { Conference } from "@/lib/constants/conferences";
+import { PageShell } from "@/components/layout/page-shell";
 
 export const revalidate = 3600;
 
@@ -41,16 +43,15 @@ export default async function CalendarPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
-          Conference Calendar
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Upcoming allergy &amp; immunology conferences and academic meetings
-        </p>
+    <PageShell
+      title="Conference Calendar"
+      subtitle="Upcoming allergy & immunology conferences"
+      icon={<CalendarDays className="h-5 w-5 text-blue-500" />}
+      variant="narrow"
+    >
+      <div className="px-4 py-6">
+        <ConferenceList conferences={conferences} />
       </div>
-      <ConferenceList conferences={conferences} />
-    </div>
+    </PageShell>
   );
 }

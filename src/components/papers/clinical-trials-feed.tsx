@@ -45,8 +45,8 @@ export function ClinicalTrialsFeed() {
             The [&>section]:border-t-0 selectors suppress inherited top borders
             inside child components (ClinicalTrialSummary wraps itself with
             border-t for its original context). */}
-        <div className="grid grid-cols-1 border-b border-gray-200 md:grid-cols-2 md:divide-x md:divide-gray-200 [&>*>div]:border-t-0 dark:border-gray-800 dark:md:divide-gray-800">
-          <div className="min-w-0 border-b border-gray-200 md:border-b-0 dark:border-gray-800">
+        <div className="grid grid-cols-1 border-b border-gray-200 lg:grid-cols-2 lg:divide-x lg:divide-gray-200 [&>*>div]:border-t-0 dark:border-gray-800 dark:lg:divide-gray-800">
+          <div className="min-w-0 border-b border-gray-200 lg:border-b-0 dark:border-gray-800">
             <ClinicalTrialSummary
               onItemClick={handleHighlightClick}
               showViewAll={false}

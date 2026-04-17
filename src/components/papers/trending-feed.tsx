@@ -3,6 +3,7 @@
 import { TrendingUp } from "lucide-react";
 import { PaperCard } from "@/components/papers/paper-card";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useTrending } from "@/hooks/use-trending";
 
 export function TrendingFeed() {
@@ -41,15 +42,11 @@ export function TrendingFeed() {
             </p>
           </div>
         ) : papers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <TrendingUp className="mb-4 h-12 w-12 text-gray-300 dark:text-gray-600" />
-            <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
-              No trending papers yet
-            </p>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Most cited papers from the last 6 months will appear here.
-            </p>
-          </div>
+          <EmptyState
+            icon={<TrendingUp className="h-12 w-12" />}
+            title="No trending papers yet"
+            description="Most cited papers from the last 6 months will appear here."
+          />
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-800">
             {papers.map((paper, index) => (

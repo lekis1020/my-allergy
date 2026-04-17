@@ -6,7 +6,8 @@ import { PaperCardSkeleton } from "@/components/ui/skeleton";
 import { AdBanner } from "@/components/ads/ad-banner";
 import type { PaperWithJournal, ArticleType } from "@/types/filters";
 import { ARTICLE_TYPE_LABELS } from "@/types/filters";
-import { Loader2 } from "lucide-react";
+import { Loader2, FileSearch } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { DataSource } from "@/hooks/use-papers";
 
 const AD_INTERVAL = 5;
@@ -78,7 +79,9 @@ export function PaperFeed({
       <button
         type="button"
         onClick={() => onArticleTypeChange(undefined)}
-        className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+        aria-label="Show all article types"
+        aria-pressed={!articleType}
+        className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
           !articleType
             ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
             : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
@@ -91,7 +94,9 @@ export function PaperFeed({
           key={t}
           type="button"
           onClick={() => onArticleTypeChange(articleType === t ? undefined : t)}
-          className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+          aria-label={`Filter by ${ARTICLE_TYPE_LABELS[t]}`}
+          aria-pressed={articleType === t}
+          className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
             articleType === t
               ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
               : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
@@ -120,18 +125,17 @@ export function PaperFeed({
     return (
       <div>
         {typeFilter}
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
-            No papers found
-          </p>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {personalized
+        <EmptyState
+          icon={<FileSearch className="h-12 w-12" />}
+          title="No papers found"
+          description={
+            personalized
               ? "We need a bit more feedback to personalize. Try bookmarks, keyword alerts, or the Timeline tab."
               : articleType
                 ? `No ${ARTICLE_TYPE_LABELS[articleType]} papers found. Try removing the filter.`
-                : "Try adjusting your filters or search terms"}
-          </p>
-        </div>
+                : "Try adjusting your filters or search terms"
+          }
+        />
       </div>
     );
   }
