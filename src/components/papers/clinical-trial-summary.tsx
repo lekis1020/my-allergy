@@ -6,6 +6,7 @@ import { useClinicalTrials } from "@/hooks/use-clinical-trials";
 
 interface ClinicalTrialSummaryProps {
   onItemClick: (name: string) => void;
+  showViewAll?: boolean;
 }
 
 interface AggregatedItem {
@@ -14,7 +15,10 @@ interface AggregatedItem {
   type: "intervention" | "condition";
 }
 
-export function ClinicalTrialSummary({ onItemClick }: ClinicalTrialSummaryProps) {
+export function ClinicalTrialSummary({
+  onItemClick,
+  showViewAll = true,
+}: ClinicalTrialSummaryProps) {
   const { studies, isLoading } = useClinicalTrials();
 
   if (isLoading) {
@@ -93,13 +97,15 @@ export function ClinicalTrialSummary({ onItemClick }: ClinicalTrialSummaryProps)
         })}
       </ul>
 
-      <Link
-        href="/clinical-trials"
-        className="mt-3 flex items-center gap-1 text-xs font-medium text-emerald-600 transition-colors hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
-      >
-        View all trials
-        <ArrowRight className="h-3 w-3" />
-      </Link>
+      {showViewAll && (
+        <Link
+          href="/clinical-trials"
+          className="mt-3 flex items-center gap-1 text-xs font-medium text-emerald-600 transition-colors hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+        >
+          View all trials
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      )}
     </div>
   );
 }
