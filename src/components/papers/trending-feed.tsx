@@ -19,7 +19,7 @@ export function TrendingFeed() {
             </h1>
             {papers.length > 0 && (
               <span className="ml-auto text-sm text-gray-500 dark:text-gray-400">
-                Last 7 days
+                Last 6 months
               </span>
             )}
           </div>
@@ -47,7 +47,7 @@ export function TrendingFeed() {
               No trending papers yet
             </p>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Papers from the last 7 days will appear here.
+              Most cited papers from the last 6 months will appear here.
             </p>
           </div>
         ) : (

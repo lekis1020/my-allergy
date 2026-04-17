@@ -7,7 +7,7 @@ export async function GET() {
   const supabase = createAnonClient();
 
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 30);
+  cutoff.setDate(cutoff.getDate() - 180);
   const fromDate = cutoff.toISOString().split("T")[0];
 
   const { data, error } = await supabase

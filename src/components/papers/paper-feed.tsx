@@ -4,13 +4,22 @@ import { useRef, useEffect, useCallback } from "react";
 import { PaperCard } from "./paper-card";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
 import { AdBanner } from "@/components/ads/ad-banner";
-import type { PaperWithJournal } from "@/types/filters";
+import type { PaperWithJournal, ArticleType } from "@/types/filters";
+import { ARTICLE_TYPE_LABELS } from "@/types/filters";
 import { Loader2 } from "lucide-react";
 import type { DataSource } from "@/hooks/use-papers";
 
 const AD_INTERVAL = 5;
 
-export type FeedMode = "latest" | "personalized";
+const ARTICLE_TYPES: ArticleType[] = [
+  "original",
+  "review",
+  "rct",
+  "systematic_review",
+  "meta_analysis",
+  "retrospective",
+  "case_report",
+];
 
 interface PaperFeedProps {
   papers: PaperWithJournal[];
@@ -19,9 +28,9 @@ interface PaperFeedProps {
   isLoading: boolean;
   isLoadingMore: boolean;
   onLoadMore: () => void;
-  mode?: FeedMode;
-  onModeChange?: (mode: FeedMode) => void;
-  showModeToggle?: boolean;
+  personalized?: boolean;
+  articleType?: ArticleType;
+  onArticleTypeChange?: (type: ArticleType | undefined) => void;
   dataSource?: DataSource;
   isLiveLoading?: boolean;
 }
@@ -33,9 +42,9 @@ export function PaperFeed({
   isLoading,
   isLoadingMore,
   onLoadMore,
-  mode = "latest",
-  onModeChange,
-  showModeToggle = false,
+  personalized = false,
+  articleType,
+  onArticleTypeChange,
   dataSource,
   isLiveLoading,
 }: PaperFeedProps) {
@@ -64,20 +73,31 @@ export function PaperFeed({
     return () => observer.disconnect();
   }, [handleObserver]);
 
-  const modeToggle = showModeToggle && onModeChange ? (
-    <div className="flex gap-1 border-b border-gray-200 px-2 py-1 text-xs dark:border-gray-800">
-      {(["latest", "personalized"] as const).map((m) => (
+  const typeFilter = onArticleTypeChange ? (
+    <div className="flex flex-wrap gap-1.5 border-b border-gray-200 px-3 py-2 dark:border-gray-800">
+      <button
+        type="button"
+        onClick={() => onArticleTypeChange(undefined)}
+        className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+          !articleType
+            ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+            : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+        }`}
+      >
+        All
+      </button>
+      {ARTICLE_TYPES.map((t) => (
         <button
-          key={m}
+          key={t}
           type="button"
-          onClick={() => onModeChange(m)}
-          className={`rounded-full px-3 py-1 font-medium transition-colors ${
-            mode === m
-              ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-              : "text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-900 dark:hover:text-gray-200"
+          onClick={() => onArticleTypeChange(articleType === t ? undefined : t)}
+          className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+            articleType === t
+              ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
           }`}
         >
-          {m === "latest" ? "Latest" : "For me"}
+          {ARTICLE_TYPE_LABELS[t]}
         </button>
       ))}
     </div>
@@ -86,7 +106,7 @@ export function PaperFeed({
   if (isLoading) {
     return (
       <div>
-        {modeToggle}
+        {typeFilter}
         <div className="divide-y divide-gray-200 dark:divide-gray-800">
           {Array.from({ length: 5 }).map((_, i) => (
             <PaperCardSkeleton key={i} />
@@ -99,29 +119,30 @@ export function PaperFeed({
   if (papers.length === 0) {
     return (
       <div>
-        {modeToggle}
+        {typeFilter}
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
             No papers found
           </p>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {mode === "personalized"
-              ? "We need a bit more feedback to personalize. Try bookmarks, keyword alerts, or the latest tab."
-              : "Try adjusting your filters or search terms"}
+            {personalized
+              ? "We need a bit more feedback to personalize. Try bookmarks, keyword alerts, or the Timeline tab."
+              : articleType
+                ? `No ${ARTICLE_TYPE_LABELS[articleType]} papers found. Try removing the filter.`
+                : "Try adjusting your filters or search terms"}
           </p>
         </div>
       </div>
     );
   }
 
-  const totalLabel =
-    mode === "personalized"
-      ? `${total.toLocaleString()} papers ranked for you`
-      : `${total.toLocaleString()} papers in your timeline`;
+  const totalLabel = personalized
+    ? `${total.toLocaleString()} papers ranked for you`
+    : `${total.toLocaleString()} papers in your timeline`;
 
   return (
     <div>
-      {modeToggle}
+      {typeFilter}
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-2 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
         <span>{totalLabel}</span>
         {(isLiveLoading || dataSource === "db+live") && (
