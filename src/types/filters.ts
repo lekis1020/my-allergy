@@ -1,3 +1,32 @@
+export type ArticleType =
+  | "original"
+  | "review"
+  | "rct"
+  | "systematic_review"
+  | "meta_analysis"
+  | "retrospective"
+  | "case_report";
+
+export const ARTICLE_TYPE_LABELS: Record<ArticleType, string> = {
+  original: "Original Article",
+  review: "Review",
+  rct: "RCT",
+  systematic_review: "Systematic Review",
+  meta_analysis: "Meta-Analysis",
+  retrospective: "Retrospective",
+  case_report: "Case Report",
+};
+
+export const ARTICLE_TYPE_MESH: Record<ArticleType, string[]> = {
+  original: ["Journal Article"],
+  review: ["Review"],
+  rct: ["Randomized Controlled Trial"],
+  systematic_review: ["Systematic Review"],
+  meta_analysis: ["Meta-Analysis"],
+  retrospective: ["Retrospective Studies", "Retrospective"],
+  case_report: ["Case Reports"],
+};
+
 export interface PaperFilters {
   q?: string;
   trial?: string;
@@ -8,6 +37,7 @@ export interface PaperFilters {
   page?: number;
   limit?: number;
   personalized?: boolean;
+  articleType?: ArticleType;
 }
 
 export type TopicTag =

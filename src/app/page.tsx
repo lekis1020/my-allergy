@@ -8,34 +8,29 @@ import { TopicMonitorPanel } from "@/components/layout/topic-monitor-panel";
 import { MobileDrawer } from "@/components/layout/mobile-drawer";
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { PaperFeed } from "@/components/papers/paper-feed";
-import { TrendingTopicsPanel } from "@/components/papers/trending-topics-panel";
-import { ClinicalTrialSummary } from "@/components/papers/clinical-trial-summary";
 import { FilterBar } from "@/components/papers/filter-bar";
 import { SearchInput } from "@/components/papers/search-input";
 import { usePaperFilters } from "@/hooks/use-paper-filters";
 import { usePapers } from "@/hooks/use-papers";
 import { useAuth } from "@/hooks/use-auth";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
-import type { FeedMode } from "@/components/papers/paper-feed";
+import type { ArticleType } from "@/types/filters";
 import { JOURNALS } from "@/lib/constants/journals";
 import { JournalCloud } from "@/components/papers/journal-cloud";
 
-type MainTab = "topics" | "for_you" | "most_cited";
+type MainTab = "timeline" | "for_you";
 
 function HomePage() {
   const searchParams = useSearchParams();
   const { filters, setFilters, clearFilters, hasActiveFilters } = usePaperFilters();
   const { user } = useAuth();
-  const [feedMode, setFeedMode] = useState<FeedMode>(user ? "personalized" : "latest");
-  useEffect(() => {
-    // Default to personalized once we know the user is logged in.
-    if (user && feedMode === "latest") setFeedMode("personalized");
-    if (!user && feedMode === "personalized") setFeedMode("latest");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  const [activeTab, setActiveTab] = useState<MainTab>(user ? "for_you" : "timeline");
+  const [articleType, setArticleType] = useState<ArticleType | undefined>();
+  const [cloudOpen, setCloudOpen] = useState(false);
   const effectiveFilters = {
     ...filters,
-    personalized: Boolean(user) && feedMode === "personalized",
+    personalized: Boolean(user) && activeTab === "for_you",
+    articleType,
   };
   const {
     papers,
@@ -48,8 +43,6 @@ function HomePage() {
     dataSource,
   } = usePapers(effectiveFilters);
   const { open: drawerOpen, close: closeDrawer } = useMobileDrawer();
-  const [cloudOpen, setCloudOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<MainTab>("for_you");
 
   useEffect(() => {
     const q = searchParams.get("q");
@@ -79,18 +72,7 @@ function HomePage() {
 
   const handleTabChange = (tab: MainTab) => {
     setActiveTab(tab);
-    if (tab === "for_you") setFilters({ sort: "date_desc", trial: undefined });
-    if (tab === "most_cited") setFilters({ sort: "citations", trial: undefined });
-  };
-
-  const handleTrendingTopicClick = (keyword: string) => {
-    setActiveTab("for_you");
-    setFilters({ q: keyword, sort: "date_desc", trial: undefined });
-  };
-
-  const handleTrialSelect = (relatedQuery: string, title: string) => {
-    setActiveTab("for_you");
-    setFilters({ q: relatedQuery, trial: title, sort: "date_desc" });
+    setFilters({ sort: "date_desc", trial: undefined });
   };
 
   const toggleJournal = (slug: string) => {
@@ -146,12 +128,12 @@ function HomePage() {
               <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Home</h1>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 text-sm">
+            <div className="mt-3 grid grid-cols-2 text-sm">
               <button
-                onClick={() => handleTabChange("topics")}
-                className={tabClass(activeTab === "topics")}
+                onClick={() => handleTabChange("timeline")}
+                className={tabClass(activeTab === "timeline")}
               >
-                Topic
+                Timeline
               </button>
               <button
                 onClick={() => handleTabChange("for_you")}
@@ -159,15 +141,9 @@ function HomePage() {
               >
                 For you
               </button>
-              <button
-                onClick={() => handleTabChange("most_cited")}
-                className={tabClass(activeTab === "most_cited")}
-              >
-                Most cited
-              </button>
             </div>
 
-            {activeTab !== "topics" && (
+            {(
               <>
                 <div className="px-4 pb-3 pt-2">
                   <SearchInput
@@ -234,45 +210,33 @@ function HomePage() {
             )}
           </div>
 
-          {activeTab === "topics" ? (
-            <>
-              <TrendingTopicsPanel onTopicClick={handleTrendingTopicClick} />
-              <ClinicalTrialSummary
-                onItemClick={(name) => {
-                  setActiveTab("for_you");
-                  setFilters({ q: name, sort: "date_desc", trial: undefined });
-                }}
-              />
-            </>
-          ) : (
-            <>
-              {hasActiveFilters && (
-                <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-800">
-                  <FilterBar
-                    filters={filters}
-                    onRemoveFilter={handleRemoveFilter}
-                    onClear={clearFilters}
-                  />
-                </div>
-              )}
-
-              <div>
-                <PaperFeed
-                  papers={papers}
-                  total={total}
-                  hasMore={hasMore ?? false}
-                  isLoading={isLoading}
-                  isLoadingMore={isLoadingMore ?? false}
-                  onLoadMore={loadMore}
-                  mode={feedMode}
-                  showModeToggle={Boolean(user)}
-                  onModeChange={setFeedMode}
-                  dataSource={dataSource}
-                  isLiveLoading={isValidating && Boolean(filters.q)}
+          <>
+            {hasActiveFilters && (
+              <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+                <FilterBar
+                  filters={filters}
+                  onRemoveFilter={handleRemoveFilter}
+                  onClear={clearFilters}
                 />
               </div>
-            </>
-          )}
+            )}
+
+            <div>
+              <PaperFeed
+                papers={papers}
+                total={total}
+                hasMore={hasMore ?? false}
+                isLoading={isLoading}
+                isLoadingMore={isLoadingMore ?? false}
+                onLoadMore={loadMore}
+                personalized={activeTab === "for_you" && Boolean(user)}
+                articleType={articleType}
+                onArticleTypeChange={setArticleType}
+                dataSource={dataSource}
+                isLiveLoading={isValidating && Boolean(filters.q)}
+              />
+            </div>
+          </>
         </div>
 
         <div className="hidden xl:block xl:pl-4">

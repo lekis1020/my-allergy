@@ -45,6 +45,7 @@ interface QueryArgs {
   from: string;
   to: string;
   sort: string;
+  articleType: string;
 }
 
 function buildPapersQuery(args: QueryArgs) {
@@ -80,6 +81,22 @@ function buildPapersQuery(args: QueryArgs) {
   }
   if (args.to && /^\d{4}-\d{2}-\d{2}$/.test(args.to)) {
     query = query.lte("epub_date", args.to);
+  }
+
+  if (args.articleType) {
+    const meshMap: Record<string, string[]> = {
+      original: ["Journal Article"],
+      review: ["Review"],
+      rct: ["Randomized Controlled Trial"],
+      systematic_review: ["Systematic Review"],
+      meta_analysis: ["Meta-Analysis"],
+      retrospective: ["Retrospective Studies", "Retrospective"],
+      case_report: ["Case Reports"],
+    };
+    const meshValues = meshMap[args.articleType];
+    if (meshValues) {
+      query = query.overlaps("mesh_terms", meshValues);
+    }
   }
 
   switch (args.sort) {
@@ -127,6 +144,7 @@ export async function GET(request: NextRequest) {
   const to = searchParams.get("to") || "";
   const sortParam = searchParams.get("sort") || "date_desc";
   const personalized = searchParams.get("personalized") === "true";
+  const articleType = searchParams.get("articleType") || "";
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
   const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20), 100);
   const offset = (page - 1) * limit;
@@ -143,7 +161,7 @@ export async function GET(request: NextRequest) {
   } = await authClient.auth.getUser();
   const personalizedActive = personalized && !!user;
 
-  const queryArgs: QueryArgs = { q, pmids, journals, from, to, sort };
+  const queryArgs: QueryArgs = { q, pmids, journals, from, to, sort, articleType };
 
   // Initial read
   const runInitialQuery = async () => {

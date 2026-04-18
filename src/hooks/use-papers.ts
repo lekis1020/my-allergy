@@ -29,6 +29,7 @@ export function usePapers(filters: PaperFilters) {
       page: pageIndex + 1,
       limit: filters.limit || 20,
       personalized: filters.personalized ? "true" : undefined,
+      articleType: filters.articleType || undefined,
     });
   };
 
