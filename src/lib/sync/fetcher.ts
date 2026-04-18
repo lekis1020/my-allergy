@@ -25,16 +25,23 @@ export async function fetchPapersForJournal(
 
   console.log(`[Fetcher] Parsed ${articles.length} articles for ${journal.abbreviation}`);
 
-  // Exclude records without meaningful abstract text.
-  const articlesWithAbstract = articles.filter(
-    (article) => typeof article.abstract === "string" && article.abstract.trim().length > 0
-  );
+  // Exclude records without meaningful abstract text and errata/retractions
+  // (title-based filter replaces the former PubMed NOT [pt] query filter which
+  // broke due to a PubMed publication-type indexing change circa April 2026).
+  const ERRATUM_RE = /^(published erratum|erratum|retract|correction|corrigendum)\b/i;
 
-  if (articlesWithAbstract.length !== articles.length) {
+  const filtered = articles.filter((article) => {
+    if (typeof article.abstract !== "string" || article.abstract.trim().length === 0) return false;
+    if (ERRATUM_RE.test((article.title ?? "").trim())) return false;
+    return true;
+  });
+
+  const removed = articles.length - filtered.length;
+  if (removed > 0) {
     console.log(
-      `[Fetcher] Filtered out ${articles.length - articlesWithAbstract.length} articles without abstract for ${journal.abbreviation}`
+      `[Fetcher] Filtered out ${removed} articles (no abstract / erratum) for ${journal.abbreviation}`
     );
   }
 
-  return articlesWithAbstract;
+  return filtered;
 }

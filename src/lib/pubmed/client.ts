@@ -6,11 +6,7 @@ import { withRetry } from "@/lib/utils/retry";
 const BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
 const RATE_LIMIT_MS = 250;
 
-const GLOBAL_FILTERS = [
-  "hasabstract",
-  "English[la]",
-  'NOT ("Published Erratum"[pt] OR "Retracted Publication"[pt] OR "Retraction of Publication"[pt])',
-].join(" AND ");
+const GLOBAL_FILTERS = ["hasabstract", "English[la]"].join(" AND ");
 
 let lastRequestTime = 0;
 
