@@ -113,6 +113,11 @@ function parseArticle(entry: Record<string, unknown>): PubMedArticle | null {
       .map((m) => extractText((m.DescriptorName as Record<string, unknown>)?.["#text"] ?? m.DescriptorName))
       .filter(Boolean);
 
+    const pubTypeList = ensureArray(
+      (article.PublicationTypeList as Record<string, unknown>)?.PublicationType
+    );
+    const publicationTypes = pubTypeList.map(extractText).filter(Boolean);
+
     return {
       pmid,
       title,
@@ -130,6 +135,7 @@ function parseArticle(entry: Record<string, unknown>): PubMedArticle | null {
       doi,
       keywords,
       meshTerms,
+      publicationTypes,
     };
   } catch (error) {
     console.error("Failed to parse PubMed article:", error);

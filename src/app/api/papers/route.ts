@@ -84,18 +84,18 @@ function buildPapersQuery(args: QueryArgs) {
   }
 
   if (args.articleType) {
-    const meshMap: Record<string, string[]> = {
+    const pubTypeMap: Record<string, string[]> = {
       original: ["Journal Article"],
       review: ["Review"],
       rct: ["Randomized Controlled Trial"],
       systematic_review: ["Systematic Review"],
       meta_analysis: ["Meta-Analysis"],
-      retrospective: ["Retrospective Studies", "Retrospective"],
+      retrospective: ["Observational Study"],
       case_report: ["Case Reports"],
     };
-    const meshValues = meshMap[args.articleType];
-    if (meshValues) {
-      query = query.overlaps("mesh_terms", meshValues);
+    const pubTypeValues = pubTypeMap[args.articleType];
+    if (pubTypeValues) {
+      query = query.overlaps("publication_types", pubTypeValues);
     }
   }
 

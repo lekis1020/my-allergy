@@ -20,6 +20,7 @@ export interface PubMedArticle {
   doi: string | null;
   keywords: string[];
   meshTerms: string[];
+  publicationTypes: string[];
 }
 
 export interface PubMedAuthor {

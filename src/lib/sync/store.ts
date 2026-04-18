@@ -35,6 +35,7 @@ export async function storePapers(
       pages: article.pages,
       keywords: article.keywords,
       mesh_terms: article.meshTerms,
+      publication_types: article.publicationTypes,
       updated_at: new Date().toISOString(),
     }));
 
