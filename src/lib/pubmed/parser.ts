@@ -232,7 +232,9 @@ function parseEpubDate(
 
   // Prefer true online publication dates first.
   // `pubmed`/`medline` are indexing dates and can be later than actual online release.
-  const statusPriority = ["epublish", "aheadofprint", "pmc-release"];
+  // NOTE: `pmc-release` is the PMC embargo lift date (typically +12 months), NOT
+  // the actual publication date — do NOT include it here.
+  const statusPriority = ["epublish", "aheadofprint"];
   for (const status of statusPriority) {
     const match = pubmedPubDates.find(
       (d) => String(d?.["@_PubStatus"] ?? "").toLowerCase() === status,
