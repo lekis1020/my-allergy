@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { createServerAuthClient } from "@/lib/supabase/server";
+import { createServerAuthClient, createAnonClient } from "@/lib/supabase/server";
+import { extractPaperFeatures, applyFeedbackToProfile, emptyProfile } from "@/lib/recommend/profile";
+import { saveProfile } from "@/lib/recommend/affinity";
 
 const ALLOWED = ["interested", "not_interested"] as const;
 type FeedbackKind = (typeof ALLOWED)[number];
@@ -74,6 +76,52 @@ export async function POST(request: Request) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Update affinity profile (best-effort — don't fail the request)
+  try {
+    const anonClient = createAnonClient();
+    const { data: paperData } = await anonClient
+      .from("papers")
+      .select(`
+        pmid, title, abstract, keywords, mesh_terms, publication_types,
+        journals!inner(slug),
+        paper_authors(last_name, initials)
+      `)
+      .eq("pmid", pmid)
+      .maybeSingle();
+
+    if (paperData) {
+      const features = extractPaperFeatures({
+        ...paperData,
+        paper_authors: paperData.paper_authors ?? [],
+      });
+      const target = feedback === "interested" ? 1 : -1;
+
+      const { data: profileRow } = await supabase
+        .from("user_affinity_profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const currentProfile = profileRow
+        ? {
+            topics: (profileRow.topics ?? {}) as Record<string, number>,
+            authors: (profileRow.authors ?? {}) as Record<string, number>,
+            keywords: (profileRow.keywords ?? {}) as Record<string, number>,
+            mesh_terms: (profileRow.mesh_terms ?? {}) as Record<string, number>,
+            journals: (profileRow.journals ?? {}) as Record<string, number>,
+            article_types: (profileRow.article_types ?? {}) as Record<string, number>,
+            feedback_count: profileRow.feedback_count ?? 0,
+            updated_at: profileRow.updated_at ?? new Date().toISOString(),
+          }
+        : emptyProfile();
+
+      const updatedProfile = applyFeedbackToProfile(currentProfile, features, target);
+      await saveProfile(supabase, user.id, updatedProfile);
+    }
+  } catch (err) {
+    console.warn("[Feedback] profile update failed (non-blocking):", err);
   }
 
   return NextResponse.json({ success: true }, { status: 201 });

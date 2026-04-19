@@ -3,7 +3,7 @@ import { createAnonClient, createServerAuthClient } from "@/lib/supabase/server"
 import { rateLimit } from "@/lib/utils/rate-limit";
 import { classifyPaperTopics } from "@/lib/utils/topic-tags";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
-import { loadUserAffinity } from "@/lib/recommend/affinity";
+import { loadScoringContext } from "@/lib/recommend/affinity";
 import { scorePaper } from "@/lib/recommend/score";
 import { fetchOnDemand } from "@/lib/pubmed/on-demand";
 
@@ -55,7 +55,7 @@ function buildPapersQuery(args: QueryArgs) {
     .select(
       `
       id, pmid, doi, title, abstract, publication_date, epub_date,
-      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id,
+      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
       journals!inner (id, name, abbreviation, color, slug),
       paper_authors (last_name, first_name, initials, affiliation, position)
     `,
@@ -223,17 +223,31 @@ export async function GET(request: NextRequest) {
   // ---- Personalization re-rank (authed only) ----
   let personalizedTotal: number | null = null;
   if (personalizedActive && user) {
-    const affinity = await loadUserAffinity(authClient, user.id);
+    const context = await loadScoringContext(authClient, user.id);
     const now = new Date();
     const scored = rawRows.map((paper) => {
       const journal = paper.journals;
       const journalSlug = journal?.slug ?? "";
       const keywords = Array.isArray(paper.keywords)
-        ? paper.keywords.filter((k): k is string => typeof k === "string")
+        ? paper.keywords.filter((k): k is string => typeof k === "string").map((k) => k.toLowerCase())
         : [];
       const meshTerms = Array.isArray(paper.mesh_terms)
-        ? paper.mesh_terms.filter((t): t is string => typeof t === "string")
+        ? paper.mesh_terms.filter((t): t is string => typeof t === "string").map((t) => t.toLowerCase())
         : [];
+      const publicationTypes = Array.isArray(paper.publication_types)
+        ? paper.publication_types.filter((t): t is string => typeof t === "string")
+        : [];
+      const topicTags = classifyPaperTopics({
+        title: String(paper.title ?? ""),
+        abstract: typeof paper.abstract === "string" ? paper.abstract : null,
+        keywords,
+        meshTerms,
+      }).filter((t) => t !== "others");
+      const authorKeys = (paper.paper_authors ?? []).map(
+        (a: { last_name: string; initials: string | null }) =>
+          `${a.last_name}_${a.initials ?? ""}`.replace(/\s+/g, "")
+      );
+
       const score = scorePaper(
         {
           pmid: paper.pmid,
@@ -242,10 +256,11 @@ export async function GET(request: NextRequest) {
           citationCount: paper.citation_count,
           keywords,
           meshTerms,
-          title: String(paper.title ?? ""),
-          abstract: typeof paper.abstract === "string" ? paper.abstract : null,
+          topicTags,
+          authorKeys,
+          publicationTypes,
         },
-        affinity,
+        context,
         now,
       );
       return { paper, score };
@@ -301,6 +316,7 @@ interface PaperRow {
   mesh_terms: string[] | null;
   citation_count: number | null;
   journal_id: string;
+  publication_types: string[] | null;
   journals: { id: string; name: string; abbreviation: string; color: string; slug: string };
   paper_authors: Array<{
     last_name: string;

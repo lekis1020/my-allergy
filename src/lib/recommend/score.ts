@@ -1,51 +1,42 @@
-/**
- * Personalization Phase 1 — scoring logic.
- *
- * score =
- *     2.0 * journal_affinity       (user subscribed / bookmarked the journal)
- *   + 1.5 * topic_affinity         (keyword alert matches title/abstract/keywords)
- *   + 1.0 * recency_decay          (exp(-days/30), 30-day half-life-ish)
- *   + 0.5 * ln(1 + citation_count)
- *   + 3.0 * interested_match       (explicit 👍 on this pmid)
- *   - 5.0 * not_interested_match   (same journal OR shared keyword/mesh as a 👎ed paper)
- */
+import type { AffinityProfile } from "./profile";
 
-export interface ScoreInputs {
+// ── Types ──
+
+export interface ProfileScoreInputs {
   pmid: string;
   journalSlug: string;
   publicationDate: string | null;
   citationCount: number | null;
   keywords: string[];
   meshTerms: string[];
-  title: string;
-  abstract: string | null;
+  topicTags: string[];
+  authorKeys: string[]; // "LastName_Initials" format
+  publicationTypes: string[];
 }
 
-export interface UserAffinity {
-  /** Journal slugs the user subscribed to or bookmarked (weighted set). */
-  journalSlugs: Set<string>;
-  /** Lower-cased keyword alerts the user configured. */
-  keywordAlerts: string[];
-  /** PMIDs the user explicitly marked 👍. */
+export interface ScoringContext {
+  profile: AffinityProfile;
   interestedPmids: Set<string>;
-  /** PMIDs the user explicitly marked 👎. */
   notInterestedPmids: Set<string>;
-  /** Journal slugs that appeared in any 👎 feedback. */
-  dislikedJournalSlugs: Set<string>;
-  /** Lower-cased keyword/mesh tokens that appeared in any 👎 feedback. */
-  dislikedTokens: Set<string>;
 }
 
-export const WEIGHTS = {
-  journal: 2.0,
-  topic: 1.5,
+// ── Constants ──
+
+export const DIMENSION_WEIGHTS = {
+  topics: 3.0,
+  authors: 2.0,
+  keywords: 2.0,
+  mesh_terms: 1.5,
+  journals: 2.0,
+  article_types: 1.0,
+  explicit: 3.0,
   recency: 1.0,
-  citation: 0.5,
-  interested: 3.0,
-  notInterested: 5.0,
+  citations: 0.5,
 } as const;
 
 export const RECENCY_HALF_LIFE_DAYS = 30;
+
+// ── Scoring Functions ──
 
 export function recencyDecay(
   publicationDate: string | null,
@@ -54,7 +45,7 @@ export function recencyDecay(
   if (!publicationDate) return 0;
   const pub = new Date(publicationDate);
   if (Number.isNaN(pub.getTime())) return 0;
-  const days = Math.max(0, (now.getTime() - pub.getTime()) / (1000 * 60 * 60 * 24));
+  const days = Math.max(0, (now.getTime() - pub.getTime()) / 86_400_000);
   return Math.exp(-days / RECENCY_HALF_LIFE_DAYS);
 }
 
@@ -63,64 +54,65 @@ export function citationBoost(count: number | null): number {
   return Math.log(1 + count);
 }
 
-function keywordMatches(input: ScoreInputs, keywordLower: string): boolean {
-  if (!keywordLower) return false;
-  if (input.title.toLowerCase().includes(keywordLower)) return true;
-  if (input.abstract && input.abstract.toLowerCase().includes(keywordLower)) return true;
-  if (input.keywords.some((k) => k.toLowerCase().includes(keywordLower))) return true;
-  if (input.meshTerms.some((m) => m.toLowerCase().includes(keywordLower))) return true;
-  return false;
-}
-
-export function topicAffinity(input: ScoreInputs, affinity: UserAffinity): number {
-  if (affinity.keywordAlerts.length === 0) return 0;
-  const hits = affinity.keywordAlerts.filter((kw) => keywordMatches(input, kw)).length;
-  if (hits === 0) return 0;
-  // Cap at 1.0 — a single match already signals interest; avoid runaway scores.
-  return Math.min(1, hits / affinity.keywordAlerts.length + 0.5);
-}
-
-export function journalAffinity(input: ScoreInputs, affinity: UserAffinity): number {
-  return affinity.journalSlugs.has(input.journalSlug) ? 1 : 0;
-}
-
-export function interestedMatch(input: ScoreInputs, affinity: UserAffinity): number {
-  return affinity.interestedPmids.has(input.pmid) ? 1 : 0;
+/**
+ * Compute similarity between a profile dimension and a paper's features.
+ * Returns the sum of profile weights for features that appear in the paper.
+ */
+export function dimensionSimilarity(
+  profileDimension: Record<string, number>,
+  paperFeatures: string[]
+): number {
+  let sum = 0;
+  for (const feature of paperFeatures) {
+    const weight = profileDimension[feature];
+    if (weight !== undefined) {
+      sum += weight;
+    }
+  }
+  return sum;
 }
 
 /**
- * Penalty for papers similar to ones the user 👎ed.
- * Counts matches (same journal + shared keyword/mesh tokens) and normalises to [0, 1].
+ * Explicit feedback match: +1 interested, -1 not_interested, 0 neutral.
  */
-export function notInterestedPenalty(
-  input: ScoreInputs,
-  affinity: UserAffinity
+export function explicitMatch(
+  pmid: string,
+  interestedPmids: Set<string>,
+  notInterestedPmids: Set<string>
 ): number {
-  if (affinity.notInterestedPmids.has(input.pmid)) return 1;
-  let penalty = 0;
-  if (affinity.dislikedJournalSlugs.has(input.journalSlug)) penalty += 0.4;
-  const tokens = [
-    ...input.keywords.map((k) => k.toLowerCase()),
-    ...input.meshTerms.map((m) => m.toLowerCase()),
-  ];
-  const overlap = tokens.filter((t) => affinity.dislikedTokens.has(t)).length;
-  if (overlap > 0) {
-    penalty += Math.min(0.6, overlap * 0.2);
-  }
-  return Math.min(1, penalty);
+  if (interestedPmids.has(pmid)) return 1;
+  if (notInterestedPmids.has(pmid)) return -1;
+  return 0;
 }
 
 export function scorePaper(
-  input: ScoreInputs,
-  affinity: UserAffinity,
+  input: ProfileScoreInputs,
+  context: ScoringContext,
   now: Date = new Date()
 ): number {
-  return (
-    WEIGHTS.journal * journalAffinity(input, affinity) +
-    WEIGHTS.topic * topicAffinity(input, affinity) +
-    WEIGHTS.recency * recencyDecay(input.publicationDate, now) +
-    WEIGHTS.citation * citationBoost(input.citationCount) +
-    WEIGHTS.interested * interestedMatch(input, affinity) -
-    WEIGHTS.notInterested * notInterestedPenalty(input, affinity)
-  );
+  const { profile, interestedPmids, notInterestedPmids } = context;
+
+  const profileScore =
+    DIMENSION_WEIGHTS.topics *
+      dimensionSimilarity(profile.topics, input.topicTags) +
+    DIMENSION_WEIGHTS.authors *
+      dimensionSimilarity(profile.authors, input.authorKeys) +
+    DIMENSION_WEIGHTS.keywords *
+      dimensionSimilarity(profile.keywords, input.keywords) +
+    DIMENSION_WEIGHTS.mesh_terms *
+      dimensionSimilarity(profile.mesh_terms, input.meshTerms) +
+    DIMENSION_WEIGHTS.journals *
+      dimensionSimilarity(profile.journals, [input.journalSlug]) +
+    DIMENSION_WEIGHTS.article_types *
+      dimensionSimilarity(profile.article_types, input.publicationTypes);
+
+  const explicit =
+    DIMENSION_WEIGHTS.explicit *
+    explicitMatch(input.pmid, interestedPmids, notInterestedPmids);
+
+  const baseScore =
+    DIMENSION_WEIGHTS.recency * recencyDecay(input.publicationDate, now) +
+    DIMENSION_WEIGHTS.citations * citationBoost(input.citationCount);
+
+  return profileScore + explicit + baseScore;
 }

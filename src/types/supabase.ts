@@ -314,6 +314,7 @@ export type Database = {
           pages: string | null
           pmid: string
           publication_date: string
+          publication_types: string[] | null
           search_vector: unknown
           title: string
           updated_at: string
@@ -334,6 +335,7 @@ export type Database = {
           pages?: string | null
           pmid: string
           publication_date: string
+          publication_types?: string[] | null
           search_vector?: unknown
           title: string
           updated_at?: string
@@ -354,6 +356,7 @@ export type Database = {
           pages?: string | null
           pmid?: string
           publication_date?: string
+          publication_types?: string[] | null
           search_vector?: unknown
           title?: string
           updated_at?: string
@@ -368,6 +371,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_affinity_profiles: {
+        Row: {
+          user_id: string
+          topics: Json
+          authors: Json
+          keywords: Json
+          mesh_terms: Json
+          journals: Json
+          article_types: Json
+          feedback_count: number
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          topics?: Json
+          authors?: Json
+          keywords?: Json
+          mesh_terms?: Json
+          journals?: Json
+          article_types?: Json
+          feedback_count?: number
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          topics?: Json
+          authors?: Json
+          keywords?: Json
+          mesh_terms?: Json
+          journals?: Json
+          article_types?: Json
+          feedback_count?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       sync_logs: {
         Row: {

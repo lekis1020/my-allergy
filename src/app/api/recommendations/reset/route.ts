@@ -21,5 +21,11 @@ export async function POST() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Also delete the affinity profile
+  await supabase
+    .from("user_affinity_profiles")
+    .delete()
+    .eq("user_id", user.id);
+
   return NextResponse.json({ success: true, removed: count ?? 0 });
 }
