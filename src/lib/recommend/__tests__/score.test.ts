@@ -1,31 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
-  RECENCY_HALF_LIFE_DAYS,
-  WEIGHTS,
-  citationBoost,
-  interestedMatch,
-  journalAffinity,
-  notInterestedPenalty,
   recencyDecay,
+  citationBoost,
+  dimensionSimilarity,
+  explicitMatch,
   scorePaper,
-  topicAffinity,
-  type ScoreInputs,
-  type UserAffinity,
+  DIMENSION_WEIGHTS,
+  RECENCY_HALF_LIFE_DAYS,
+  type ProfileScoreInputs,
+  type ScoringContext,
 } from "../score";
+import { emptyProfile } from "../profile";
 
-function emptyAffinity(overrides: Partial<UserAffinity> = {}): UserAffinity {
-  return {
-    journalSlugs: new Set(),
-    keywordAlerts: [],
-    interestedPmids: new Set(),
-    notInterestedPmids: new Set(),
-    dislikedJournalSlugs: new Set(),
-    dislikedTokens: new Set(),
-    ...overrides,
-  };
-}
-
-function paper(overrides: Partial<ScoreInputs> = {}): ScoreInputs {
+function makeInputs(
+  overrides: Partial<ProfileScoreInputs> = {}
+): ProfileScoreInputs {
   return {
     pmid: "1",
     journalSlug: "jaci",
@@ -33,8 +22,18 @@ function paper(overrides: Partial<ScoreInputs> = {}): ScoreInputs {
     citationCount: null,
     keywords: [],
     meshTerms: [],
-    title: "",
-    abstract: null,
+    topicTags: [],
+    authorKeys: [],
+    publicationTypes: [],
+    ...overrides,
+  };
+}
+
+function makeContext(overrides: Partial<ScoringContext> = {}): ScoringContext {
+  return {
+    profile: emptyProfile(),
+    interestedPmids: new Set(),
+    notInterestedPmids: new Set(),
     ...overrides,
   };
 }
@@ -49,136 +48,139 @@ describe("recencyDecay", () => {
     expect(recencyDecay("2026-04-15", now)).toBeCloseTo(1, 5);
   });
 
-  it("decays over the half-life window", () => {
+  it("decays over half-life", () => {
     const now = new Date("2026-04-15T00:00:00Z");
-    const pub = new Date(now.getTime() - RECENCY_HALF_LIFE_DAYS * 86400 * 1000);
-    const val = recencyDecay(pub.toISOString(), now);
-    expect(val).toBeCloseTo(Math.exp(-1), 3);
+    const pub = new Date(now.getTime() - RECENCY_HALF_LIFE_DAYS * 86400_000);
+    expect(recencyDecay(pub.toISOString(), now)).toBeCloseTo(Math.exp(-1), 3);
   });
 });
 
 describe("citationBoost", () => {
-  it("returns 0 for null/zero citations", () => {
+  it("returns 0 for null/zero", () => {
     expect(citationBoost(null)).toBe(0);
     expect(citationBoost(0)).toBe(0);
   });
 
-  it("returns ln(1+n) for positive counts", () => {
+  it("returns ln(1+n)", () => {
     expect(citationBoost(9)).toBeCloseTo(Math.log(10), 5);
   });
 });
 
-describe("journalAffinity", () => {
-  it("matches on journal slug", () => {
-    const aff = emptyAffinity({ journalSlugs: new Set(["jaci"]) });
-    expect(journalAffinity(paper({ journalSlug: "jaci" }), aff)).toBe(1);
-    expect(journalAffinity(paper({ journalSlug: "allergy" }), aff)).toBe(0);
+describe("dimensionSimilarity", () => {
+  it("returns 0 for empty profile dimension", () => {
+    expect(dimensionSimilarity({}, ["asthma"])).toBe(0);
+  });
+
+  it("sums matching weights", () => {
+    const profile = { dupilumab: 0.9, asthma: 0.5, covid: -0.4 };
+    const features = ["dupilumab", "asthma"];
+    expect(dimensionSimilarity(profile, features)).toBeCloseTo(1.4, 5);
+  });
+
+  it("negative weights produce negative similarity", () => {
+    const profile = { covid: -0.8 };
+    expect(dimensionSimilarity(profile, ["covid"])).toBeCloseTo(-0.8, 5);
+  });
+
+  it("ignores features not in profile", () => {
+    const profile = { asthma: 0.5 };
+    expect(dimensionSimilarity(profile, ["unknown"])).toBe(0);
   });
 });
 
-describe("topicAffinity", () => {
-  it("zero when no alerts configured", () => {
-    expect(topicAffinity(paper({ title: "asthma" }), emptyAffinity())).toBe(0);
+describe("explicitMatch", () => {
+  it("returns +1 for interested PMID", () => {
+    expect(explicitMatch("42", new Set(["42"]), new Set())).toBe(1);
   });
 
-  it("hits on title / abstract / keywords / mesh", () => {
-    const aff = emptyAffinity({ keywordAlerts: ["dupilumab"] });
-    expect(topicAffinity(paper({ title: "Dupilumab trial" }), aff)).toBeGreaterThan(0);
-    expect(topicAffinity(paper({ abstract: "treated with dupilumab" }), aff)).toBeGreaterThan(0);
-    expect(topicAffinity(paper({ keywords: ["Dupilumab"] }), aff)).toBeGreaterThan(0);
-    expect(topicAffinity(paper({ meshTerms: ["dupilumab"] }), aff)).toBeGreaterThan(0);
-    expect(topicAffinity(paper({ title: "aspirin" }), aff)).toBe(0);
+  it("returns -1 for not_interested PMID", () => {
+    expect(explicitMatch("42", new Set(), new Set(["42"]))).toBe(-1);
   });
 
-  it("is capped at 1", () => {
-    const aff = emptyAffinity({ keywordAlerts: ["a", "b", "c"] });
-    const p = paper({ title: "a b c match" });
-    expect(topicAffinity(p, aff)).toBeLessThanOrEqual(1);
+  it("returns 0 for unknown PMID", () => {
+    expect(explicitMatch("99", new Set(["42"]), new Set(["13"]))).toBe(0);
   });
 });
 
-describe("interestedMatch", () => {
-  it("is 1 only when pmid is in the interested set", () => {
-    const aff = emptyAffinity({ interestedPmids: new Set(["42"]) });
-    expect(interestedMatch(paper({ pmid: "42" }), aff)).toBe(1);
-    expect(interestedMatch(paper({ pmid: "99" }), aff)).toBe(0);
-  });
-});
-
-describe("notInterestedPenalty", () => {
-  it("is 1 when the exact paper was 👎ed", () => {
-    const aff = emptyAffinity({ notInterestedPmids: new Set(["42"]) });
-    expect(notInterestedPenalty(paper({ pmid: "42" }), aff)).toBe(1);
-  });
-
-  it("penalises same journal and shared tokens", () => {
-    const aff = emptyAffinity({
-      dislikedJournalSlugs: new Set(["jaci"]),
-      dislikedTokens: new Set(["covid-19"]),
-    });
-    const p = paper({ journalSlug: "jaci", keywords: ["COVID-19"] });
-    expect(notInterestedPenalty(p, aff)).toBeGreaterThan(0);
-    expect(notInterestedPenalty(p, aff)).toBeLessThanOrEqual(1);
-  });
-
-  it("no penalty when nothing matches", () => {
-    const aff = emptyAffinity({
-      dislikedJournalSlugs: new Set(["jaci"]),
-      dislikedTokens: new Set(["covid"]),
-    });
-    const p = paper({ journalSlug: "allergy", keywords: ["asthma"] });
-    expect(notInterestedPenalty(p, aff)).toBe(0);
-  });
-});
-
-describe("scorePaper (integration)", () => {
+describe("scorePaper", () => {
   const now = new Date("2026-04-15T00:00:00Z");
 
-  it("positively boosts a paper matching all signals", () => {
-    const aff = emptyAffinity({
-      journalSlugs: new Set(["jaci"]),
-      keywordAlerts: ["dupilumab"],
-      interestedPmids: new Set(["42"]),
-    });
-    const p = paper({
-      pmid: "42",
-      journalSlug: "jaci",
-      title: "Dupilumab in severe asthma",
+  it("returns only base score for empty profile", () => {
+    const input = makeInputs({
       publicationDate: "2026-04-15",
       citationCount: 10,
     });
-    const s = scorePaper(p, aff, now);
-    // Roughly: 2.0 + >=0.5*1.5 + 1.0 + 0.5*ln(11) + 3.0 with no penalty
-    expect(s).toBeGreaterThan(WEIGHTS.journal + WEIGHTS.interested);
+    const ctx = makeContext();
+    const s = scorePaper(input, ctx, now);
+    const expected =
+      DIMENSION_WEIGHTS.recency * 1.0 +
+      DIMENSION_WEIGHTS.citations * Math.log(11);
+    expect(s).toBeCloseTo(expected, 3);
   });
 
-  it("heavily penalises a 👎ed paper even with recency", () => {
-    const aff = emptyAffinity({
-      notInterestedPmids: new Set(["13"]),
-    });
-    const p = paper({
+  it("boosts paper matching profile topics", () => {
+    const profile = emptyProfile();
+    profile.topics = { asthma: 0.8 };
+    const input = makeInputs({ topicTags: ["asthma"] });
+    const ctx = makeContext({ profile });
+    const s = scorePaper(input, ctx, now);
+    expect(s).toBeGreaterThan(scorePaper(makeInputs(), makeContext(), now));
+  });
+
+  it("boosts paper matching profile authors", () => {
+    const profile = emptyProfile();
+    profile.authors = { Kim_SH: 0.7 };
+    const input = makeInputs({ authorKeys: ["Kim_SH"] });
+    const ctx = makeContext({ profile });
+    const s = scorePaper(input, ctx, now);
+    expect(s).toBeGreaterThan(scorePaper(makeInputs(), makeContext(), now));
+  });
+
+  it("penalises paper matching negative profile weights", () => {
+    const profile = emptyProfile();
+    profile.keywords = { "covid-19": -0.8 };
+    const input = makeInputs({ keywords: ["covid-19"] });
+    const ctx = makeContext({ profile });
+    const s = scorePaper(input, ctx, now);
+    expect(s).toBeLessThan(scorePaper(makeInputs(), makeContext(), now));
+  });
+
+  it("explicit interested gives strong boost", () => {
+    const input = makeInputs({ pmid: "42" });
+    const ctx = makeContext({ interestedPmids: new Set(["42"]) });
+    const s = scorePaper(input, ctx, now);
+    expect(s).toBeGreaterThanOrEqual(DIMENSION_WEIGHTS.explicit);
+  });
+
+  it("explicit not_interested gives strong penalty", () => {
+    const input = makeInputs({
       pmid: "13",
       publicationDate: "2026-04-15",
-      citationCount: 100,
+      citationCount: 50,
     });
-    const s = scorePaper(p, aff, now);
+    const ctx = makeContext({ notInterestedPmids: new Set(["13"]) });
+    const s = scorePaper(input, ctx, now);
     expect(s).toBeLessThan(0);
   });
 
-  it("ranks a matching paper above a non-matching recent paper", () => {
-    const aff = emptyAffinity({
-      keywordAlerts: ["atopic dermatitis"],
-    });
-    const match = paper({
-      pmid: "match",
-      title: "Atopic dermatitis outcomes",
+  it("profile-matched paper ranks above unmatched paper", () => {
+    const profile = emptyProfile();
+    profile.keywords = { dupilumab: 0.9 };
+    profile.journals = { jaci: 0.8 };
+    const ctx = makeContext({ profile });
+
+    const matched = makeInputs({
+      journalSlug: "jaci",
+      keywords: ["dupilumab"],
       publicationDate: "2026-03-15",
     });
-    const noMatch = paper({
-      pmid: "no",
-      title: "Unrelated topic",
+    const unmatched = makeInputs({
+      journalSlug: "allergy",
+      keywords: ["unrelated"],
       publicationDate: "2026-04-15",
     });
-    expect(scorePaper(match, aff, now)).toBeGreaterThan(scorePaper(noMatch, aff, now));
+    expect(scorePaper(matched, ctx, now)).toBeGreaterThan(
+      scorePaper(unmatched, ctx, now)
+    );
   });
 });
