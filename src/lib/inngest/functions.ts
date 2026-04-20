@@ -3,6 +3,7 @@ import { JOURNALS } from "@/lib/constants/journals";
 import { fetchPapersForJournal } from "@/lib/sync/fetcher";
 import { storePapers } from "@/lib/sync/store";
 import { enrichPapersWithCrossRef } from "@/lib/sync/enricher";
+import { collectCitations } from "@/lib/sync/citations";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getDateRange } from "@/lib/utils/date";
 import { sendJournalAlerts, sendKeywordAlerts } from "@/lib/email/notify";
@@ -108,6 +109,14 @@ export const syncJournalFn = inngest.createFunction(
         return enrichPapersWithCrossRef(supabase, 100);
       });
 
+      // Collect citation relationships for newly inserted papers
+      const citationResult = await step.run("collect-citations", async () => {
+        if (storeResult.insertedPmids.length === 0) {
+          return { processed: 0, citationsInserted: 0, errors: 0 };
+        }
+        return collectCitations(supabase, storeResult.insertedPmids);
+      });
+
       await step.run("mark-sync-success", async () => {
         const { error } = await supabase
           .from("sync_logs")
@@ -126,7 +135,7 @@ export const syncJournalFn = inngest.createFunction(
         }
       });
 
-      console.log(`[Inngest] Synced ${journal.abbreviation}: ${articles.length} found, ${storeResult.inserted} inserted, enriched ${enrichResult.enriched}`);
+      console.log(`[Inngest] Synced ${journal.abbreviation}: ${articles.length} found, ${storeResult.inserted} inserted, enriched ${enrichResult.enriched}, citations ${citationResult.citationsInserted}`);
 
       return {
         journal: journal.abbreviation,

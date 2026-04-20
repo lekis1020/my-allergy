@@ -1,10 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PubMedArticle } from "@/lib/pubmed/types";
 
-interface StoreResult {
+export interface StoreResult {
   inserted: number;
   updated: number;
   errors: number;
+  insertedPmids: string[];
 }
 
 const BATCH_SIZE = 100;
@@ -17,6 +18,7 @@ export async function storePapers(
   let inserted = 0;
   let updated = 0;
   let errors = 0;
+  const insertedPmids: string[] = [];
 
   // Process in batches
   for (let batchStart = 0; batchStart < articles.length; batchStart += BATCH_SIZE) {
@@ -76,6 +78,7 @@ export async function storePapers(
           updated++;
         } else {
           inserted++;
+          insertedPmids.push(article.pmid);
         }
       }
 
@@ -119,5 +122,5 @@ export async function storePapers(
     }
   }
 
-  return { inserted, updated, errors };
+  return { inserted, updated, errors, insertedPmids };
 }

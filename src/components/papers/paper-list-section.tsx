@@ -21,6 +21,7 @@ interface PaperListSectionProps {
   variant?: "full" | "compact";
   maxItems?: number;
   emptyMessage?: string;
+  bookmarkedPmids?: Set<string>;
 }
 
 function resolveDate(epub: string | null, pub: string): string {
@@ -34,6 +35,7 @@ export function PaperListSection({
   variant = "full",
   maxItems,
   emptyMessage = "No linked papers found in the current database window.",
+  bookmarkedPmids,
 }: PaperListSectionProps) {
   const compact = variant === "compact";
   const limited = maxItems ? papers.slice(0, maxItems) : papers;
@@ -77,6 +79,9 @@ export function PaperListSection({
               }
             >
               <div className={compact ? "mb-0.5 flex items-center gap-1.5" : "mb-1 flex items-center gap-2"}>
+                {bookmarkedPmids?.has(paper.pmid) && (
+                  <span className="text-[10px] text-amber-500" title="북마크됨">★</span>
+                )}
                 <Badge color={paper.journal_color}>{paper.journal_abbreviation}</Badge>
                 {!compact && (
                   <span className="text-xs text-gray-500 dark:text-gray-400">

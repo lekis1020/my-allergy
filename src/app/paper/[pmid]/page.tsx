@@ -3,15 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils/date";
 import { getPubMedUrl, getDoiUrl } from "@/lib/utils/url";
 import { formatCitationCount } from "@/lib/utils/text";
-import { fetchLinkedPmids } from "@/lib/pubmed/links";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
-import { ArrowLeft, ExternalLink, Calendar, Quote, BookOpen } from "lucide-react";
+import { ArrowLeft, ExternalLink, Calendar, Quote, BookOpen, FileText } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PaperActions } from "@/components/papers/paper-actions";
+import { StructuredAbstract } from "@/components/papers/structured-abstract";
 import { CommentThread } from "@/components/comments/comment-thread";
 import { AuthorsList } from "@/components/papers/authors-list";
-import { CitationGraph } from "@/components/papers/citation-graph";
 import {
   PaperListSection,
   type LinkedPaper,
@@ -59,26 +58,17 @@ export default async function PaperDetailPage({ params }: PageProps) {
     paper.epub_date as string | null | undefined,
     paper.publication_date as string | null | undefined,
   );
-  const [relatedIds, referencedIds, citedByIds] = await Promise.all([
-    fetchLinkedPmids(pmid, "pubmed_pubmed", 30),
-    fetchLinkedPmids(pmid, "pubmed_pubmed_refs", 30),
-    fetchLinkedPmids(pmid, "pubmed_pubmed_citedin", 30),
-  ]);
-
-  const linkedPapersMap = await getLinkedPapersMap(
-    supabase,
-    [...new Set([...relatedIds, ...referencedIds, ...citedByIds])]
-  );
-
-  const relatedPapers = mapLinkedPapersByOrder(relatedIds, linkedPapersMap).slice(0, 10);
-  const referencedPapers = mapLinkedPapersByOrder(referencedIds, linkedPapersMap).slice(0, 10);
-  const citedByPapers = mapLinkedPapersByOrder(citedByIds, linkedPapersMap).slice(0, 10);
-
   const keywords = (paper.keywords as string[] | null) ?? [];
   const meshTerms = (paper.mesh_terms as string[] | null) ?? [];
   const allTags = [...keywords, ...meshTerms];
-  const hasLinkedPapers =
-    relatedPapers.length + referencedPapers.length + citedByPapers.length > 0;
+
+  // Citation relationships from DB + bookmark status
+  const [referencesPapers, citedByPapers, bookmarkedPmids] = await Promise.all([
+    findCitationsFromDb(supabase, pmid, "references"),
+    findCitationsFromDb(supabase, pmid, "cited_by"),
+    loadBookmarkedPmids(supabase),
+  ]);
+  const hasCitations = referencesPapers.length + citedByPapers.length > 0;
 
   const externalLinks = (
     <div className="flex flex-wrap items-center gap-2">
@@ -136,6 +126,12 @@ export default async function PaperDetailPage({ params }: PageProps) {
                 IF {journal.impact_factor}
               </span>
             )}
+            {Array.isArray(paper.publication_types) && paper.publication_types.length > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+                <FileText className="h-3 w-3" />
+                {(paper.publication_types as string[]).join(", ")}
+              </span>
+            )}
             <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
               <Calendar className="h-3.5 w-3.5" />
               {formatDate(displayPublicationDate)}
@@ -156,7 +152,7 @@ export default async function PaperDetailPage({ params }: PageProps) {
             )}
           </div>
 
-          <h1 className="text-2xl font-bold leading-tight text-gray-900 lg:text-3xl dark:text-gray-100">
+          <h1 className="text-3xl font-bold leading-tight text-gray-900 lg:text-[2.75rem] lg:leading-tight dark:text-gray-100">
             {decodeHtmlEntities(String(paper.title))}
           </h1>
         </header>
@@ -180,12 +176,10 @@ export default async function PaperDetailPage({ params }: PageProps) {
             {/* Abstract */}
             {paper.abstract && (
               <section>
-                <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Abstract
                 </h2>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                  {decodeHtmlEntities(String(paper.abstract))}
-                </p>
+                <StructuredAbstract text={decodeHtmlEntities(String(paper.abstract))} />
               </section>
             )}
 
@@ -212,23 +206,24 @@ export default async function PaperDetailPage({ params }: PageProps) {
                 {externalLinks}
               </section>
 
-              {hasLinkedPapers && (
+              {hasCitations && (
                 <>
-                  <PaperListSection
-                    title="Related Papers"
-                    description="PubMed similar articles that are contextually related."
-                    papers={relatedPapers}
-                  />
-                  <PaperListSection
-                    title="Referenced by This Paper"
-                    description="Papers listed in this article's PubMed reference links."
-                    papers={referencedPapers}
-                  />
-                  <PaperListSection
-                    title="Cited by This Paper"
-                    description="PubMed papers that cite this article."
-                    papers={citedByPapers}
-                  />
+                  {referencesPapers.length > 0 && (
+                    <PaperListSection
+                      title={`이 논문이 인용한 논문 (DB 내 ${referencesPapers.length}편)`}
+                      description="데이터베이스에 수록된 참고문헌"
+                      papers={referencesPapers}
+                      bookmarkedPmids={bookmarkedPmids}
+                    />
+                  )}
+                  {citedByPapers.length > 0 && (
+                    <PaperListSection
+                      title={`이 논문을 인용한 논문 (DB 내 ${citedByPapers.length}편)`}
+                      description="데이터베이스에 수록된 인용 논문"
+                      papers={citedByPapers}
+                      bookmarkedPmids={bookmarkedPmids}
+                    />
+                  )}
                 </>
               )}
             </div>
@@ -253,19 +248,83 @@ export default async function PaperDetailPage({ params }: PageProps) {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
-                <CitationGraph
-                  thisPaper={{
-                    title: String(paper.title),
-                    journalAbbreviation: journal.abbreviation,
-                    journalColor: journal.color,
-                    publicationDate: displayPublicationDate,
-                  }}
-                  references={referencedPapers}
-                  citations={citedByPapers}
-                  maxPerSide={5}
-                />
-              </div>
+              {hasCitations && (
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+                  <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Citation Graph (DB 내)
+                  </h2>
+
+                  {referencesPapers.length > 0 && (
+                    <div className="mb-4">
+                      <p className="mb-2 text-[11px] font-medium text-gray-600 dark:text-gray-300">
+                        이 논문이 인용 ({referencesPapers.length})
+                      </p>
+                      <div className="space-y-1.5">
+                        {referencesPapers.slice(0, 5).map((rp) => (
+                          <Link
+                            key={rp.pmid}
+                            href={`/paper/${rp.pmid}`}
+                            className="group block rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/60"
+                          >
+                            <div className="mb-0.5 flex items-center gap-1.5">
+                              {bookmarkedPmids.has(rp.pmid) && (
+                                <span className="text-[10px] text-amber-500" title="북마크됨">★</span>
+                              )}
+                              <Badge color={rp.journal_color}>{rp.journal_abbreviation}</Badge>
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                                {/^(\d{4})/.exec(rp.epub_date ?? rp.publication_date)?.[1] ?? ""}
+                              </span>
+                            </div>
+                            <p className="line-clamp-2 text-xs text-gray-700 group-hover:text-gray-900 dark:text-gray-300 dark:group-hover:text-gray-100">
+                              {decodeHtmlEntities(rp.title)}
+                            </p>
+                          </Link>
+                        ))}
+                        {referencesPapers.length > 5 && (
+                          <p className="pl-2 text-[11px] text-gray-400">
+                            +{referencesPapers.length - 5}편 더
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {citedByPapers.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-[11px] font-medium text-gray-600 dark:text-gray-300">
+                        이 논문을 인용 ({citedByPapers.length})
+                      </p>
+                      <div className="space-y-1.5">
+                        {citedByPapers.slice(0, 5).map((rp) => (
+                          <Link
+                            key={rp.pmid}
+                            href={`/paper/${rp.pmid}`}
+                            className="group block rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/60"
+                          >
+                            <div className="mb-0.5 flex items-center gap-1.5">
+                              {bookmarkedPmids.has(rp.pmid) && (
+                                <span className="text-[10px] text-amber-500" title="북마크됨">★</span>
+                              )}
+                              <Badge color={rp.journal_color}>{rp.journal_abbreviation}</Badge>
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                                {/^(\d{4})/.exec(rp.epub_date ?? rp.publication_date)?.[1] ?? ""}
+                              </span>
+                            </div>
+                            <p className="line-clamp-2 text-xs text-gray-700 group-hover:text-gray-900 dark:text-gray-300 dark:group-hover:text-gray-100">
+                              {decodeHtmlEntities(rp.title)}
+                            </p>
+                          </Link>
+                        ))}
+                        {citedByPapers.length > 5 && (
+                          <p className="pl-2 text-[11px] text-gray-400">
+                            +{citedByPapers.length - 5}편 더
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </aside>
         </div>
@@ -274,27 +333,42 @@ export default async function PaperDetailPage({ params }: PageProps) {
   );
 }
 
-async function getLinkedPapersMap(
+/**
+ * Find papers that cite or are cited by the given paper, from paper_citations table.
+ */
+async function findCitationsFromDb(
   supabase: ReturnType<typeof createAnonClient>,
-  pmids: string[]
-): Promise<Map<string, LinkedPaper>> {
-  if (pmids.length === 0) return new Map();
+  pmid: string,
+  direction: "references" | "cited_by"
+): Promise<LinkedPaper[]> {
+  // references: this paper cites others (source=this, target=others)
+  // cited_by: others cite this paper (source=others, target=this)
+  const column = direction === "references" ? "source_pmid" : "target_pmid";
+  const linkedColumn = direction === "references" ? "target_pmid" : "source_pmid";
 
-  const { data } = await supabase
+  const { data: citations } = await supabase
+    .from("paper_citations")
+    .select(linkedColumn)
+    .eq(column, pmid);
+
+  if (!citations || citations.length === 0) return [];
+
+  const linkedPmids = citations.map((row) =>
+    String(row[linkedColumn as keyof typeof row])
+  );
+
+  const { data: papers } = await supabase
     .from("papers")
-    .select(
-      `
+    .select(`
       pmid, title, publication_date, epub_date, citation_count,
       journals!inner (abbreviation, color)
-    `
-    )
-    .in("pmid", pmids);
+    `)
+    .in("pmid", linkedPmids)
+    .order("epub_date", { ascending: false });
 
-  const map = new Map<string, LinkedPaper>();
-
-  for (const row of (data ?? [])) {
+  return (papers ?? []).map((row) => {
     const journal = row.journals;
-    map.set(String(row.pmid), {
+    return {
       pmid: String(row.pmid),
       title: String(row.title ?? ""),
       publication_date: String(row.publication_date ?? "1970-01-01"),
@@ -306,10 +380,21 @@ async function getLinkedPapersMap(
         typeof row.citation_count === "number" ? row.citation_count : null,
       journal_abbreviation: String(journal.abbreviation ?? ""),
       journal_color: String(journal.color ?? "#6B7280"),
-    });
-  }
+    };
+  });
+}
 
-  return map;
+/**
+ * Load all bookmarked PMIDs for the current user (anonymous-safe).
+ */
+async function loadBookmarkedPmids(
+  supabase: ReturnType<typeof createAnonClient>
+): Promise<Set<string>> {
+  const { data } = await supabase
+    .from("bookmarks")
+    .select("pmid");
+
+  return new Set((data ?? []).map((row) => String(row.pmid)));
 }
 
 function resolveDisplayedPublicationDate(
@@ -317,13 +402,4 @@ function resolveDisplayedPublicationDate(
   publicationDate: string | null | undefined,
 ): string {
   return epubDate || publicationDate || "1970-01-01";
-}
-
-function mapLinkedPapersByOrder(ids: string[], paperMap: Map<string, LinkedPaper>): LinkedPaper[] {
-  const list: LinkedPaper[] = [];
-  for (const id of ids) {
-    const paper = paperMap.get(id);
-    if (paper) list.push(paper);
-  }
-  return list;
 }
