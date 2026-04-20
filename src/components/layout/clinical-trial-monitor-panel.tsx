@@ -25,6 +25,23 @@ const PHASE_TABS = [
   { id: "other", label: "Other", match: () => true },
 ] as const;
 
+const DISEASE_FILTERS = [
+  { id: "all", label: "All", areaIds: [] as string[] },
+  { id: "asthma", label: "Asthma", areaIds: ["asthma"] },
+  { id: "rhinitis_sinusitis", label: "Rhinitis/Sinusitis/Nasal Polyp", areaIds: ["rhinitis", "chronic_rhinosinusitis"] },
+  { id: "urticaria_angioedema", label: "Urticaria/Angioedema", areaIds: ["urticaria", "chronic_urticaria"] },
+  { id: "anaphylaxis", label: "Anaphylaxis", areaIds: ["anaphylaxis"] },
+  { id: "hypereosinophilia", label: "Hypereosinophilia", areaIds: ["hypereosinophilia"] },
+  { id: "food_allergy", label: "Food Allergy", areaIds: ["food_allergy"] },
+  { id: "drug_allergy", label: "Drug Allergy", areaIds: ["drug_allergy"] },
+  { id: "others", label: "Others", areaIds: [] as string[] },
+] as const;
+
+// All specific areaIds covered by named filters (for "Others" calculation)
+const NAMED_AREA_IDS = new Set(
+  DISEASE_FILTERS.flatMap((f) => f.areaIds).filter(Boolean)
+);
+
 const PHASE_TAB_STYLES: Record<string, { active: string; border: string }> = {
   phase1: { active: "bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300", border: "border-sky-200 dark:border-sky-900" },
   phase2: { active: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300", border: "border-indigo-200 dark:border-indigo-900" },
@@ -57,6 +74,7 @@ export function ClinicalTrialMonitorPanel({ onSelectStudy }: ClinicalTrialMonito
   } = useClinicalTrials();
 
   const [activeTab, setActiveTab] = useState("phase3");
+  const [diseaseFilter, setDiseaseFilter] = useState("all");
 
   const phaseGroups = useMemo(() => {
     const groups: Record<string, typeof studies> = {
@@ -75,7 +93,24 @@ export function ClinicalTrialMonitorPanel({ onSelectStudy }: ClinicalTrialMonito
     return groups;
   }, [studies]);
 
-  const currentStudies = phaseGroups[activeTab] ?? [];
+  const filteredStudies = useMemo(() => {
+    const phaseStudies = phaseGroups[activeTab] ?? [];
+    if (diseaseFilter === "all") return phaseStudies;
+
+    const filter = DISEASE_FILTERS.find((f) => f.id === diseaseFilter);
+    if (!filter) return phaseStudies;
+
+    if (filter.id === "others") {
+      return phaseStudies.filter((s) =>
+        s.focusAreaIds.every((id) => !NAMED_AREA_IDS.has(id))
+      );
+    }
+
+    return phaseStudies.filter((s) =>
+      s.focusAreaIds.some((id) => (filter.areaIds as readonly string[]).includes(id))
+    );
+  }, [phaseGroups, activeTab, diseaseFilter]);
+
   const tabStyle = PHASE_TAB_STYLES[activeTab] ?? PHASE_TAB_STYLES.other;
 
   return (
@@ -122,11 +157,34 @@ export function ClinicalTrialMonitorPanel({ onSelectStudy }: ClinicalTrialMonito
           })}
         </div>
 
+        {/* Disease Filter Chips */}
+        <div
+          className="flex gap-1.5 overflow-x-auto border-x border-gray-200 px-4 py-2.5 dark:border-gray-800"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {DISEASE_FILTERS.map((filter) => {
+            const isActive = diseaseFilter === filter.id;
+            return (
+              <button
+                key={filter.id}
+                onClick={() => setDiseaseFilter(filter.id)}
+                className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  isActive
+                    ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                    : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800"
+                }`}
+              >
+                {filter.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Content */}
         <div className={`rounded-b-xl border border-t-0 ${tabStyle.border} p-4`}>
           {isLoading ? (
             <TrialListSkeleton />
-          ) : currentStudies.length === 0 ? (
+          ) : filteredStudies.length === 0 ? (
             <p className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
               No trials in this phase.
             </p>
@@ -135,13 +193,13 @@ export function ClinicalTrialMonitorPanel({ onSelectStudy }: ClinicalTrialMonito
               <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
                 <span className="inline-flex items-center gap-1">
                   <Activity className="h-3.5 w-3.5 text-emerald-500" />
-                  {currentStudies.length} studies
+                  {filteredStudies.length} studies
                 </span>
                 <span>종료 후 30일까지 노출</span>
               </div>
 
               <ul className="space-y-1">
-                {currentStudies.map((study, index) => (
+                {filteredStudies.map((study, index) => (
                   <li key={study.nctId}>
                     <TrialListItem
                       index={index}
