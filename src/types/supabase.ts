@@ -176,6 +176,24 @@ export type Database = {
         }
         Relationships: []
       }
+      paper_citations: {
+        Row: {
+          source_pmid: string
+          target_pmid: string
+          created_at: string
+        }
+        Insert: {
+          source_pmid: string
+          target_pmid: string
+          created_at?: string
+        }
+        Update: {
+          source_pmid?: string
+          target_pmid?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       paper_feedback: {
         Row: {
           user_id: string

@@ -38,6 +38,9 @@ export function Header() {
             <span className="text-base font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
               My Allergy
             </span>
+            <span className="ml-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium italic tracking-wide text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
+              beta
+            </span>
           </Link>
         </div>
 
