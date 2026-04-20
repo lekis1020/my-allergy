@@ -9,7 +9,7 @@ export const TRIAL_MONITOR_AREAS = [
   { id: "chronic_rhinosinusitis", label: "Chronic Rhinosinusitis", query: "chronic rhinosinusitis" },
   { id: "chronic_urticaria", label: "Chronic Urticaria", query: "chronic urticaria" },
   { id: "anaphylaxis", label: "Anaphylaxis", query: "anaphylaxis" },
-  { id: "drug_allergy", label: "Drug Allergy", query: "drug allergy OR drug hypersensitivity" },
+  { id: "angioedema", label: "Angioedema", query: "angioedema OR hereditary angioedema" },
 ] as const;
 
 export const ONGOING_STATUSES = [
@@ -35,7 +35,7 @@ export const AREA_COLORS: Record<string, { bg: string; text: string; border: str
   chronic_rhinosinusitis: { bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-200", dark: "dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800" },
   chronic_urticaria: { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200", dark: "dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800" },
   anaphylaxis: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", dark: "dark:bg-red-900/30 dark:text-red-300 dark:border-red-800" },
-  drug_allergy: { bg: "bg-fuchsia-50", text: "text-fuchsia-700", border: "border-fuchsia-200", dark: "dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-800" },
+  angioedema: { bg: "bg-fuchsia-50", text: "text-fuchsia-700", border: "border-fuchsia-200", dark: "dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-800" },
 };
 
 export interface ClinicalTrialAreaSummary {
@@ -316,7 +316,9 @@ function parseStudy(
     .filter((condition): condition is string => Boolean(condition))
     .slice(0, 4);
   const progressPercent = calculateTrialProgress(startDate, targetDate);
-  const focusAreaLabels = [AREA_LABELS.get(areaId) ?? areaId];
+  // Reclassify: eosinophilic asthma → asthma, EGPA/HES stay in hypereosinophilia
+  const resolvedAreaId = reclassifyArea(areaId, title, conditions, interventions);
+  const focusAreaLabels = [AREA_LABELS.get(resolvedAreaId) ?? resolvedAreaId];
 
   return {
     nctId,
@@ -328,7 +330,7 @@ function parseStudy(
     studyType,
     conditions,
     interventions,
-    focusAreaIds: [areaId],
+    focusAreaIds: [resolvedAreaId],
     focusAreaLabels,
     startDate,
     targetDate,
@@ -352,6 +354,34 @@ function parseStudy(
     }),
     url: `https://clinicaltrials.gov/study/${nctId}`,
   };
+}
+
+/**
+ * Reclassify area based on trial content:
+ * - Eosinophilic asthma studies → asthma (not hypereosinophilia)
+ * - EGPA/HES studies → stay in hypereosinophilia
+ */
+function reclassifyArea(
+  areaId: string,
+  title: string,
+  conditions: string[],
+  interventions: string[],
+): string {
+  if (areaId !== "hypereosinophilia") return areaId;
+
+  const haystack = [title, ...conditions, ...interventions].join(" ").toLowerCase();
+
+  // EGPA / HES should stay in hypereosinophilia
+  if (/egpa|churg.?strauss|hypereosinophilic syndrome|\bhes\b/.test(haystack)) {
+    return "hypereosinophilia";
+  }
+
+  // Eosinophilic asthma → asthma
+  if (/eosinophilic asthma|severe eosinophilic asthma|asthma/.test(haystack)) {
+    return "asthma";
+  }
+
+  return areaId;
 }
 
 function extractInterventions(
