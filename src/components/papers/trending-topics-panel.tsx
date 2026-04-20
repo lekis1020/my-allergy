@@ -89,7 +89,7 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
           Trending Trial Outcomes
         </h2>
         <span className="text-xs text-gray-400 dark:text-gray-500">
-          Primary + secondary outcomes
+          Primary outcomes only
         </span>
       </div>
 

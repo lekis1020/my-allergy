@@ -28,12 +28,13 @@ const PHASE_TABS = [
 const DISEASE_FILTERS = [
   { id: "all", label: "All", areaIds: [] as string[] },
   { id: "asthma", label: "Asthma", areaIds: ["asthma"] },
+  { id: "atopic_dermatitis", label: "Atopic Dermatitis", areaIds: ["atopic_dermatitis"] },
   { id: "rhinitis_sinusitis", label: "Rhinitis/Sinusitis/Nasal Polyp", areaIds: ["rhinitis", "chronic_rhinosinusitis"] },
-  { id: "urticaria_angioedema", label: "Urticaria/Angioedema", areaIds: ["urticaria", "chronic_urticaria"] },
+  { id: "urticaria", label: "Urticaria", areaIds: ["urticaria", "chronic_urticaria"] },
+  { id: "angioedema", label: "Angioedema", areaIds: ["angioedema"] },
   { id: "anaphylaxis", label: "Anaphylaxis", areaIds: ["anaphylaxis"] },
   { id: "hypereosinophilia", label: "Hypereosinophilia", areaIds: ["hypereosinophilia"] },
   { id: "food_allergy", label: "Food Allergy", areaIds: ["food_allergy"] },
-  { id: "drug_allergy", label: "Drug Allergy", areaIds: ["drug_allergy"] },
   { id: "others", label: "Others", areaIds: [] as string[] },
 ] as const;
 

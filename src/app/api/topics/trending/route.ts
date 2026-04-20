@@ -60,18 +60,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      for (const outcome of study.secondary) {
-        const normalized = normalizeOutcome(outcome, excludeSet);
-        if (!normalized || seen.has(normalized)) continue;
-        seen.add(normalized);
-        const existing = outcomeScores.get(normalized);
-        if (existing) {
-          existing.score += 1;
-          existing.rawCount += 1;
-        } else {
-          outcomeScores.set(normalized, { score: 1, rawCount: 1 });
-        }
-      }
+      // Secondary outcomes excluded — primary only for clarity
     }
 
     const ranked = [...outcomeScores.entries()].map(([keyword, { score, rawCount }]) => ({
