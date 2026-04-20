@@ -9,6 +9,7 @@ export const TRIAL_MONITOR_AREAS = [
   { id: "chronic_rhinosinusitis", label: "Chronic Rhinosinusitis", query: "chronic rhinosinusitis" },
   { id: "chronic_urticaria", label: "Chronic Urticaria", query: "chronic urticaria" },
   { id: "anaphylaxis", label: "Anaphylaxis", query: "anaphylaxis" },
+  { id: "drug_allergy", label: "Drug Allergy", query: "drug allergy OR drug hypersensitivity" },
 ] as const;
 
 export const ONGOING_STATUSES = [
@@ -34,6 +35,7 @@ export const AREA_COLORS: Record<string, { bg: string; text: string; border: str
   chronic_rhinosinusitis: { bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-200", dark: "dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800" },
   chronic_urticaria: { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200", dark: "dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800" },
   anaphylaxis: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", dark: "dark:bg-red-900/30 dark:text-red-300 dark:border-red-800" },
+  drug_allergy: { bg: "bg-fuchsia-50", text: "text-fuchsia-700", border: "border-fuchsia-200", dark: "dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-800" },
 };
 
 export interface ClinicalTrialAreaSummary {
