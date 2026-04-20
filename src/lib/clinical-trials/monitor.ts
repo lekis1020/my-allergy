@@ -16,11 +16,25 @@ export const ONGOING_STATUSES = [
   "ACTIVE_NOT_RECRUITING",
   "ENROLLING_BY_INVITATION",
   "NOT_YET_RECRUITING",
+  "COMPLETED",
 ] as const;
 
 const AREA_LABELS = new Map<string, string>(
   TRIAL_MONITOR_AREAS.map((area) => [area.id, area.label]),
 );
+
+export const AREA_COLORS: Record<string, { bg: string; text: string; border: string; dark: string }> = {
+  asthma: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", dark: "dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800" },
+  food_allergy: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dark: "dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800" },
+  atopic_dermatitis: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", dark: "dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800" },
+  rhinitis: { bg: "bg-cyan-50", text: "text-cyan-700", border: "border-cyan-200", dark: "dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800" },
+  urticaria: { bg: "bg-pink-50", text: "text-pink-700", border: "border-pink-200", dark: "dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800" },
+  immunodeficiency: { bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", dark: "dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800" },
+  hypereosinophilia: { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200", dark: "dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800" },
+  chronic_rhinosinusitis: { bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-200", dark: "dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800" },
+  chronic_urticaria: { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200", dark: "dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800" },
+  anaphylaxis: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", dark: "dark:bg-red-900/30 dark:text-red-300 dark:border-red-800" },
+};
 
 export interface ClinicalTrialAreaSummary {
   id: string;
@@ -114,7 +128,7 @@ export function buildClinicalTrialsGovUrl(query: string): string {
   url.searchParams.set("query.cond", query);
   url.searchParams.set("filter.overallStatus", ONGOING_STATUSES.join(","));
   url.searchParams.set("countTotal", "true");
-  url.searchParams.set("pageSize", "8");
+  url.searchParams.set("pageSize", "100");
   url.searchParams.set("format", "json");
   return url.toString();
 }
@@ -174,15 +188,25 @@ export function mergeAreaStudies(results: ParsedAreaResult[]): ClinicalTrialStud
     }
   }
 
+  const now = Date.now();
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
   return [...merged.values()]
+    .filter((study) => {
+      // Keep ongoing trials unconditionally
+      if (study.status !== "COMPLETED") return true;
+      // For completed trials: keep if completion was within the last 30 days
+      if (!study.targetDate) return false;
+      const completionTime = Date.parse(study.targetDate);
+      return Number.isFinite(completionTime) && now - completionTime <= thirtyDaysMs;
+    })
     .sort((a, b) => {
       if (a.pipelineScore !== b.pipelineScore) return b.pipelineScore - a.pipelineScore;
       const aTime = a.lastUpdated ? Date.parse(a.lastUpdated) : 0;
       const bTime = b.lastUpdated ? Date.parse(b.lastUpdated) : 0;
       if (aTime !== bTime) return bTime - aTime;
       return a.title.localeCompare(b.title);
-    })
-    .slice(0, 6);
+    });
 }
 
 export function normalizeClinicalTrialDate(date?: string | null): string | null {
