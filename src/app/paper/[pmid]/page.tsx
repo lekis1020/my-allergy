@@ -4,7 +4,8 @@ import { formatDate } from "@/lib/utils/date";
 import { getPubMedUrl, getDoiUrl } from "@/lib/utils/url";
 import { formatCitationCount } from "@/lib/utils/text";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
-import { ArrowLeft, ExternalLink, Calendar, Quote, BookOpen, FileText } from "lucide-react";
+import { ArrowLeft, ExternalLink, Calendar, Quote, BookOpen, FileText, Download } from "lucide-react";
+import { findOpenAccessPdf } from "@/lib/pubmed/open-access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PaperActions } from "@/components/papers/paper-actions";
@@ -62,16 +63,32 @@ export default async function PaperDetailPage({ params }: PageProps) {
   const meshTerms = (paper.mesh_terms as string[] | null) ?? [];
   const allTags = [...keywords, ...meshTerms];
 
-  // Citation relationships from DB + bookmark status
-  const [referencesPapers, citedByPapers, bookmarkedPmids] = await Promise.all([
+  // Citation relationships from DB + bookmark status + open access check
+  const [referencesPapers, citedByPapers, bookmarkedPmids, openAccess] = await Promise.all([
     findCitationsFromDb(supabase, pmid, "references"),
     findCitationsFromDb(supabase, pmid, "cited_by"),
     loadBookmarkedPmids(supabase),
+    findOpenAccessPdf(paper.doi as string | null),
   ]);
   const hasCitations = referencesPapers.length + citedByPapers.length > 0;
 
   const externalLinks = (
     <div className="flex flex-wrap items-center gap-2">
+      {openAccess?.pdfUrl && (
+        <a
+          href={openAccess.pdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+        >
+          <Download className="h-3 w-3" />
+          PDF {openAccess.license && (
+            <span className="rounded bg-emerald-700/30 px-1 py-0.5 text-[10px] dark:bg-emerald-400/20">
+              {openAccess.license.replace("cc-", "CC ").toUpperCase()}
+            </span>
+          )}
+        </a>
+      )}
       <a
         href={getPubMedUrl(pmid)}
         target="_blank"
