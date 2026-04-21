@@ -72,7 +72,7 @@ export async function POST(
     return NextResponse.json({ error: "Paper not found" }, { status: 404 });
   }
 
-  const openAccess = await findOpenAccessPdf(paper.doi);
+  const openAccess = await findOpenAccessPdf(paper.doi, pmid);
   if (!openAccess?.pdfUrl) {
     return NextResponse.json(
       { error: "이 논문은 Open Access가 아닙니다." },
