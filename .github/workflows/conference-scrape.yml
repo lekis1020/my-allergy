@@ -1,0 +1,53 @@
+name: Weekly Conference Scrape
+
+on:
+  schedule:
+    # Every Monday at 09:00 UTC (18:00 KST)
+    - cron: '0 9 * * 1'
+  workflow_dispatch: {}
+
+jobs:
+  scrape-and-report:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install scrapling supabase
+
+      - name: Setup Scrapling
+        run: python -m scrapling install || true
+
+      - name: Run scraper (report mode)
+        id: scrape
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python scripts/scrape_conferences.py --report > report.md 2>scrape.log
+          cat scrape.log >&2
+          echo "report_path=report.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create issue if changes detected
+        if: steps.scrape.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="[Conference] 학회 일정 업데이트 감지 ($(date +%Y-%m-%d))"
+          gh issue create \
+            --title "$TITLE" \
+            --body-file report.md \
+            --label "conference,calendar"
+
+      - name: Save scraped data as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: conference-data
+          path: report.md
+          retention-days: 30
