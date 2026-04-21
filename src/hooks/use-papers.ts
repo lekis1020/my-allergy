@@ -43,7 +43,7 @@ export function usePapers(filters: PaperFilters) {
       },
     });
 
-  const papers = data ? data.flatMap((page) => page.papers) : [];
+  const papers = data ? data.flatMap((page) => page?.papers ?? []) : [];
   const total = data?.[0]?.total || 0;
   const hasMore = data ? data[data.length - 1]?.hasMore : false;
   const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
