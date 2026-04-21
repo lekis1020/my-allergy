@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Bookmark, CalendarDays, Home, Menu, MessagesSquare, Microscope, Stethoscope, TrendingUp } from "lucide-react";
+import { Bell, CalendarDays, Clock, Home, Menu, MessagesSquare, Microscope, Stethoscope, TrendingUp } from "lucide-react";
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { AuthButton } from "@/components/layout/auth-button";
 import { UnreadRepliesBadge } from "@/components/comments/unread-badge";
@@ -62,8 +62,8 @@ export function Header() {
             Agora
           </Link>
           <Link href="/bookmarks" className={linkClass("/bookmarks")}>
-            <Bookmark className="h-4 w-4" />
-            Bookmarks
+            <Clock className="h-4 w-4" />
+            History
             <UnreadRepliesBadge />
           </Link>
           <Link href="/calendar" className={linkClass("/calendar")}>

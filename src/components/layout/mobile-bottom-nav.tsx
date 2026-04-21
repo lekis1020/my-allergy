@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, TrendingUp, Microscope, Bookmark, CalendarDays } from "lucide-react";
+import { Home, TrendingUp, Microscope, Clock, CalendarDays } from "lucide-react";
 
 const tabs = [
   { href: "/", label: "Home", icon: Home },
   { href: "/trending", label: "Trending", icon: TrendingUp },
   { href: "/clinical-trials", label: "Trials", icon: Microscope },
-  { href: "/bookmarks", label: "Saved", icon: Bookmark },
+  { href: "/bookmarks", label: "History", icon: Clock },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
 ] as const;
 
