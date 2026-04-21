@@ -66,10 +66,10 @@ export default async function PaperDetailPage({ params }: PageProps) {
 
   // Citation relationships from DB + bookmark status + open access check
   const [referencesPapers, citedByPapers, bookmarkedPmids, openAccess] = await Promise.all([
-    findCitationsFromDb(supabase, pmid, "references"),
-    findCitationsFromDb(supabase, pmid, "cited_by"),
-    loadBookmarkedPmids(supabase),
-    findOpenAccessPdf(paper.doi as string | null, pmid),
+    findCitationsFromDb(supabase, pmid, "references").catch(() => [] as LinkedPaper[]),
+    findCitationsFromDb(supabase, pmid, "cited_by").catch(() => [] as LinkedPaper[]),
+    loadBookmarkedPmids(supabase).catch(() => new Set<string>()),
+    findOpenAccessPdf(paper.doi as string | null, pmid).catch(() => null),
   ]);
   const hasCitations = referencesPapers.length + citedByPapers.length > 0;
 
