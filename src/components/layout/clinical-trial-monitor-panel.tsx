@@ -18,11 +18,13 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const PHASE_TABS = [
-  { id: "phase1", label: "Phase 1", match: (p: string) => /early phase 1|phase 1(?!\s*\/\s*phase 2)/i.test(p) || p === "Early Phase 1" },
-  { id: "phase2", label: "Phase 2", match: (p: string) => /phase 2|phase 1\s*\/\s*phase 2|phase 2\s*\/\s*phase 3/i.test(p) },
-  { id: "phase3", label: "Phase 3", match: (p: string) => /phase 3(?!\s*\/)|phase 2\s*\/\s*phase 3/i.test(p) },
-  { id: "phase4", label: "Phase 4", match: (p: string) => /phase 4/i.test(p) },
-  { id: "other", label: "Other", match: () => true },
+  { id: "phase1", label: "Phase 1" },
+  { id: "phase2", label: "Phase 2" },
+  { id: "phase3", label: "Phase 3" },
+  { id: "phase4", label: "Phase 4" },
+  { id: "rct", label: "RCT" },
+  { id: "observational", label: "Observational" },
+  { id: "other", label: "Other" },
 ] as const;
 
 const DISEASE_FILTERS = [
@@ -48,6 +50,8 @@ const PHASE_TAB_STYLES: Record<string, { active: string; border: string }> = {
   phase2: { active: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300", border: "border-indigo-200 dark:border-indigo-900" },
   phase3: { active: "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300", border: "border-violet-200 dark:border-violet-900" },
   phase4: { active: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300", border: "border-emerald-200 dark:border-emerald-900" },
+  rct: { active: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300", border: "border-blue-200 dark:border-blue-900" },
+  observational: { active: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300", border: "border-amber-200 dark:border-amber-900" },
   other: { active: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300", border: "border-gray-200 dark:border-gray-700" },
 };
 
@@ -55,12 +59,13 @@ interface ClinicalTrialMonitorPanelProps {
   onSelectStudy?: (relatedQuery: string, title: string) => void;
 }
 
-function classifyPhase(phaseLabel: string): string {
-  // Check in reverse priority — phase3 before phase2 to handle "Phase 2 / Phase 3" correctly
+function classifyStudy(phaseLabel: string, studyType: string | null): string {
+  if (studyType === "OBSERVATIONAL") return "observational";
   if (/phase 4/i.test(phaseLabel)) return "phase4";
   if (/phase 3/i.test(phaseLabel)) return "phase3";
   if (/phase 2/i.test(phaseLabel)) return "phase2";
   if (/phase 1|early phase/i.test(phaseLabel)) return "phase1";
+  if (studyType === "INTERVENTIONAL") return "rct";
   return "other";
 }
 
@@ -83,12 +88,14 @@ export function ClinicalTrialMonitorPanel({ onSelectStudy }: ClinicalTrialMonito
       phase2: [],
       phase3: [],
       phase4: [],
+      rct: [],
+      observational: [],
       other: [],
     };
 
     for (const study of studies) {
-      const phase = classifyPhase(study.phaseLabel);
-      groups[phase].push(study);
+      const category = classifyStudy(study.phaseLabel, study.studyType ?? null);
+      groups[category].push(study);
     }
 
     return groups;
@@ -235,6 +242,7 @@ interface TrialStudy {
   status: string;
   statusLabel: string;
   phaseLabel: string;
+  studyType: string | null;
   focusAreaIds: string[];
   focusAreaLabels: string[];
   interventions: string[];
