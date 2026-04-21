@@ -13,6 +13,7 @@ interface UnpaywallResponse {
 export interface OpenAccessInfo {
   isOa: boolean;
   pdfUrl: string | null;
+  oaUrl: string | null;
   license: string | null;
   source: string | null;
 }
@@ -42,7 +43,8 @@ export async function findOpenAccessPdf(
 
     return {
       isOa: data.is_oa,
-      pdfUrl: best?.url_for_pdf ?? best?.url ?? null,
+      pdfUrl: best?.url_for_pdf ?? null,
+      oaUrl: best?.url ?? null,
       license: best?.license ?? null,
       source: best?.host_type ?? null,
     };
