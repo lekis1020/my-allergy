@@ -69,7 +69,7 @@ export default async function PaperDetailPage({ params }: PageProps) {
     findCitationsFromDb(supabase, pmid, "references"),
     findCitationsFromDb(supabase, pmid, "cited_by"),
     loadBookmarkedPmids(supabase),
-    findOpenAccessPdf(paper.doi as string | null),
+    findOpenAccessPdf(paper.doi as string | null, pmid),
   ]);
   const hasCitations = referencesPapers.length + citedByPapers.length > 0;
 

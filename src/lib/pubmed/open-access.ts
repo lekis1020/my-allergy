@@ -20,29 +20,41 @@ export interface OpenAccessInfo {
 
 /**
  * Find an open-access PDF link by checking multiple sources in order:
- * 1. Unpaywall API
- * 2. Europe PMC
- * 3. Semantic Scholar
+ * 1. Unpaywall API (by DOI)
+ * 2. PubMed Central (by PMID)
+ * 3. Europe PMC (by DOI)
+ * 4. Semantic Scholar (by DOI)
  * Returns null on error (non-blocking).
  */
 export async function findOpenAccessPdf(
-  doi: string | null
+  doi: string | null,
+  pmid?: string | null
 ): Promise<OpenAccessInfo | null> {
-  if (!doi) return null;
+  if (!doi && !pmid) return null;
 
-  const cleanDoi = doi.replace(/^https?:\/\/doi\.org\//, "");
+  const cleanDoi = doi?.replace(/^https?:\/\/doi\.org\//, "") ?? null;
 
-  // Try Unpaywall first
-  const unpaywall = await tryUnpaywall(cleanDoi);
+  // Try Unpaywall first (needs DOI)
+  const unpaywall = cleanDoi ? await tryUnpaywall(cleanDoi) : null;
   if (unpaywall?.pdfUrl) return unpaywall;
 
-  // Fallback: Europe PMC
-  const europePmc = await tryEuropePmc(cleanDoi);
-  if (europePmc?.pdfUrl) return europePmc;
+  // Fallback: PubMed Central (needs PMID)
+  if (pmid) {
+    const pmc = await tryPmc(pmid);
+    if (pmc?.pdfUrl) return pmc;
+  }
 
-  // Fallback: Semantic Scholar
-  const semanticScholar = await trySemanticScholar(cleanDoi);
-  if (semanticScholar?.pdfUrl) return semanticScholar;
+  // Fallback: Europe PMC (needs DOI)
+  if (cleanDoi) {
+    const europePmc = await tryEuropePmc(cleanDoi);
+    if (europePmc?.pdfUrl) return europePmc;
+  }
+
+  // Fallback: Semantic Scholar (needs DOI)
+  if (cleanDoi) {
+    const semanticScholar = await trySemanticScholar(cleanDoi);
+    if (semanticScholar?.pdfUrl) return semanticScholar;
+  }
 
   // Return Unpaywall result even without PDF (may have oaUrl)
   return unpaywall;
@@ -67,6 +79,46 @@ async function tryUnpaywall(doi: string): Promise<OpenAccessInfo | null> {
       oaUrl: best?.url ?? null,
       license: best?.license ?? null,
       source: best?.host_type ? `unpaywall:${best.host_type}` : "unpaywall",
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function tryPmc(pmid: string): Promise<OpenAccessInfo | null> {
+  try {
+    // Convert PMID to PMCID via NCBI ID Converter
+    const convUrl = `https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?ids=${pmid}&format=json`;
+    const convResponse = await fetch(convUrl, {
+      next: { revalidate: 86_400 },
+    });
+
+    if (!convResponse.ok) return null;
+
+    const convData = await convResponse.json();
+    const record = convData?.records?.[0];
+    const pmcid = record?.pmcid as string | undefined;
+
+    if (!pmcid) return null;
+
+    // PMC PDF URL pattern
+    const pdfUrl = `https://www.ncbi.nlm.nih.gov/pmc/articles/${pmcid}/pdf/`;
+
+    // Verify the PDF is accessible (HEAD request)
+    const headResponse = await fetch(pdfUrl, {
+      method: "HEAD",
+      redirect: "follow",
+      next: { revalidate: 86_400 },
+    });
+
+    if (!headResponse.ok) return null;
+
+    return {
+      isOa: true,
+      pdfUrl,
+      oaUrl: `https://www.ncbi.nlm.nih.gov/pmc/articles/${pmcid}/`,
+      license: null,
+      source: "pmc",
     };
   } catch {
     return null;
