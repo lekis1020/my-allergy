@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, Send, Square, Sparkles, FlaskConical, AlertTriangle, Lock, Loader2 } from "lucide-react";
+import { Bot, Send, Square, Sparkles, FlaskConical, AlertTriangle, Lock, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { usePaperChat } from "@/hooks/use-paper-chat";
 import { ChatMessage } from "./chat-message";
 import { QUICK_ACTIONS } from "@/lib/gemini/prompts";
@@ -26,6 +26,7 @@ export function PaperChat({ pmid, isOa }: PaperChatProps) {
   } = usePaperChat(pmid, !!user);
 
   const [input, setInput] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -66,15 +67,8 @@ export function PaperChat({ pmid, isOa }: PaperChatProps) {
     sendMessage(QUICK_ACTIONS[action]);
   };
 
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/50">
-      <div className="border-b border-gray-200 px-4 py-2.5 dark:border-gray-800">
-        <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          <Bot className="h-3.5 w-3.5" />
-          AI Paper Chat
-        </h2>
-      </div>
-
+  const chatContent = (
+    <>
       {/* Quick actions */}
       {messages.length === 0 && !isStreaming && (
         <div className="flex flex-wrap gap-1.5 border-b border-gray-200 px-3 py-2 dark:border-gray-800">
@@ -103,7 +97,7 @@ export function PaperChat({ pmid, isOa }: PaperChatProps) {
       )}
 
       {/* Messages */}
-      <div className="max-h-96 space-y-3 overflow-y-auto px-3 py-3">
+      <div className={`space-y-3 overflow-y-auto px-3 py-3 ${expanded ? "flex-1" : "max-h-96"}`}>
         {isLoading ? (
           <div className="flex justify-center py-4">
             <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
@@ -152,7 +146,7 @@ export function PaperChat({ pmid, isOa }: PaperChatProps) {
               }
             }}
             placeholder="질문을 입력하세요..."
-            rows={1}
+            rows={expanded ? 2 : 1}
             className="flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
             disabled={isStreaming || (usage?.queries_this_paper ?? 0) >= 10}
           />
@@ -180,6 +174,46 @@ export function PaperChat({ pmid, isOa }: PaperChatProps) {
           </p>
         )}
       </form>
+    </>
+  );
+
+  const header = (
+    <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2.5 dark:border-gray-800">
+      <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        <Bot className="h-3.5 w-3.5" />
+        AI Paper Chat
+      </h2>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+        title={expanded ? "축소" : "확대"}
+      >
+        {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+      </button>
+    </div>
+  );
+
+  if (expanded) {
+    return (
+      <>
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 z-40 bg-black/50"
+          onClick={() => setExpanded(false)}
+        />
+        {/* Modal */}
+        <div className="fixed inset-4 z-50 flex flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-950 sm:inset-8 md:inset-16 lg:inset-24">
+          {header}
+          {chatContent}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/50">
+      {header}
+      {chatContent}
     </div>
   );
 }
