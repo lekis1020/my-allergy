@@ -1,13 +1,16 @@
 const UNPAYWALL_EMAIL = "my-allergy-app@users.noreply.github.com";
 
+interface UnpaywallOaLocation {
+  url?: string;
+  url_for_pdf?: string;
+  license?: string;
+  host_type?: string;
+}
+
 interface UnpaywallResponse {
   is_oa: boolean;
-  best_oa_location?: {
-    url?: string;
-    url_for_pdf?: string;
-    license?: string;
-    host_type?: string;
-  } | null;
+  best_oa_location?: UnpaywallOaLocation | null;
+  oa_locations?: UnpaywallOaLocation[];
 }
 
 export interface OpenAccessInfo {
@@ -71,14 +74,21 @@ async function tryUnpaywall(doi: string): Promise<OpenAccessInfo | null> {
     if (!response.ok) return null;
 
     const data = (await response.json()) as UnpaywallResponse;
+
+    // Check best_oa_location first, then scan all oa_locations for a PDF
     const best = data.best_oa_location;
+    let pdfLocation = best?.url_for_pdf ? best : null;
+
+    if (!pdfLocation && data.oa_locations) {
+      pdfLocation = data.oa_locations.find((loc) => !!loc.url_for_pdf) ?? null;
+    }
 
     return {
       isOa: data.is_oa,
-      pdfUrl: best?.url_for_pdf ?? null,
+      pdfUrl: pdfLocation?.url_for_pdf ?? null,
       oaUrl: best?.url ?? null,
-      license: best?.license ?? null,
-      source: best?.host_type ? `unpaywall:${best.host_type}` : "unpaywall",
+      license: (pdfLocation ?? best)?.license ?? null,
+      source: (pdfLocation ?? best)?.host_type ? `unpaywall:${(pdfLocation ?? best)?.host_type}` : "unpaywall",
     };
   } catch {
     return null;
