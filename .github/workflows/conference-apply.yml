@@ -1,0 +1,35 @@
+name: Apply Conference Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Issue 검토 완료 후 DB에 반영합니다. "yes"를 입력하세요.'
+        required: true
+        default: 'no'
+
+jobs:
+  apply:
+    if: github.event.inputs.confirm == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install scrapling supabase
+
+      - name: Setup Scrapling
+        run: python -m scrapling install || true
+
+      - name: Scrape and upload to Supabase
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/scrape_conferences.py --upload
+
+      - name: Summary
+        run: echo "Conference data updated in Supabase."

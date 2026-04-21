@@ -283,7 +283,117 @@ async def scrape_kapard() -> list[dict]:
     return results
 
 
-async def main(upload: bool = False):
+def fetch_existing_conferences() -> list[dict]:
+    """Fetch current conferences from Supabase for comparison."""
+    try:
+        from supabase import create_client
+        url = os.environ["NEXT_PUBLIC_SUPABASE_URL"]
+        key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+        client = create_client(url, key)
+        result = client.table("conferences").select("*").order("start_date").execute()
+        return result.data or []
+    except Exception as e:
+        print(f"Could not fetch existing conferences: {e}", file=sys.stderr)
+        return []
+
+
+def compare_conferences(existing: list[dict], scraped: list[dict]) -> dict:
+    """Compare existing DB conferences with newly scraped data."""
+    existing_map = {}
+    for c in existing:
+        key = (c.get("name", "").strip().lower(), c.get("start_date"))
+        existing_map[key] = c
+
+    scraped_map = {}
+    for c in scraped:
+        key = (c.get("name", "").strip().lower(), c.get("start_date"))
+        scraped_map[key] = c
+
+    new_conferences = []
+    changed_conferences = []
+    removed_conferences = []
+
+    for key, sc in scraped_map.items():
+        if key not in existing_map:
+            new_conferences.append(sc)
+        else:
+            ex = existing_map[key]
+            changes = []
+            if sc.get("end_date") != ex.get("end_date"):
+                changes.append(f"end_date: {ex.get('end_date')} → {sc.get('end_date')}")
+            if sc.get("location") and sc.get("location") != ex.get("location"):
+                changes.append(f"location: {ex.get('location')} → {sc.get('location')}")
+            if changes:
+                changed_conferences.append({"conference": sc, "changes": changes})
+
+    for key, ex in existing_map.items():
+        if key not in scraped_map:
+            # Only flag future conferences as removed
+            if ex.get("start_date") and ex["start_date"] >= datetime.utcnow().strftime("%Y-%m-%d"):
+                removed_conferences.append(ex)
+
+    return {
+        "new": new_conferences,
+        "changed": changed_conferences,
+        "removed": removed_conferences,
+    }
+
+
+def generate_issue_body(diff: dict, scraped: list[dict], errors: list[str]) -> str:
+    """Generate GitHub issue body in markdown."""
+    lines = ["## 학회 일정 스크래핑 결과\n"]
+    lines.append(f"스크래핑 시각: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+    lines.append(f"총 {len(scraped)}건 수집\n")
+
+    if errors:
+        lines.append("### ⚠️ 스크래핑 오류\n")
+        for e in errors:
+            lines.append(f"- {e}")
+        lines.append("")
+
+    if diff["new"]:
+        lines.append(f"### 🆕 새로운 학회 ({len(diff['new'])}건)\n")
+        lines.append("| 학회명 | 일정 | 장소 | 국내/해외 |")
+        lines.append("|--------|------|------|-----------|")
+        for c in diff["new"]:
+            dates = f"{c.get('start_date', '?')} ~ {c.get('end_date', '?')}"
+            loc = c.get("location", "TBD")
+            region = "🇰🇷 국내" if c.get("is_korean") else "🌍 해외"
+            lines.append(f"| {c['name']} | {dates} | {loc} | {region} |")
+        lines.append("")
+
+    if diff["changed"]:
+        lines.append(f"### 📝 변경된 학회 ({len(diff['changed'])}건)\n")
+        for item in diff["changed"]:
+            c = item["conference"]
+            lines.append(f"**{c['name']}** ({c.get('start_date', '?')})")
+            for change in item["changes"]:
+                lines.append(f"  - {change}")
+        lines.append("")
+
+    if diff["removed"]:
+        lines.append(f"### ❌ 누락된 학회 ({len(diff['removed'])}건)\n")
+        lines.append("DB에 있으나 스크래핑에서 감지 안 됨 (사이트 구조 변경 가능성)\n")
+        for c in diff["removed"]:
+            lines.append(f"- {c.get('name', '?')} ({c.get('start_date', '?')})")
+        lines.append("")
+
+    if not diff["new"] and not diff["changed"] and not diff["removed"]:
+        lines.append("### ✅ 변경 사항 없음\n")
+        lines.append("현재 DB와 동일합니다.\n")
+
+    lines.append("---")
+    lines.append("검토 후 반영하려면 `Apply conference update` 워크플로우를 수동 실행하세요.")
+    lines.append("")
+    lines.append("<details><summary>전체 스크래핑 데이터 (JSON)</summary>\n")
+    lines.append(f"```json\n{json.dumps(scraped, ensure_ascii=False, indent=2)}\n```\n")
+    lines.append("</details>")
+
+    return "\n".join(lines)
+
+
+async def run_scraper() -> tuple[list[dict], list[str]]:
+    """Run all scrapers, return (conferences, errors)."""
     print("Scraping conference data...", file=sys.stderr)
 
     tasks = [
@@ -295,19 +405,44 @@ async def main(upload: bool = False):
         scrape_kapard(),
     ]
 
+    source_names = ["AAAAI", "EAACI", "ACAAI", "WAO", "Korean Allergy", "KAPARD"]
     all_results = await asyncio.gather(*tasks, return_exceptions=True)
     conferences = []
-    for r in all_results:
+    errors = []
+    for i, r in enumerate(all_results):
         if isinstance(r, list):
             conferences.extend(r)
+            if not r:
+                errors.append(f"{source_names[i]}: 0건 수집 (사이트 구조 변경 가능성)")
         elif isinstance(r, Exception):
-            print(f"Task error: {r}", file=sys.stderr)
+            errors.append(f"{source_names[i]}: {r}")
 
     now = datetime.utcnow().isoformat() + "Z"
     for c in conferences:
         c["scraped_at"] = now
 
     print(f"Scraped {len(conferences)} conferences.", file=sys.stderr)
+    return conferences, errors
+
+
+async def main(upload: bool = False, report: bool = False):
+    conferences, errors = await run_scraper()
+
+    if report:
+        # Compare with existing DB and output issue body
+        existing = fetch_existing_conferences()
+        diff = compare_conferences(existing, conferences)
+        body = generate_issue_body(diff, conferences, errors)
+        has_changes = bool(diff["new"] or diff["changed"] or diff["removed"] or errors)
+        print(body)
+        # Write outputs for GitHub Actions
+        output_file = os.environ.get("GITHUB_OUTPUT")
+        if output_file:
+            with open(output_file, "a") as f:
+                f.write(f"has_changes={'true' if has_changes else 'false'}\n")
+                f.write(f"new_count={len(diff['new'])}\n")
+                f.write(f"changed_count={len(diff['changed'])}\n")
+        return
 
     if upload:
         try:
@@ -317,7 +452,6 @@ async def main(upload: bool = False):
             client = create_client(url, key)
 
             if conferences:
-                # Clear existing scraped data and insert new
                 client.table("conferences").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
                 client.table("conferences").insert(conferences).execute()
                 print(f"Uploaded {len(conferences)} conferences to Supabase.", file=sys.stderr)
@@ -336,5 +470,6 @@ async def main(upload: bool = False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scrape allergy conference data")
     parser.add_argument("--upload", action="store_true", help="Upload results to Supabase")
+    parser.add_argument("--report", action="store_true", help="Compare with DB and output issue body")
     args = parser.parse_args()
-    asyncio.run(main(upload=args.upload))
+    asyncio.run(main(upload=args.upload, report=args.report))
