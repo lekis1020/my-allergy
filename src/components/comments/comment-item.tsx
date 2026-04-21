@@ -173,7 +173,7 @@ export function CommentItem({
                   수정
                 </button>
               )}
-              {comment.is_own && (
+              {comment.can_delete && (
                 <button
                   onClick={remove}
                   disabled={busy}

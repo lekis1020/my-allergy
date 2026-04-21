@@ -8,6 +8,7 @@ import type {
 } from "@/lib/comments/types";
 
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 
 function toDto(
   row: {
@@ -21,7 +22,8 @@ function toDto(
     deleted_at: string | null;
     user_id: string | null;
   },
-  currentUserId: string | null
+  currentUserId: string | null,
+  isAdmin: boolean = false
 ): CommentDTO {
   const isOwn = currentUserId !== null && row.user_id === currentUserId;
   const ageMs = Date.now() - new Date(row.created_at).getTime();
@@ -36,6 +38,7 @@ function toDto(
     deleted_at: row.deleted_at,
     is_own: isOwn,
     can_edit: isOwn && row.deleted_at === null && ageMs < EDIT_WINDOW_MS,
+    can_delete: (isOwn || isAdmin) && row.deleted_at === null,
   };
 }
 
@@ -64,7 +67,8 @@ export async function GET(
   }
 
   const currentUserId = user?.id ?? null;
-  const rows = (data ?? []).map((r) => toDto(r, currentUserId));
+  const isAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase() ?? "");
+  const rows = (data ?? []).map((r) => toDto(r, currentUserId, isAdmin));
   const roots = rows.filter((r) => r.parent_id === null);
   const childrenByParent = new Map<string, CommentDTO[]>();
   for (const r of rows) {
@@ -193,5 +197,6 @@ export async function POST(
     );
   }
 
-  return NextResponse.json({ comment: toDto(inserted, user.id) }, { status: 201 });
+  const isAdminUser = ADMIN_EMAILS.includes(user.email?.toLowerCase() ?? "");
+  return NextResponse.json({ comment: toDto(inserted, user.id, isAdminUser) }, { status: 201 });
 }
