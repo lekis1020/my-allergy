@@ -7,8 +7,9 @@ import type {
   CommentThreadNode,
 } from "@/lib/comments/types";
 
+import { isAdmin } from "@/lib/auth/admin";
+
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 
 function toDto(
   row: {
@@ -67,8 +68,8 @@ export async function GET(
   }
 
   const currentUserId = user?.id ?? null;
-  const isAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase() ?? "");
-  const rows = (data ?? []).map((r) => toDto(r, currentUserId, isAdmin));
+  const adminFlag = isAdmin(user?.email);
+  const rows = (data ?? []).map((r) => toDto(r, currentUserId, adminFlag));
   const roots = rows.filter((r) => r.parent_id === null);
   const childrenByParent = new Map<string, CommentDTO[]>();
   for (const r of rows) {
@@ -197,6 +198,5 @@ export async function POST(
     );
   }
 
-  const isAdminUser = ADMIN_EMAILS.includes(user.email?.toLowerCase() ?? "");
-  return NextResponse.json({ comment: toDto(inserted, user.id, isAdminUser) }, { status: 201 });
+  return NextResponse.json({ comment: toDto(inserted, user.id, isAdmin(user.email)) }, { status: 201 });
 }

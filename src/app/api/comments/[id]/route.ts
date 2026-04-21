@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerAuthClient } from "@/lib/supabase/server";
+import { isAdmin } from "@/lib/auth/admin";
 
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 
 export async function PATCH(
   request: NextRequest,
@@ -84,8 +84,7 @@ export async function DELETE(
   if (loadErr || !existing) {
     return NextResponse.json({ error: "Comment not found" }, { status: 404 });
   }
-  const isAdmin = ADMIN_EMAILS.includes(user.email?.toLowerCase() ?? "");
-  if (existing.user_id !== user.id && !isAdmin) {
+  if (existing.user_id !== user.id && !isAdmin(user.email)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (existing.deleted_at) {
