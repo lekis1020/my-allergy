@@ -1,148 +1,121 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Bell, Plus, Trash2, X, Mail, Tag, Loader2 } from "lucide-react";
-import { JOURNALS } from "@/lib/constants/journals";
+import { useCallback, useRef } from "react";
+import { Bell, Bookmark, MessageCircle, Loader2, CheckCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import useSWRInfinite from "swr/infinite";
+import { useRouter } from "next/navigation";
 
-interface Subscription {
+interface NotificationItem {
   id: string;
-  journal_slug: string;
+  type: "bookmark_comment" | "thread_comment";
+  read: boolean;
   created_at: string;
+  paper_pmid: string;
+  paper_title: string;
+  comment: {
+    id: string;
+    anon_id: string;
+    content_preview: string;
+    created_at: string;
+  };
 }
 
-interface KeywordAlertItem {
-  id: string;
-  keyword: string;
-  active: boolean;
-  created_at: string;
+interface NotificationsResponse {
+  notifications: NotificationItem[];
+  next_cursor: string | null;
+}
+
+const PAGE_SIZE = 20;
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+function getKey(
+  pageIndex: number,
+  previousPageData: NotificationsResponse | null
+): string | null {
+  if (previousPageData && !previousPageData.next_cursor) return null;
+  const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+  if (previousPageData?.next_cursor) {
+    params.set("cursor", previousPageData.next_cursor);
+  }
+  return `/api/notifications?${params.toString()}`;
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "방금 전";
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}일 전`;
+  return new Date(dateStr).toLocaleDateString("ko-KR");
 }
 
 export default function AlertsPage() {
   const { user, loading: authLoading } = useAuth();
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [keywords, setKeywords] = useState<KeywordAlertItem[]>([]);
-  const [loadingSubs, setLoadingSubs] = useState(true);
-  const [loadingKeywords, setLoadingKeywords] = useState(true);
-  const [newKeyword, setNewKeyword] = useState("");
-  const [addingKeyword, setAddingKeyword] = useState(false);
-  const [togglingJournal, setTogglingJournal] = useState<string | null>(null);
-  const [removingKeyword, setRemovingKeyword] = useState<string | null>(null);
+  const router = useRouter();
+  const markingAllRead = useRef(false);
 
-  const fetchSubscriptions = useCallback(async () => {
-    try {
-      const res = await fetch("/api/subscriptions");
-      if (res.ok) {
-        const data = await res.json();
-        setSubscriptions(data.subscriptions);
-      }
-    } finally {
-      setLoadingSubs(false);
-    }
-  }, []);
+  const { data, error, size, setSize, isValidating, mutate } =
+    useSWRInfinite<NotificationsResponse>(user ? getKey : () => null, fetcher, {
+      revalidateFirstPage: true,
+    });
 
-  const fetchKeywords = useCallback(async () => {
-    try {
-      const res = await fetch("/api/keyword-alerts");
-      if (res.ok) {
-        const data = await res.json();
-        setKeywords(data.alerts);
-      }
-    } finally {
-      setLoadingKeywords(false);
-    }
-  }, []);
+  const notifications = data?.flatMap((page) => page.notifications) ?? [];
+  const isLoadingInitial = !data && !error;
+  const isLoadingMore =
+    size > 0 && data && typeof data[size - 1] === "undefined";
+  const hasMore = data?.[data.length - 1]?.next_cursor !== null;
+  const isEmpty = data?.[0]?.notifications.length === 0;
+  const hasUnread = notifications.some((n) => !n.read);
 
-  useEffect(() => {
-    if (!user) {
-      setLoadingSubs(false);
-      setLoadingKeywords(false);
-      return;
-    }
-    fetchSubscriptions();
-    fetchKeywords();
-  }, [user, fetchSubscriptions, fetchKeywords]);
-
-  const toggleJournal = async (slug: string) => {
-    setTogglingJournal(slug);
-    const isSubscribed = subscriptions.some((s) => s.journal_slug === slug);
-    try {
-      if (isSubscribed) {
-        await fetch("/api/subscriptions", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ journalSlug: slug }),
-        });
-        setSubscriptions((prev) =>
-          prev.filter((s) => s.journal_slug !== slug),
-        );
-      } else {
-        await fetch("/api/subscriptions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ journalSlug: slug }),
-        });
-        setSubscriptions((prev) => [
-          ...prev,
-          { id: crypto.randomUUID(), journal_slug: slug, created_at: new Date().toISOString() },
-        ]);
-      }
-    } finally {
-      setTogglingJournal(null);
-    }
-  };
-
-  const addKeyword = async () => {
-    const trimmed = newKeyword.trim();
-    if (!trimmed) return;
-    if (keywords.some((k) => k.keyword.toLowerCase() === trimmed.toLowerCase())) return;
-
-    setAddingKeyword(true);
-    try {
-      const res = await fetch("/api/keyword-alerts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword: trimmed }),
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const lastItemRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (isLoadingMore || !hasMore) return;
+      if (observerRef.current) observerRef.current.disconnect();
+      observerRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          setSize((s) => s + 1);
+        }
       });
-      if (res.ok) {
-        setKeywords((prev) => [
-          { id: crypto.randomUUID(), keyword: trimmed, active: true, created_at: new Date().toISOString() },
-          ...prev,
-        ]);
-        setNewKeyword("");
-      }
-    } finally {
-      setAddingKeyword(false);
-    }
+      if (node) observerRef.current.observe(node);
+    },
+    [isLoadingMore, hasMore, setSize]
+  );
+
+  const markAsRead = async (notificationId: string) => {
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notification_ids: [notificationId] }),
+    });
+    mutate();
   };
 
-  const removeKeyword = async (keyword: string) => {
-    setRemovingKeyword(keyword);
+  const markAllRead = async () => {
+    if (markingAllRead.current) return;
+    markingAllRead.current = true;
     try {
-      await fetch("/api/keyword-alerts", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword }),
-      });
-      setKeywords((prev) => prev.filter((k) => k.keyword !== keyword));
-    } finally {
-      setRemovingKeyword(null);
-    }
-  };
-
-  const toggleKeywordActive = async (keyword: string, active: boolean) => {
-    try {
-      await fetch("/api/keyword-alerts", {
+      await fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword, active }),
+        body: JSON.stringify({ read_all: true }),
       });
-      setKeywords((prev) =>
-        prev.map((k) => (k.keyword === keyword ? { ...k, active } : k)),
-      );
-    } catch {
-      // silently fail
+      mutate();
+    } finally {
+      markingAllRead.current = false;
     }
+  };
+
+  const handleClick = (notification: NotificationItem) => {
+    if (!notification.read) {
+      markAsRead(notification.id);
+    }
+    router.push(`/paper/${notification.paper_pmid}#comments`);
   };
 
   if (authLoading) {
@@ -164,10 +137,10 @@ export default function AlertsPage() {
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Bell className="mb-4 h-12 w-12 text-gray-300 dark:text-gray-600" />
             <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
-              Sign in to set up alerts
+              로그인하고 알림을 받아보세요
             </p>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Get notified when new papers are published in your favorite journals or match your keywords.
+              북마크하거나 댓글을 달면 새 활동을 알려드립니다.
             </p>
           </div>
         </div>
@@ -175,202 +148,101 @@ export default function AlertsPage() {
     );
   }
 
-  const subscribedSlugs = new Set(subscriptions.map((s) => s.journal_slug));
-
   return (
     <div className="mx-auto w-full max-w-[1280px] px-0 sm:px-4 sm:py-4">
       <div className="mx-auto max-w-2xl border-x border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
         {/* Header */}
         <div className="sticky top-14 z-20 border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-gray-800 dark:bg-gray-950/90">
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-gray-900 dark:text-gray-100" />
-            <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-              Email Alerts
-            </h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-gray-900 dark:text-gray-100" />
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+                알림
+              </h1>
+            </div>
+            {hasUnread && (
+              <button
+                onClick={markAllRead}
+                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                <CheckCheck className="h-4 w-4" />
+                모두 읽음
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Journal Subscriptions */}
-        <div className="border-b border-gray-200 px-4 py-4 dark:border-gray-800">
-          <div className="mb-3 flex items-center gap-2">
-            <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-              Journal Subscriptions
-            </h2>
+        {/* Content */}
+        {isLoadingInitial ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
           </div>
-          <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-            Get email notifications when new papers are published in these journals.
-          </p>
-
-          {loadingSubs ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              {JOURNALS.map((journal) => {
-                const isSubscribed = subscribedSlugs.has(journal.slug);
-                const isToggling = togglingJournal === journal.slug;
-                return (
-                  <button
-                    key={journal.slug}
-                    onClick={() => toggleJournal(journal.slug)}
-                    disabled={isToggling}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
-                      isSubscribed
-                        ? "bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30"
-                        : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                    }`}
-                  >
-                    <div
-                      className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                      style={{ backgroundColor: journal.color }}
-                    />
-                    <span className="flex-1 text-sm text-gray-900 dark:text-gray-100">
-                      {journal.name}
-                    </span>
-                    {journal.impactFactor && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500">
-                        IF {journal.impactFactor}
-                      </span>
-                    )}
-                    {isToggling ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                    ) : (
-                      <div
-                        className={`flex h-5 w-9 items-center rounded-full px-0.5 transition-colors ${
-                          isSubscribed
-                            ? "bg-blue-600"
-                            : "bg-gray-300 dark:bg-gray-600"
-                        }`}
-                      >
-                        <div
-                          className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                            isSubscribed ? "translate-x-4" : "translate-x-0"
-                          }`}
-                        />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Keyword Alerts */}
-        <div className="px-4 py-4">
-          <div className="mb-3 flex items-center gap-2">
-            <Tag className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-              Keyword Alerts
-            </h2>
+        ) : isEmpty ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Bell className="mb-4 h-10 w-10 text-gray-300 dark:text-gray-600" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              북마크하거나 댓글을 달면 새 활동을 알려드립니다.
+            </p>
           </div>
-          <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-            Get notified when new papers match your keywords in title or abstract.
-          </p>
-
-          {/* Add keyword */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              addKeyword();
-            }}
-            className="mb-4 flex gap-2"
-          >
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={newKeyword}
-                onChange={(e) => setNewKeyword(e.target.value)}
-                placeholder="e.g. atopic dermatitis, IL-4, dupilumab"
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500"
-                maxLength={200}
-              />
-              {newKeyword && (
-                <button
-                  type="button"
-                  onClick={() => setNewKeyword("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-            <button
-              type="submit"
-              disabled={!newKeyword.trim() || addingKeyword}
-              className="flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
-            >
-              {addingKeyword ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="h-4 w-4" />
-              )}
-              Add
-            </button>
-          </form>
-
-          {/* Keyword list */}
-          {loadingKeywords ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-            </div>
-          ) : keywords.length === 0 ? (
-            <div className="py-8 text-center">
-              <Tag className="mx-auto mb-3 h-8 w-8 text-gray-300 dark:text-gray-600" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                No keyword alerts yet. Add keywords above to get notified.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              {keywords.map((kw) => (
+        ) : (
+          <div>
+            {notifications.map((n, idx) => {
+              const isLast = idx === notifications.length - 1;
+              return (
                 <div
-                  key={kw.id}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 ${
-                    kw.active
-                      ? "bg-purple-50 dark:bg-purple-900/20"
-                      : "bg-gray-50 opacity-60 dark:bg-gray-800/50"
+                  key={n.id}
+                  ref={isLast ? lastItemRef : undefined}
+                  onClick={() => handleClick(n)}
+                  className={`cursor-pointer border-b border-gray-100 px-4 py-3 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900 ${
+                    !n.read
+                      ? "bg-blue-50/50 dark:bg-blue-950/20"
+                      : ""
                   }`}
                 >
-                  <span className="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {kw.keyword}
-                  </span>
-                  <button
-                    onClick={() => toggleKeywordActive(kw.keyword, !kw.active)}
-                    className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  >
-                    <div
-                      className={`flex h-5 w-9 items-center rounded-full px-0.5 transition-colors ${
-                        kw.active
-                          ? "bg-purple-600"
-                          : "bg-gray-300 dark:bg-gray-600"
-                      }`}
-                    >
-                      <div
-                        className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                          kw.active ? "translate-x-4" : "translate-x-0"
-                        }`}
-                      />
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex-shrink-0">
+                      {n.type === "bookmark_comment" ? (
+                        <Bookmark className="h-4 w-4 text-amber-500" />
+                      ) : (
+                        <MessageCircle className="h-4 w-4 text-blue-500" />
+                      )}
                     </div>
-                  </button>
-                  <button
-                    onClick={() => removeKeyword(kw.keyword)}
-                    disabled={removingKeyword === kw.keyword}
-                    className="text-gray-400 transition-colors hover:text-red-500 dark:hover:text-red-400"
-                  >
-                    {removingKeyword === kw.keyword ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {n.paper_title}
+                      </p>
+                      <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-400">
+                        <span className="font-medium">
+                          #{n.comment.anon_id}
+                        </span>
+                        {": "}
+                        {n.comment.content_preview}
+                      </p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                          {timeAgo(n.comment.created_at)}
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                          {n.type === "bookmark_comment"
+                            ? "북마크한 논문"
+                            : "댓글 단 논문"}
+                        </span>
+                      </div>
+                    </div>
+                    {!n.read && (
+                      <div className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
                     )}
-                  </button>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              );
+            })}
+            {isLoadingMore && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -38,23 +38,32 @@ export type Database = {
         }
         Relationships: []
       }
-      email_subscriptions: {
+      notifications: {
         Row: {
           id: string
           user_id: string
-          journal_slug: string
+          paper_pmid: string
+          comment_id: string
+          type: "bookmark_comment" | "thread_comment"
+          read: boolean
           created_at: string
         }
         Insert: {
           id?: string
           user_id: string
-          journal_slug: string
+          paper_pmid: string
+          comment_id: string
+          type: "bookmark_comment" | "thread_comment"
+          read?: boolean
           created_at?: string
         }
         Update: {
           id?: string
           user_id?: string
-          journal_slug?: string
+          paper_pmid?: string
+          comment_id?: string
+          type?: "bookmark_comment" | "thread_comment"
+          read?: boolean
           created_at?: string
         }
         Relationships: []
@@ -215,30 +224,6 @@ export type Database = {
           feedback?: "interested" | "not_interested"
           created_at?: string
           updated_at?: string
-        }
-        Relationships: []
-      }
-      keyword_alerts: {
-        Row: {
-          id: string
-          user_id: string
-          keyword: string
-          active: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          keyword: string
-          active?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          keyword?: string
-          active?: boolean
-          created_at?: string
         }
         Relationships: []
       }
