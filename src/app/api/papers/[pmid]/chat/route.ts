@@ -84,7 +84,8 @@ export async function POST(
   let pdfBuffer: ArrayBuffer;
   try {
     pdfBuffer = await fetchPdfBuffer(openAccess.pdfUrl, pmid);
-  } catch {
+  } catch (err) {
+    console.error(`[Chat] PDF download failed: url=${openAccess.pdfUrl}, pmid=${pmid}`, err);
     return NextResponse.json(
       { error: "PDF 다운로드에 실패했습니다." },
       { status: 502 }

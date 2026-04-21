@@ -114,7 +114,7 @@ async function tryPmc(pmid: string): Promise<OpenAccessInfo | null> {
     // PMC PDF URL pattern
     const pdfUrl = `https://pmc.ncbi.nlm.nih.gov/articles/${pmcid}/pdf/`;
 
-    // Verify the PDF is accessible (HEAD request)
+    // Verify the PDF is accessible and actually a PDF (not an HTML viewer)
     const headResponse = await fetch(pdfUrl, {
       method: "HEAD",
       redirect: "follow",
@@ -122,6 +122,9 @@ async function tryPmc(pmid: string): Promise<OpenAccessInfo | null> {
     });
 
     if (!headResponse.ok) return null;
+
+    const contentType = headResponse.headers.get("content-type") ?? "";
+    if (contentType.includes("text/html")) return null;
 
     return {
       isOa: true,

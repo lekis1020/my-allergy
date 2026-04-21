@@ -24,11 +24,20 @@ export async function fetchPdfBuffer(pdfUrl: string, pmid: string): Promise<Arra
   }
 
   const response = await fetch(pdfUrl, {
-    headers: { accept: "application/pdf" },
+    headers: {
+      accept: "application/pdf",
+      "user-agent": "my-allergy-app/1.0 (academic-research; mailto:my-allergy-app@users.noreply.github.com)",
+    },
+    signal: AbortSignal.timeout(30_000),
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch PDF: ${response.status}`);
+    throw new Error(`Failed to fetch PDF: ${response.status} from ${pdfUrl}`);
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("text/html")) {
+    throw new Error(`Expected PDF but received HTML from ${pdfUrl}`);
   }
 
   const buffer = await response.arrayBuffer();
