@@ -105,18 +105,18 @@ export async function PATCH(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as PatchBody;
 
   if (body.read_all) {
-    const { count, error } = await supabase
+    const { data, error } = await supabase
       .from("notifications")
       .update({ read: true })
       .eq("user_id", user.id)
       .eq("read", false)
-      .select("id", { count: "exact", head: true });
+      .select("id");
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ updated: count ?? 0 });
+    return NextResponse.json({ updated: data?.length ?? 0 });
   }
 
   if (
@@ -130,16 +130,16 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  const { count, error } = await supabase
+  const { data, error } = await supabase
     .from("notifications")
     .update({ read: true })
     .eq("user_id", user.id)
     .in("id", body.notification_ids)
-    .select("id", { count: "exact", head: true });
+    .select("id");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ updated: count ?? 0 });
+  return NextResponse.json({ updated: data?.length ?? 0 });
 }
