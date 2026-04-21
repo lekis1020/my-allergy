@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerAuthClient } from "@/lib/supabase/server";
+import { isAdmin } from "@/lib/auth/admin";
 
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
 
@@ -83,7 +84,7 @@ export async function DELETE(
   if (loadErr || !existing) {
     return NextResponse.json({ error: "Comment not found" }, { status: 404 });
   }
-  if (existing.user_id !== user.id) {
+  if (existing.user_id !== user.id && !isAdmin(user.email)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (existing.deleted_at) {

@@ -7,6 +7,8 @@ import type {
   CommentThreadNode,
 } from "@/lib/comments/types";
 
+import { isAdmin } from "@/lib/auth/admin";
+
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
 
 function toDto(
@@ -21,7 +23,8 @@ function toDto(
     deleted_at: string | null;
     user_id: string | null;
   },
-  currentUserId: string | null
+  currentUserId: string | null,
+  isAdmin: boolean = false
 ): CommentDTO {
   const isOwn = currentUserId !== null && row.user_id === currentUserId;
   const ageMs = Date.now() - new Date(row.created_at).getTime();
@@ -36,6 +39,7 @@ function toDto(
     deleted_at: row.deleted_at,
     is_own: isOwn,
     can_edit: isOwn && row.deleted_at === null && ageMs < EDIT_WINDOW_MS,
+    can_delete: (isOwn || isAdmin) && row.deleted_at === null,
   };
 }
 
@@ -64,7 +68,8 @@ export async function GET(
   }
 
   const currentUserId = user?.id ?? null;
-  const rows = (data ?? []).map((r) => toDto(r, currentUserId));
+  const adminFlag = isAdmin(user?.email);
+  const rows = (data ?? []).map((r) => toDto(r, currentUserId, adminFlag));
   const roots = rows.filter((r) => r.parent_id === null);
   const childrenByParent = new Map<string, CommentDTO[]>();
   for (const r of rows) {
@@ -193,5 +198,5 @@ export async function POST(
     );
   }
 
-  return NextResponse.json({ comment: toDto(inserted, user.id) }, { status: 201 });
+  return NextResponse.json({ comment: toDto(inserted, user.id, isAdmin(user.email)) }, { status: 201 });
 }
