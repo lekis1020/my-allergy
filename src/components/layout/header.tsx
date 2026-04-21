@@ -4,9 +4,30 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, CalendarDays, Clock, Home, Menu, MessagesSquare, Microscope, Stethoscope, TrendingUp } from "lucide-react";
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AuthButton } from "@/components/layout/auth-button";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { UnreadRepliesBadge } from "@/components/comments/unread-badge";
+
+class NotificationErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[NotificationBell] crash:", error, info);
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
 
 export function Header() {
   const { toggle } = useMobileDrawer();
@@ -75,7 +96,9 @@ export function Header() {
             <Bell className="h-4 w-4" />
             Alerts
           </Link>
-          <NotificationBell />
+          <NotificationErrorBoundary>
+            <NotificationBell />
+          </NotificationErrorBoundary>
           <div className="ml-1 border-l border-gray-200 pl-2 dark:border-gray-700 sm:ml-2 sm:pl-3">
             <AuthButton />
           </div>
