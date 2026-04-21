@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     hasMore: offset + limit < total,
   });
 
-  response.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");
+  response.headers.set("Cache-Control", "public, s-maxage=5, stale-while-revalidate=10");
   response.headers.set("RateLimit-Remaining", String(remaining));
   response.headers.set("RateLimit-Reset", String(Math.ceil(resetAt / 1000)));
 

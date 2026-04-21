@@ -21,8 +21,8 @@ export function useAgora({ limit = 20 }: { limit?: number } = {}) {
 
   const { data, error, size, setSize, isLoading, isValidating, mutate } =
     useSWRInfinite<PapersResponse>(getKey, fetcher, {
-      revalidateFirstPage: false,
-      revalidateOnFocus: false,
+      revalidateFirstPage: true,
+      revalidateOnFocus: true,
     });
 
   const papers = data ? data.flatMap((page) => page?.papers ?? []) : [];
