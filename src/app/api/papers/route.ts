@@ -154,14 +154,14 @@ export async function GET(request: NextRequest) {
     ? sortParam
     : "date_desc";
 
-  // Resolve authenticated user once — reused for personalization + on-demand gating.
-  // Middleware already verified the user via getUser(); use getSession() here
-  // to avoid a redundant network round-trip to Supabase auth.
-  const authClient = await createServerAuthClient();
-  const {
-    data: { session },
-  } = await authClient.auth.getSession();
-  const user = session?.user ?? null;
+  // Only resolve auth when personalization is requested — skip for anonymous timeline.
+  let user = null;
+  let authClient = null;
+  if (personalized) {
+    authClient = await createServerAuthClient();
+    const { data: { session } } = await authClient.auth.getSession();
+    user = session?.user ?? null;
+  }
   const personalizedActive = personalized && !!user;
 
   const queryArgs: QueryArgs = { q, pmids, journals, from, to, sort, articleType };
@@ -226,7 +226,7 @@ export async function GET(request: NextRequest) {
   // ---- Personalization re-rank (authed only) ----
   let personalizedTotal: number | null = null;
   if (personalizedActive && user) {
-    const context = await loadScoringContext(authClient, user.id);
+    const context = await loadScoringContext(authClient!, user.id);
     const now = new Date();
     const scored = rawRows.map((paper) => {
       const journal = paper.journals;

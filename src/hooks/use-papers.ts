@@ -27,7 +27,7 @@ export function usePapers(filters: PaperFilters) {
       to: filters.to,
       sort: filters.sort,
       page: pageIndex + 1,
-      limit: filters.limit || 20,
+      limit: filters.limit || 10,
       personalized: filters.personalized ? "true" : undefined,
       articleType: filters.articleType || undefined,
     });
@@ -37,6 +37,7 @@ export function usePapers(filters: PaperFilters) {
     useSWRInfinite<PapersResponse & { __source: DataSource }>(getKey, fetcher, {
       revalidateFirstPage: false,
       revalidateOnFocus: false,
+      keepPreviousData: true,
       onSuccess: (pages) => {
         const latest = pages?.[0]?.__source ?? null;
         setIsLive(latest === "db+live");
