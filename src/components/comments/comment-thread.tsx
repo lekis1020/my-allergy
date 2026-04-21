@@ -1,8 +1,10 @@
 "use client";
 
 import useSWR from "swr";
-import { MessageCircle } from "lucide-react";
+import Link from "next/link";
+import { MessageCircle, Lock } from "lucide-react";
 import type { CommentThreadNode } from "@/lib/comments/types";
+import { useAuth } from "@/hooks/use-auth";
 import { CommentForm } from "./comment-form";
 import { CommentItem } from "./comment-item";
 
@@ -17,7 +19,8 @@ interface CommentThreadProps {
 }
 
 export function CommentThread({ pmid }: CommentThreadProps) {
-  const key = `/api/papers/${pmid}/comments`;
+  const { user } = useAuth();
+  const key = user ? `/api/papers/${pmid}/comments` : null;
   const { data, error, isLoading, mutate } = useSWR(key, fetchThread, {
     revalidateOnFocus: false,
   });
@@ -27,6 +30,26 @@ export function CommentThread({ pmid }: CommentThreadProps) {
     (sum, node) => sum + 1 + node.children.length,
     0
   );
+
+  if (!user) {
+    return (
+      <section id="comments" className="mt-10 border-t border-gray-200 pt-8 dark:border-gray-800">
+        <div className="mb-4 flex items-center gap-2">
+          <Lock className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            커뮤니티 스레드
+          </h2>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          댓글을 보려면{" "}
+          <Link href="/login" className="text-blue-600 hover:underline dark:text-blue-400">
+            로그인
+          </Link>
+          이 필요합니다.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section id="comments" className="mt-10 border-t border-gray-200 pt-8 dark:border-gray-800">

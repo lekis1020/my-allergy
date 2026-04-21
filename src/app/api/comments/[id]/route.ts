@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerAuthClient } from "@/lib/supabase/server";
+import { createServerAuthClient, createServiceClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/auth/admin";
 
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
@@ -91,7 +91,11 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   }
 
-  const { error } = await supabase
+  // Admin deleting another user's comment must bypass RLS
+  const adminAction = existing.user_id !== user.id && isAdmin(user.email);
+  const client = adminAction ? createServiceClient() : supabase;
+
+  const { error } = await client
     .from("paper_comments")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
