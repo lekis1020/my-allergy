@@ -458,6 +458,54 @@ export type Database = {
           },
         ]
       }
+      chat_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          paper_pmid: string
+          messages: import("./database").ChatMessage[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          paper_pmid: string
+          messages?: import("./database").ChatMessage[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          paper_pmid?: string
+          messages?: import("./database").ChatMessage[]
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chat_usage: {
+        Row: {
+          user_id: string
+          paper_pmid: string
+          used_at: string
+          count: number
+        }
+        Insert: {
+          user_id: string
+          paper_pmid: string
+          used_at?: string
+          count?: number
+        }
+        Update: {
+          user_id?: string
+          paper_pmid?: string
+          used_at?: string
+          count?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

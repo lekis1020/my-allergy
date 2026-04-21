@@ -14,3 +14,13 @@ export interface PaperWithDetails extends Paper {
   journal: Journal;
   authors: PaperAuthor[];
 }
+
+export type ChatSession = Database["public"]["Tables"]["chat_sessions"]["Row"];
+export type ChatUsage = Database["public"]["Tables"]["chat_usage"]["Row"];
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+  excalidraw?: { elements: unknown[] } | null;
+}
