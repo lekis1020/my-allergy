@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerAuthClient } from "@/lib/supabase/server";
+import { createServerAuthClient, createServiceClient } from "@/lib/supabase/server";
 import { generateAnonId } from "@/lib/comments/anon-id";
 import { commentWriteLimiter } from "@/lib/comments/rate-limit";
 import type {
@@ -8,6 +8,7 @@ import type {
 } from "@/lib/comments/types";
 
 import { isAdmin } from "@/lib/auth/admin";
+import { buildNotificationRows } from "@/lib/notifications/generate";
 
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
 
@@ -196,6 +197,50 @@ export async function POST(
       { error: insertErr?.message ?? "Failed to create comment" },
       { status: 500 }
     );
+  }
+
+  // Generate notifications (fire-and-forget, don't block response)
+  try {
+    const serviceClient = createServiceClient();
+
+    // 1. Users who bookmarked this paper
+    const { data: bookmarks } = await serviceClient
+      .from("bookmarks")
+      .select("user_id")
+      .eq("pmid", pmid);
+    const bookmarkUserIds = (bookmarks ?? []).map((b) => b.user_id);
+
+    // 2. Users who previously commented on this paper
+    const { data: commenters } = await serviceClient
+      .from("paper_comments")
+      .select("user_id")
+      .eq("paper_pmid", pmid)
+      .not("user_id", "is", null)
+      .neq("id", inserted.id);
+    const commentUserIds = [
+      ...new Set(
+        (commenters ?? [])
+          .map((c) => c.user_id)
+          .filter((id): id is string => id !== null)
+      ),
+    ];
+
+    const rows = buildNotificationRows({
+      commentAuthorId: user.id,
+      commentId: inserted.id,
+      pmid,
+      bookmarkUserIds,
+      commentUserIds,
+    });
+
+    if (rows.length > 0) {
+      await serviceClient.from("notifications").upsert(rows, {
+        onConflict: "user_id,comment_id,type",
+        ignoreDuplicates: true,
+      });
+    }
+  } catch (err) {
+    console.error("[Notifications] Failed to generate notifications:", err);
   }
 
   return NextResponse.json({ comment: toDto(inserted, user.id, isAdmin(user.email)) }, { status: 201 });
