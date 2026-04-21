@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAnonClient } from "@/lib/supabase/server";
+import { createAnonClient, createServerAuthClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/rate-limit";
 import { classifyPaperTopics } from "@/lib/utils/topic-tags";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
@@ -43,8 +43,9 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAnonClient();
 
-  // 1. Pull recent comment rows; RLS already hides deleted/blocked rows.
-  const { data: commentRows, error: commentError } = await supabase
+  // 1. Pull recent comment rows using auth client (comments require login to read).
+  const authClient = await createServerAuthClient();
+  const { data: commentRows, error: commentError } = await authClient
     .from("paper_comments")
     .select("paper_pmid, created_at")
     .order("created_at", { ascending: false })

@@ -37,6 +37,30 @@ export async function fetchPdfBuffer(pdfUrl: string, pmid: string): Promise<Arra
 
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("text/html")) {
+    // Some publishers (BMJ, Wiley) return an HTML viewer — try common PDF URL variants.
+    const variants = [
+      pdfUrl.replace(/\/?$/, ".full.pdf"),
+      pdfUrl.replace(/\/?$/, "/pdf"),
+    ];
+    for (const variant of variants) {
+      try {
+        const retryRes = await fetch(variant, {
+          headers: {
+            accept: "application/pdf",
+            "user-agent": "my-allergy-app/1.0 (academic-research; mailto:my-allergy-app@users.noreply.github.com)",
+          },
+          signal: AbortSignal.timeout(15_000),
+        });
+        const retryType = retryRes.headers.get("content-type") ?? "";
+        if (retryRes.ok && !retryType.includes("text/html")) {
+          const buf = await retryRes.arrayBuffer();
+          pdfCache.set(pmid, { buffer: buf, expiry: Date.now() + PDF_CACHE_TTL_MS });
+          return buf;
+        }
+      } catch {
+        // try next variant
+      }
+    }
     throw new Error(`Expected PDF but received HTML from ${pdfUrl}`);
   }
 
