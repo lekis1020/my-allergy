@@ -8,10 +8,10 @@ export async function GET() {
     await Promise.all([
       supabase
         .from("papers")
-        .select("*", { count: "exact", head: true }),
+        .select("id", { count: "exact", head: true }),
       supabase
         .from("papers")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .not("abstract", "is", null)
         .neq("abstract", ""),
       supabase
@@ -26,6 +26,9 @@ export async function GET() {
         .order("publication_date", { ascending: false })
         .limit(1),
     ]);
+
+  if (papersResult.error) console.error("[db-status] papers count error:", papersResult.error);
+  if (abstractResult.error) console.error("[db-status] abstract count error:", abstractResult.error);
 
   const totalPapers = papersResult.count ?? 0;
   const papersWithAbstract = abstractResult.count ?? 0;
