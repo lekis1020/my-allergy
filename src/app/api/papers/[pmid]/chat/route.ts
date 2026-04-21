@@ -170,7 +170,7 @@ export async function POST(
           .upsert({
             user_id: user.id,
             paper_pmid: pmid,
-            messages: newMessages as unknown as import("@supabase/supabase-js").Json,
+            messages: newMessages,
             updated_at: new Date().toISOString(),
           }, { onConflict: "user_id,paper_pmid" });
 
