@@ -3,7 +3,6 @@ import { inngest } from "@/lib/inngest/client";
 import {
   syncJournalFn,
   syncAllFn,
-  sendNotificationsFn,
   backfillJournalFn,
   backfillAllFn,
   onDemandEnrichFn,
@@ -14,7 +13,6 @@ export const { GET, POST, PUT } = serve({
   functions: [
     syncJournalFn,
     syncAllFn,
-    sendNotificationsFn,
     backfillJournalFn,
     backfillAllFn,
     onDemandEnrichFn,
