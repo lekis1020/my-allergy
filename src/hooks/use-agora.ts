@@ -25,7 +25,7 @@ export function useAgora({ limit = 20 }: { limit?: number } = {}) {
       revalidateOnFocus: false,
     });
 
-  const papers = data ? data.flatMap((page) => page.papers) : [];
+  const papers = data ? data.flatMap((page) => page?.papers ?? []) : [];
   const total = data?.[0]?.total || 0;
   const hasMore = data ? data[data.length - 1]?.hasMore : false;
   const isLoadingMore =
