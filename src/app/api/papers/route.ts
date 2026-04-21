@@ -12,9 +12,9 @@ const limiter = rateLimit({ windowMs: 60_000, maxRequests: 60 });
 // Stricter per-user limit for on-demand PubMed fetch (3/min).
 const onDemandLimiter = rateLimit({ windowMs: 60_000, maxRequests: 3 });
 
-const ON_DEMAND_TIMEOUT_MS = 8_000;
+const ON_DEMAND_TIMEOUT_MS = 4_000;
 const BUFFER_DAYS = 365;
-const POOL_SIZE = 300;
+const POOL_SIZE = 200;
 
 function isBeyondBuffer(from?: string | null): boolean {
   if (!from || !/^\d{4}-\d{2}-\d{2}$/.test(from)) return false;
@@ -155,10 +155,13 @@ export async function GET(request: NextRequest) {
     : "date_desc";
 
   // Resolve authenticated user once — reused for personalization + on-demand gating.
+  // Middleware already verified the user via getUser(); use getSession() here
+  // to avoid a redundant network round-trip to Supabase auth.
   const authClient = await createServerAuthClient();
   const {
-    data: { user },
-  } = await authClient.auth.getUser();
+    data: { session },
+  } = await authClient.auth.getSession();
+  const user = session?.user ?? null;
   const personalizedActive = personalized && !!user;
 
   const queryArgs: QueryArgs = { q, pmids, journals, from, to, sort, articleType };
