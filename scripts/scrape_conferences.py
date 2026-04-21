@@ -657,6 +657,38 @@ async def scrape_enda() -> list[dict]:
     return results
 
 
+async def scrape_ieas() -> list[dict]:
+    """Scrape IEAS (International Eosinophil Society)."""
+    results = []
+    url = "https://www.eosinophil-society.org/"
+    try:
+        fetcher = AsyncFetcher(auto_match=False)
+        page = await fetcher.get(url, timeout=20, stealthy_headers=True)
+
+        items = page.css("article, .event, [class*='event'], [class*='meeting'], li, .card, p")
+        for item in items[:20]:
+            text = item.text.strip()
+            if not any(k in text.lower() for k in ["symposium", "biennial", "meeting", "congress"]):
+                continue
+            start, end = parse_date_range(text)
+            if start:
+                name = text.split("\n")[0].strip()[:120]
+                results.append({
+                    "name": name,
+                    "start_date": start,
+                    "end_date": end or start,
+                    "location": "TBD",
+                    "country": "TBD",
+                    "tags": ["Eosinophil", "Immunology"],
+                    "website": url,
+                    "is_korean": False,
+                    "source_url": url,
+                })
+    except Exception as e:
+        print(f"[IEAS] error: {e}", file=sys.stderr)
+    return results
+
+
 async def run_scraper() -> tuple[list[dict], list[str]]:
     """Run all scrapers, return (conferences, errors)."""
     print("Scraping conference data...", file=sys.stderr)
@@ -674,13 +706,14 @@ async def run_scraper() -> tuple[list[dict], list[str]]:
         scrape_esid(),
         scrape_cis(),
         scrape_enda(),
+        scrape_ieas(),
         scrape_korean_allergy(),
         scrape_kapard(),
     ]
 
     source_names = [
         "AAAAI", "EAACI", "ACAAI", "WAO", "ERS", "ATS",
-        "CSACI", "JSACI", "APAAACI", "ESID", "CIS", "ENDA",
+        "CSACI", "JSACI", "APAAACI", "ESID", "CIS", "ENDA", "IEAS",
         "Korean Allergy", "KAPARD",
     ]
     all_results = await asyncio.gather(*tasks, return_exceptions=True)
