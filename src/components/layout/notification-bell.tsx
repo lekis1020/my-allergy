@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Bookmark, CheckCheck, Loader2, MessageCircle, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
 interface NotificationItem {
@@ -27,7 +28,12 @@ interface NotificationsResponse {
 }
 
 const PAGE_SIZE = 20;
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+async function fetcher(url: string) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -66,15 +72,12 @@ export function NotificationBell() {
     });
 
   // Unread count (lightweight poll)
-  const unreadCount = useSWRInfinite<NotificationsResponse>(
-    user ? (_i: number, prev: NotificationsResponse | null) => {
-      if (prev) return null; // only first page
-      return "/api/notifications?limit=1";
-    } : () => null,
+  const { data: unreadData, mutate: mutateUnread } = useSWR<NotificationsResponse>(
+    user ? "/api/notifications?limit=5" : null,
     fetcher,
-    { refreshInterval: 30_000, revalidateOnFocus: true }
+    { refreshInterval: 30_000, revalidateOnFocus: true, errorRetryCount: 1 }
   );
-  const totalUnread = unreadCount.data?.[0]?.notifications.filter((n) => !n.read).length ?? 0;
+  const totalUnread = unreadData?.notifications?.filter((n) => !n.read).length ?? 0;
 
   const notifications = data?.flatMap((page) => page.notifications) ?? [];
   const isLoadingInitial = open && !data;
@@ -123,7 +126,7 @@ export function NotificationBell() {
       body: JSON.stringify({ read_all: true }),
     });
     mutate();
-    unreadCount.mutate();
+    mutateUnread();
   };
 
   const handleClick = (n: NotificationItem) => {
@@ -132,7 +135,7 @@ export function NotificationBell() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notification_ids: [n.id] }),
-      }).then(() => { mutate(); unreadCount.mutate(); });
+      }).then(() => { mutate(); mutateUnread(); });
     }
     setOpen(false);
     router.push(`/paper/${n.paper_pmid}#comments`);
