@@ -243,5 +243,6 @@ export async function POST(
     console.error("[Notifications] Failed to generate notifications:", err);
   }
 
+
   return NextResponse.json({ comment: toDto(inserted, user.id, isAdmin(user.email)) }, { status: 201 });
 }
