@@ -88,7 +88,7 @@ async function tryUnpaywall(doi: string): Promise<OpenAccessInfo | null> {
 async function tryPmc(pmid: string): Promise<OpenAccessInfo | null> {
   try {
     // Convert PMID to PMCID via NCBI ID Converter
-    const convUrl = `https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?ids=${pmid}&format=json`;
+    const convUrl = `https://pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/?ids=${pmid}&format=json`;
     const convResponse = await fetch(convUrl, {
       next: { revalidate: 86_400 },
     });
@@ -102,7 +102,7 @@ async function tryPmc(pmid: string): Promise<OpenAccessInfo | null> {
     if (!pmcid) return null;
 
     // PMC PDF URL pattern
-    const pdfUrl = `https://www.ncbi.nlm.nih.gov/pmc/articles/${pmcid}/pdf/`;
+    const pdfUrl = `https://pmc.ncbi.nlm.nih.gov/articles/${pmcid}/pdf/`;
 
     // Verify the PDF is accessible (HEAD request)
     const headResponse = await fetch(pdfUrl, {
@@ -116,7 +116,7 @@ async function tryPmc(pmid: string): Promise<OpenAccessInfo | null> {
     return {
       isOa: true,
       pdfUrl,
-      oaUrl: `https://www.ncbi.nlm.nih.gov/pmc/articles/${pmcid}/`,
+      oaUrl: `https://pmc.ncbi.nlm.nih.gov/articles/${pmcid}/`,
       license: null,
       source: "pmc",
     };
