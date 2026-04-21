@@ -1,11 +1,13 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Microscope, X } from "lucide-react";
-import { RightRail } from "@/components/layout/right-rail";
-import { TopicMonitorPanel } from "@/components/layout/topic-monitor-panel";
 import { MobileDrawer } from "@/components/layout/mobile-drawer";
+
+const RightRail = dynamic(() => import("@/components/layout/right-rail").then((m) => ({ default: m.RightRail })), { ssr: false });
+const TopicMonitorPanel = dynamic(() => import("@/components/layout/topic-monitor-panel").then((m) => ({ default: m.TopicMonitorPanel })), { ssr: false });
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { PaperFeed } from "@/components/papers/paper-feed";
 import { FilterBar } from "@/components/papers/filter-bar";
