@@ -558,6 +558,105 @@ async def scrape_apaaaci() -> list[dict]:
     return results
 
 
+async def scrape_esid() -> list[dict]:
+    """Scrape ESID (European Society for Immunodeficiencies)."""
+    results = []
+    url = "https://esid.org/Working-Parties/Meetings"
+    try:
+        fetcher = AsyncFetcher(auto_match=False)
+        page = await fetcher.get(url, timeout=20, stealthy_headers=True)
+
+        items = page.css("article, .event, [class*='event'], li, tr")
+        for item in items[:15]:
+            text = item.text.strip()
+            if not any(k in text.lower() for k in ["meeting", "congress", "biennial", "workshop"]):
+                continue
+            start, end = parse_date_range(text)
+            if start:
+                name = text.split("\n")[0].strip()[:120]
+                results.append({
+                    "name": name,
+                    "start_date": start,
+                    "end_date": end or start,
+                    "location": "Europe",
+                    "country": "TBD",
+                    "tags": ["Immunodeficiency", "Immunology"],
+                    "website": "https://esid.org/",
+                    "is_korean": False,
+                    "source_url": url,
+                })
+    except Exception as e:
+        print(f"[ESID] error: {e}", file=sys.stderr)
+    return results
+
+
+async def scrape_cis() -> list[dict]:
+    """Scrape CIS (Clinical Immunology Society)."""
+    results = []
+    url = "https://www.clinimmsoc.org/meetings"
+    try:
+        fetcher = AsyncFetcher(auto_match=False)
+        page = await fetcher.get(url, timeout=20, stealthy_headers=True)
+
+        items = page.css("article, .event, [class*='event'], [class*='meeting'], li, .card")
+        for item in items[:10]:
+            text = item.text.strip()
+            if not any(k in text.lower() for k in ["annual", "meeting", "conference"]):
+                continue
+            start, end = parse_date_range(text)
+            if start:
+                name = text.split("\n")[0].strip()[:120]
+                results.append({
+                    "name": name,
+                    "start_date": start,
+                    "end_date": end or start,
+                    "location": "USA",
+                    "country": "USA",
+                    "tags": ["Immunodeficiency", "Immunology"],
+                    "website": "https://www.clinimmsoc.org/",
+                    "is_korean": False,
+                    "source_url": url,
+                })
+    except Exception as e:
+        print(f"[CIS] error: {e}", file=sys.stderr)
+    return results
+
+
+async def scrape_enda() -> list[dict]:
+    """Scrape ENDA (European Network for Drug Allergy) via EAACI."""
+    results = []
+    url = "https://eaaci.org/events/"
+    try:
+        fetcher = AsyncFetcher(auto_match=False)
+        page = await fetcher.get(url, timeout=20, stealthy_headers=True)
+
+        cards = page.css("article, .event-item, [class*='event-card'], li.event")
+        for card in cards[:15]:
+            text = card.text
+            if not any(k in text.lower() for k in ["drug allergy", "enda", "drug hypersensitivity"]):
+                continue
+            title_el = card.css("h2, h3, h4, a, .event-title")
+            title = title_el[0].text.strip() if title_el else ""
+            if not title:
+                continue
+            start, end = parse_date_range(text)
+            if start:
+                results.append({
+                    "name": title,
+                    "start_date": start,
+                    "end_date": end or start,
+                    "location": "Europe",
+                    "country": "TBD",
+                    "tags": ["Drug Allergy", "Allergy"],
+                    "website": "https://eaaci.org/",
+                    "is_korean": False,
+                    "source_url": url,
+                })
+    except Exception as e:
+        print(f"[ENDA] error: {e}", file=sys.stderr)
+    return results
+
+
 async def run_scraper() -> tuple[list[dict], list[str]]:
     """Run all scrapers, return (conferences, errors)."""
     print("Scraping conference data...", file=sys.stderr)
@@ -572,13 +671,17 @@ async def run_scraper() -> tuple[list[dict], list[str]]:
         scrape_csaci(),
         scrape_jsaci(),
         scrape_apaaaci(),
+        scrape_esid(),
+        scrape_cis(),
+        scrape_enda(),
         scrape_korean_allergy(),
         scrape_kapard(),
     ]
 
     source_names = [
         "AAAAI", "EAACI", "ACAAI", "WAO", "ERS", "ATS",
-        "CSACI", "JSACI", "APAAACI", "Korean Allergy", "KAPARD",
+        "CSACI", "JSACI", "APAAACI", "ESID", "CIS", "ENDA",
+        "Korean Allergy", "KAPARD",
     ]
     all_results = await asyncio.gather(*tasks, return_exceptions=True)
     conferences = []
