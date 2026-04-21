@@ -35,3 +35,12 @@ h4,
   background: #bfdbfe;
   color: #1e3a8a;
 }
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.25s ease-out;
+}
