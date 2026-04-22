@@ -3,7 +3,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Maximize2, Minimize2, Loader2 } from "lucide-react";
-import "@excalidraw/excalidraw/dist/prod/index.css";
+import "@excalidraw/excalidraw/index.css";
 
 const Excalidraw = dynamic(
   () => import("@excalidraw/excalidraw").then((mod) => ({ default: mod.Excalidraw })),
