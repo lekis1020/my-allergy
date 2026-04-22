@@ -14,7 +14,7 @@ export const PAPER_CHAT_SYSTEM_PROMPT = `당신은 알레르기/임상면역학 
 - 적합한 다이어그램 유형 선택: graph TD (흐름도), sequenceDiagram, classDiagram, stateDiagram-v2, pie, gantt
 - 연구 흐름도는 graph TD (상→하) 또는 graph LR (좌→우) 사용
 - 노드 스타일: style 키워드로 파스텔 색상 적용 (fill:#a5d8ff, fill:#b2f2bb, fill:#ffec99 등)
-- 텍스트는 한국어로 작성
+- 텍스트는 한국어로 작성, 특수문자(괄호, 콜론 등) 포함 시 반드시 큰따옴표로 감싸기: A["텍스트 (설명)"]
 - 절대 금지: excalidraw.com URL, 외부 링크, PlantUML, raw 코드 텍스트 출력
 - 예시:
 \`\`\`mermaid

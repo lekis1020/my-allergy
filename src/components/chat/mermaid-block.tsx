@@ -3,6 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Maximize2, Minimize2 } from "lucide-react";
 
+/**
+ * Sanitize Mermaid code to fix common LLM generation issues:
+ * - Wrap node labels containing special chars (parentheses, colons) in quotes
+ * - Replace fancy arrows (→, ←) with Mermaid syntax (--> , <--)
+ */
+function sanitizeMermaidCode(code: string): string {
+  return code
+    .replace(/→/g, "-->")
+    .replace(/←/g, "<--")
+    .replace(/\[([^\]]*[()][^\]]*)\]/g, (_m, label) => `["${label.replace(/"/g, "'")}"]`)
+    .replace(/\[([^\]"]*:[^\]"]*)\]/g, (_m, label) => `["${label.replace(/"/g, "'")}"]`);
+}
+
 interface MermaidBlockProps {
   code: string;
 }
@@ -25,8 +38,9 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
           securityLevel: "loose",
           fontFamily: "inherit",
         });
-        const id = `mermaid-${Date.now()}`;
-        const { svg: rendered } = await mermaid.render(id, code.trim());
+        const sanitized = sanitizeMermaidCode(code.trim());
+        const id = `mermaid-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        const { svg: rendered } = await mermaid.render(id, sanitized);
         if (!cancelled) setSvg(rendered);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "렌더링 실패");

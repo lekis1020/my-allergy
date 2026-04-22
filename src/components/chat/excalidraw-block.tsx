@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Maximize2, Minimize2, Loader2 } from "lucide-react";
 import "@excalidraw/excalidraw/index.css";
@@ -17,12 +17,28 @@ const Excalidraw = dynamic(
   }
 );
 
+const LOAD_TIMEOUT_MS = 8000;
+
 interface ExcalidrawBlockProps {
   data: { elements: unknown[] };
 }
 
 export function ExcalidrawBlock({ data }: ExcalidrawBlockProps) {
   const [fullscreen, setFullscreen] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTimedOut(true), LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (timedOut) {
+    return (
+      <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+        도식화를 불러올 수 없습니다. 새 대화에서 다시 요청해주세요.
+      </div>
+    );
+  }
 
   const viewer = (
     <Excalidraw
