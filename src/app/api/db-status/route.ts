@@ -8,12 +8,14 @@ export async function GET() {
     await Promise.all([
       supabase
         .from("papers")
-        .select("id", { count: "exact", head: true }),
+        .select("id", { count: "exact" })
+        .limit(0),
       supabase
         .from("papers")
-        .select("id", { count: "exact", head: true })
+        .select("id", { count: "exact" })
         .not("abstract", "is", null)
-        .neq("abstract", ""),
+        .neq("abstract", "")
+        .limit(0),
       supabase
         .from("sync_logs")
         .select("completed_at")

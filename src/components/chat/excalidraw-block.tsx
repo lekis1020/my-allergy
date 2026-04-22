@@ -1,10 +1,20 @@
 "use client";
 
-import { useState, lazy, Suspense } from "react";
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Maximize2, Minimize2, Loader2 } from "lucide-react";
+import "@excalidraw/excalidraw/dist/prod/index.css";
 
-const Excalidraw = lazy(() =>
-  import("@excalidraw/excalidraw").then((mod) => ({ default: mod.Excalidraw }))
+const Excalidraw = dynamic(
+  () => import("@excalidraw/excalidraw").then((mod) => ({ default: mod.Excalidraw })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-48 items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+      </div>
+    ),
+  }
 );
 
 interface ExcalidrawBlockProps {
@@ -15,25 +25,17 @@ export function ExcalidrawBlock({ data }: ExcalidrawBlockProps) {
   const [fullscreen, setFullscreen] = useState(false);
 
   const viewer = (
-    <Suspense
-      fallback={
-        <div className="flex h-48 items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-        </div>
-      }
-    >
-      <Excalidraw
-        initialData={{ elements: data.elements as any, scrollToContent: true }}
-        viewModeEnabled={!fullscreen}
-        UIOptions={{
-          canvasActions: {
-            export: false,
-            loadScene: false,
-            saveToActiveFile: false,
-          },
-        }}
-      />
-    </Suspense>
+    <Excalidraw
+      initialData={{ elements: data.elements as any, scrollToContent: true }}
+      viewModeEnabled={!fullscreen}
+      UIOptions={{
+        canvasActions: {
+          export: false,
+          loadScene: false,
+          saveToActiveFile: false,
+        },
+      }}
+    />
   );
 
   if (fullscreen) {
