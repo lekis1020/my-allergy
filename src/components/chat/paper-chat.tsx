@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, Send, Square, Sparkles, FlaskConical, AlertTriangle, Lock, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import { Bot, Send, Square, Sparkles, FlaskConical, AlertTriangle, Lock, Loader2, Maximize2, Minimize2, Download } from "lucide-react";
 import { usePaperChat } from "@/hooks/use-paper-chat";
 import { ChatMessage } from "./chat-message";
 import { QUICK_ACTIONS } from "@/lib/gemini/prompts";
@@ -27,8 +27,39 @@ export function PaperChat({ pmid, isOa }: PaperChatProps) {
 
   const [input, setInput] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const exportAsMarkdown = () => {
+    const lines = messages.map((m) =>
+      m.role === "user" ? `**Q:** ${m.content}` : `**A:** ${m.content}`
+    );
+    const md = `# AI Paper Chat — PMID ${pmid}\n\n${lines.join("\n\n---\n\n")}\n`;
+    const blob = new Blob([md], { type: "text/markdown" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `chat-${pmid}.md`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setShowExport(false);
+  };
+
+  const exportAsPdf = () => {
+    const lines = messages.map((m) =>
+      m.role === "user"
+        ? `<div style="margin:12px 0"><strong>Q:</strong> ${m.content.replace(/\n/g, "<br>")}</div>`
+        : `<div style="margin:12px 0;color:#333"><strong>A:</strong> ${m.content.replace(/\n/g, "<br>")}</div>`
+    );
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Chat — PMID ${pmid}</title><style>body{font-family:system-ui,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;font-size:14px;line-height:1.6}h1{font-size:18px}hr{border:none;border-top:1px solid #ddd;margin:16px 0}</style></head><body><h1>AI Paper Chat — PMID ${pmid}</h1>${lines.join("<hr>")}</body></html>`;
+    const win = window.open("", "_blank");
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      setTimeout(() => win.print(), 300);
+    }
+    setShowExport(false);
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -168,11 +199,44 @@ export function PaperChat({ pmid, isOa }: PaperChatProps) {
             </button>
           )}
         </div>
-        {usage && (
-          <p className="mt-1.5 text-[10px] text-gray-400 dark:text-gray-500">
-            질의 {usage.queries_this_paper}/{usage.max_queries} · 오늘 논문 {usage.papers_today}/{usage.max_papers}
-          </p>
-        )}
+        <div className="mt-1.5 flex items-center justify-between">
+          <div className="text-[10px] text-gray-400 dark:text-gray-500">
+            {usage && (
+              <span>질의 {usage.queries_this_paper}/{usage.max_queries} · 오늘 논문 {usage.papers_today}/{usage.max_papers}</span>
+            )}
+            <span className={usage ? " · " : ""}>대화 기록은 30일간 보관됩니다</span>
+          </div>
+          {messages.length > 0 && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowExport(!showExport)}
+                className="inline-flex items-center gap-0.5 text-[10px] text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+              >
+                <Download className="h-3 w-3" />
+                내보내기
+              </button>
+              {showExport && (
+                <div className="absolute bottom-6 right-0 z-10 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                  <button
+                    type="button"
+                    onClick={exportAsMarkdown}
+                    className="block w-full whitespace-nowrap px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                  >
+                    Markdown (.md)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportAsPdf}
+                    className="block w-full whitespace-nowrap px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                  >
+                    PDF (인쇄)
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </form>
     </>
   );

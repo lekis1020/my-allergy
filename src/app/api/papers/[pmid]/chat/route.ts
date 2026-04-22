@@ -3,6 +3,7 @@ import { createServerAuthClient, createServiceClient } from "@/lib/supabase/serv
 import { findOpenAccessPdf } from "@/lib/pubmed/open-access";
 import { getGeminiClient, fetchPdfBuffer } from "@/lib/gemini/client";
 import { PAPER_CHAT_SYSTEM_PROMPT } from "@/lib/gemini/prompts";
+import { encryptChatData, readChatMessages } from "@/lib/crypto/chat-encryption";
 import type { ChatMessage } from "@/types/database";
 
 export async function POST(
@@ -92,7 +93,7 @@ export async function POST(
     );
   }
 
-  // Load existing conversation
+  // Load existing conversation (handles both encrypted and legacy plaintext)
   const { data: session } = await serviceClient
     .from("chat_sessions")
     .select("messages")
@@ -100,7 +101,7 @@ export async function POST(
     .eq("paper_pmid", pmid)
     .single();
 
-  const existingMessages: ChatMessage[] = (session?.messages as unknown as ChatMessage[]) ?? [];
+  const existingMessages: ChatMessage[] = readChatMessages<ChatMessage>(session?.messages, user.id);
 
   // Build Gemini conversation
   const gemini = getGeminiClient();
@@ -159,19 +160,23 @@ export async function POST(
           }
         }
 
-        // Save to DB
+        // Save to DB (encrypted)
         const newMessages: ChatMessage[] = [
           ...existingMessages,
           { role: "user", content: userMessage, created_at: now },
           { role: "assistant", content: fullResponse, created_at: new Date().toISOString(), excalidraw: excalidrawData },
         ];
 
+        const storedMessages = process.env.CHAT_ENCRYPTION_KEY
+          ? encryptChatData(newMessages, user.id)
+          : newMessages;
+
         await serviceClient
           .from("chat_sessions")
           .upsert({
             user_id: user.id,
             paper_pmid: pmid,
-            messages: newMessages,
+            messages: storedMessages as unknown as ChatMessage[],
             updated_at: new Date().toISOString(),
           }, { onConflict: "user_id,paper_pmid" });
 
@@ -272,7 +277,7 @@ export async function GET(
   const todayPapers = new Set((todayUsage ?? []).map((r) => r.paper_pmid)).size;
 
   return NextResponse.json({
-    messages: (session?.messages as unknown as ChatMessage[]) ?? [],
+    messages: readChatMessages<ChatMessage>(session?.messages, user.id),
     usage: {
       papers_today: todayPapers,
       queries_this_paper: paperUsage?.count ?? 0,
