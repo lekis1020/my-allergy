@@ -1,5 +1,6 @@
 import { User, Bot } from "lucide-react";
 import { ExcalidrawBlock } from "./excalidraw-block";
+import { MermaidBlock } from "./mermaid-block";
 import type { ChatMessage as ChatMessageType } from "@/types/database";
 
 interface ChatMessageProps {
@@ -9,8 +10,15 @@ interface ChatMessageProps {
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
 
-  // Strip excalidraw code blocks from displayed text
-  const displayContent = message.content.replace(/```excalidraw[\s\S]*?```/g, "").trim();
+  // Extract mermaid code blocks
+  const mermaidBlocks: string[] = [];
+  const contentWithoutDiagrams = message.content
+    .replace(/```mermaid\s*([\s\S]*?)```/g, (_match, code) => {
+      mermaidBlocks.push(code.trim());
+      return "";
+    })
+    .replace(/```excalidraw[\s\S]*?```/g, "")
+    .trim();
 
   return (
     <div className={`flex gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
@@ -37,9 +45,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
         <div
           className="prose prose-sm max-w-none dark:prose-invert [&_table]:text-xs"
           dangerouslySetInnerHTML={{
-            __html: simpleMarkdown(displayContent),
+            __html: simpleMarkdown(contentWithoutDiagrams),
           }}
         />
+        {mermaidBlocks.map((code, i) => (
+          <MermaidBlock key={i} code={code} />
+        ))}
         {message.excalidraw && (
           <ExcalidrawBlock data={message.excalidraw} />
         )}
