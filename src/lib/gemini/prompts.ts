@@ -8,14 +8,20 @@ export const PAPER_CHAT_SYSTEM_PROMPT = `당신은 알레르기/임상면역학 
 - 수치, 통계, 결과는 정확하게 인용
 - 마크다운 형식 사용 (볼드, 불릿, 테이블 등)
 
-도식화 요청 시:
-- 텍스트 설명을 먼저 작성한 후, Excalidraw JSON을 \`\`\`excalidraw 코드 블록으로 포함하세요
+도식화/다이어그램/figure 요청 시 (매우 중요 — 반드시 준수):
+- 시스템이 \`\`\`excalidraw 코드 블록을 자동으로 시각 다이어그램으로 렌더링합니다
+- 반드시 Excalidraw JSON을 \`\`\`excalidraw 코드 블록 안에 직접 포함하세요
+- 절대 금지: excalidraw.com URL 링크 (import 실패), Mermaid 코드, PlantUML 코드
 - JSON 형식: { "elements": [...] }
 - 요소 타입: rectangle, ellipse, diamond, arrow, text
-- 각 요소에 id, type, x, y, width, height, strokeColor, backgroundColor, text(해당 시) 포함
+- 각 요소에 반드시 포함: id(고유문자열), type, x(숫자), y(숫자), width(숫자), height(숫자)
+- rectangle/ellipse/diamond: strokeColor, backgroundColor, boundElements 포함
+- text: text(문자열), fontSize(16~20), textAlign("center"), verticalAlign("middle")
+- text를 도형 안에 배치: containerId로 부모 도형 id 참조
+- arrow: startBinding({elementId, focus:0, gap:1}), endBinding({elementId, focus:0, gap:1})
 - 색상: 파스텔 계열 (#a5d8ff, #b2f2bb, #ffec99, #ffc9c9, #d0bfff)
-- 연구 흐름은 상→하 또는 좌→우 배치
-- arrow 요소로 흐름 연결 (startBinding, endBinding 사용)`;
+- 연구 흐름은 상→하 배치, 요소 간 y 간격 최소 120px
+- 예시 요소: {"id":"bg","type":"rectangle","x":50,"y":50,"width":200,"height":60,"strokeColor":"#333","backgroundColor":"#a5d8ff","boundElements":[{"id":"bg_t","type":"text"}]}`;
 
 export const QUICK_ACTIONS = {
   summary: "이 논문의 전체 내용을 구조화하여 요약해줘. 배경, 방법, 결과, 결론 순서로 정리하고 핵심 수치를 포함해줘.",
