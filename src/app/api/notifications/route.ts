@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
     .select(
       `
       id, type, read, created_at, paper_pmid, comment_id,
-      paper_comments!inner(id, anon_id, content, created_at, deleted_at),
-      papers:papers!inner(pmid, title)
+      paper_comments(id, anon_id, content, created_at, deleted_at),
+      papers(pmid, title)
     `
     )
     .eq("user_id", user.id)
@@ -44,11 +44,12 @@ export async function GET(request: NextRequest) {
 
   const notifications = items
     .filter((row) => {
-      // Filter out notifications for deleted comments
+      // Filter out notifications for deleted or missing comments/papers
       const comment = row.paper_comments as unknown as {
         deleted_at: string | null;
-      };
-      return comment.deleted_at === null;
+      } | null;
+      const paper = row.papers as unknown as { pmid: string } | null;
+      return comment !== null && comment.deleted_at === null && paper !== null;
     })
     .map((row) => {
       const comment = row.paper_comments as unknown as {
