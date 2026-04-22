@@ -28,7 +28,7 @@ export async function GET() {
     .order("citation_count", { ascending: false, nullsFirst: false })
     .order("epub_date", { ascending: false })
     .order("position", { referencedTable: "paper_authors", ascending: true })
-    .limit(50);
+    .limit(10);
 
   if (error) {
     console.error("Trending query error:", error);
