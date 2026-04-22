@@ -64,12 +64,12 @@ export default function AlertsPage() {
       revalidateFirstPage: true,
     });
 
-  const notifications = data?.flatMap((page) => page.notifications) ?? [];
+  const notifications = data?.flatMap((page) => page?.notifications ?? []) ?? [];
   const isLoadingInitial = !data && !error;
   const isLoadingMore =
     size > 0 && data && typeof data[size - 1] === "undefined";
   const hasMore = data?.[data.length - 1]?.next_cursor !== null;
-  const isEmpty = data?.[0]?.notifications.length === 0;
+  const isEmpty = (data?.[0]?.notifications?.length ?? 0) === 0;
   const hasUnread = notifications.some((n) => !n.read);
 
   const observerRef = useRef<IntersectionObserver | null>(null);

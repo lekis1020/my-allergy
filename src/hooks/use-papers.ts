@@ -9,6 +9,7 @@ export type DataSource = "db" | "db+live" | "db (timeout)" | null;
 
 async function fetcher(url: string): Promise<PapersResponse & { __source: DataSource }> {
   const res = await fetch(url);
+  if (!res.ok) throw new Error(`Papers API error: ${res.status}`);
   const source = (res.headers.get("X-Data-Source") as DataSource) ?? null;
   const json = (await res.json()) as PapersResponse;
   return { ...json, __source: source };
