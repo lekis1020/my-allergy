@@ -10,7 +10,10 @@ async function fetcher(url: string): Promise<PapersResponse> {
   return (await res.json()) as PapersResponse;
 }
 
-export function useAgora({ limit = 20 }: { limit?: number } = {}) {
+export function useAgora(
+  { limit = 20 }: { limit?: number } = {},
+  initialData?: PapersResponse,
+) {
   const getKey = (pageIndex: number, previousPageData: PapersResponse | null) => {
     if (previousPageData && !previousPageData.hasMore) return null;
     return buildApiUrl("/api/agora", {
@@ -19,10 +22,13 @@ export function useAgora({ limit = 20 }: { limit?: number } = {}) {
     });
   };
 
+  const fallback = initialData ? [initialData] : undefined;
+
   const { data, error, size, setSize, isLoading, isValidating, mutate } =
     useSWRInfinite<PapersResponse>(getKey, fetcher, {
       revalidateFirstPage: true,
       revalidateOnFocus: true,
+      fallbackData: fallback,
     });
 
   const papers = data ? data.flatMap((page) => page?.papers ?? []) : [];

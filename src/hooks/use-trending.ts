@@ -10,12 +10,17 @@ interface TrendingResponse {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export function useTrending() {
+export function useTrending(initialPapers?: PaperWithJournal[]) {
+  const fallback = initialPapers
+    ? { papers: initialPapers, generatedAt: new Date().toISOString() }
+    : undefined;
+
   const { data, error, isLoading } = useSWR<TrendingResponse>(
     "/api/trending",
     fetcher,
     {
       revalidateOnFocus: false,
+      fallbackData: fallback,
     }
   );
 
