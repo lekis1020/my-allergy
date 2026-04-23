@@ -15,7 +15,7 @@ async function fetcher(url: string): Promise<PapersResponse & { __source: DataSo
   return { ...json, __source: source };
 }
 
-export function usePapers(filters: PaperFilters) {
+export function usePapers(filters: PaperFilters, initialData?: PapersResponse) {
   const [isLive, setIsLive] = useState(false);
 
   const getKey = (pageIndex: number, previousPageData: PapersResponse | null) => {
@@ -34,11 +34,17 @@ export function usePapers(filters: PaperFilters) {
     });
   };
 
+  // Use server-fetched data as fallback for the first page (default timeline)
+  const fallback = initialData
+    ? [{ ...initialData, __source: "db" as DataSource }]
+    : undefined;
+
   const { data, error, size, setSize, isLoading, isValidating, mutate } =
     useSWRInfinite<PapersResponse & { __source: DataSource }>(getKey, fetcher, {
       revalidateFirstPage: false,
       revalidateOnFocus: false,
       keepPreviousData: true,
+      fallbackData: fallback,
       onSuccess: (pages) => {
         const latest = pages?.[0]?.__source ?? null;
         setIsLive(latest === "db+live");

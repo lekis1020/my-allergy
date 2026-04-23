@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAnonClient } from "@/lib/supabase/server";
-import { classifyPaperTopics } from "@/lib/utils/topic-tags";
-import { decodeHtmlEntities } from "@/lib/utils/html-entities";
+import { toPaperDto, type PaperRow } from "@/lib/papers/transform";
+
+const POOL_SIZE = 50;
+const RESULT_LIMIT = 10;
 
 export async function GET() {
   const supabase = createAnonClient();
@@ -15,7 +17,7 @@ export async function GET() {
     .select(
       `
       id, pmid, doi, title, abstract, publication_date, epub_date,
-      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id,
+      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
       journals!inner (id, name, abbreviation, color, slug),
       paper_authors (last_name, first_name, initials, affiliation, position)
     `
@@ -28,7 +30,7 @@ export async function GET() {
     .order("citation_count", { ascending: false, nullsFirst: false })
     .order("epub_date", { ascending: false })
     .order("position", { referencedTable: "paper_authors", ascending: true })
-    .limit(10);
+    .limit(POOL_SIZE);
 
   if (error) {
     console.error("Trending query error:", error);
@@ -38,59 +40,12 @@ export async function GET() {
     );
   }
 
-  const papers = (data || []).map((paper) => {
-    const journal = paper.journals;
-    const authors = paper.paper_authors || [];
-    const keywords = Array.isArray(paper.keywords)
-      ? paper.keywords
-          .filter((keyword): keyword is string => typeof keyword === "string")
-          .map((keyword) => decodeHtmlEntities(keyword))
-      : [];
-    const meshTerms = Array.isArray(paper.mesh_terms)
-      ? paper.mesh_terms
-          .filter((term): term is string => typeof term === "string")
-          .map((term) => decodeHtmlEntities(term))
-      : [];
-    const decodedTitle = decodeHtmlEntities(String(paper.title ?? ""));
-    const decodedAbstract =
-      typeof paper.abstract === "string"
-        ? decodeHtmlEntities(paper.abstract)
-        : null;
-    const topicTags = classifyPaperTopics({
-      title: decodedTitle,
-      abstract: decodedAbstract,
-      keywords,
-      meshTerms,
-    });
+  const allPapers = (data || []).map((row) => toPaperDto(row as unknown as PaperRow));
 
-    return {
-      id: paper.id,
-      pmid: paper.pmid,
-      doi: paper.doi,
-      title: decodedTitle,
-      abstract: decodedAbstract,
-      publication_date: resolveDisplayedPublicationDate(paper.epub_date, paper.publication_date),
-      volume: paper.volume,
-      issue: paper.issue,
-      pages: paper.pages,
-      keywords,
-      mesh_terms: meshTerms,
-      citation_count: paper.citation_count,
-      journal_id: paper.journal_id,
-      journal_name: journal.name,
-      journal_abbreviation: journal.abbreviation,
-      journal_color: journal.color,
-      journal_slug: journal.slug,
-      topic_tags: topicTags,
-      authors: authors.map((a) => ({
-        last_name: a.last_name,
-        first_name: a.first_name,
-        initials: a.initials,
-        affiliation: a.affiliation,
-        position: a.position,
-      })),
-    };
-  });
+  // Keep only papers with at least one allergy-related topic tag
+  const papers = allPapers
+    .filter((p) => p.topic_tags.some((tag) => tag !== "others"))
+    .slice(0, RESULT_LIMIT);
 
   const response = NextResponse.json({
     papers,
@@ -103,11 +58,4 @@ export async function GET() {
   );
 
   return response;
-}
-
-function resolveDisplayedPublicationDate(
-  epubDate: string | null | undefined,
-  publicationDate: string | null | undefined,
-): string {
-  return epubDate || publicationDate || "1970-01-01";
 }

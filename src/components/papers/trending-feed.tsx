@@ -5,9 +5,14 @@ import { PaperCard } from "@/components/papers/paper-card";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useTrending } from "@/hooks/use-trending";
+import type { PaperWithJournal } from "@/types/filters";
 
-export function TrendingFeed() {
-  const { papers, isLoading, error } = useTrending();
+interface TrendingFeedProps {
+  initialPapers?: PaperWithJournal[];
+}
+
+export function TrendingFeed({ initialPapers }: TrendingFeedProps) {
+  const { papers, isLoading, error } = useTrending(initialPapers);
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-0 sm:px-4 sm:py-4">

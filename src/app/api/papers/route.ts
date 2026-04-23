@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAnonClient, createServerAuthClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/rate-limit";
 import { classifyPaperTopics } from "@/lib/utils/topic-tags";
-import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 import { loadScoringContext } from "@/lib/recommend/affinity";
 import { scorePaper } from "@/lib/recommend/score";
 import { fetchOnDemand } from "@/lib/pubmed/on-demand";
+import { toPaperDto, type PaperRow } from "@/lib/papers/transform";
 
 const limiter = rateLimit({ windowMs: 60_000, maxRequests: 60 });
 
@@ -273,7 +273,7 @@ export async function GET(request: NextRequest) {
     rawRows = scored.slice(offset, offset + limit).map((s) => s.paper);
   }
 
-  const papers = rawRows.map(toPaperDto);
+  const papers = rawRows.map((row) => toPaperDto(row as unknown as PaperRow));
   const total = personalizedActive ? (personalizedTotal ?? 0) : dbTotal;
   const hasMore = personalizedActive
     ? offset + limit < (personalizedTotal ?? 0)
@@ -302,89 +302,4 @@ export async function GET(request: NextRequest) {
   response.headers.set("RateLimit-Reset", String(Math.ceil(resetAt / 1000)));
 
   return response;
-}
-
-interface PaperRow {
-  id: string;
-  pmid: string;
-  doi: string | null;
-  title: string;
-  abstract: string | null;
-  publication_date: string | null;
-  epub_date: string | null;
-  volume: string | null;
-  issue: string | null;
-  pages: string | null;
-  keywords: string[] | null;
-  mesh_terms: string[] | null;
-  citation_count: number | null;
-  journal_id: string;
-  publication_types: string[] | null;
-  journals: { id: string; name: string; abbreviation: string; color: string; slug: string };
-  paper_authors: Array<{
-    last_name: string;
-    first_name: string | null;
-    initials: string | null;
-    affiliation: string | null;
-    position: number;
-  }>;
-}
-
-function toPaperDto(paper: PaperRow) {
-  const journal = paper.journals;
-  const authors = paper.paper_authors || [];
-  const keywords = Array.isArray(paper.keywords)
-    ? paper.keywords
-        .filter((keyword): keyword is string => typeof keyword === "string")
-        .map((keyword) => decodeHtmlEntities(keyword))
-    : [];
-  const meshTerms = Array.isArray(paper.mesh_terms)
-    ? paper.mesh_terms
-        .filter((term): term is string => typeof term === "string")
-        .map((term) => decodeHtmlEntities(term))
-    : [];
-  const decodedTitle = decodeHtmlEntities(String(paper.title ?? ""));
-  const decodedAbstract =
-    typeof paper.abstract === "string" ? decodeHtmlEntities(paper.abstract) : null;
-  const topicTags = classifyPaperTopics({
-    title: decodedTitle,
-    abstract: decodedAbstract,
-    keywords,
-    meshTerms,
-  });
-
-  return {
-    id: paper.id,
-    pmid: paper.pmid,
-    doi: paper.doi,
-    title: decodedTitle,
-    abstract: decodedAbstract,
-    publication_date: resolveDisplayedPublicationDate(paper.epub_date, paper.publication_date),
-    volume: paper.volume,
-    issue: paper.issue,
-    pages: paper.pages,
-    keywords,
-    mesh_terms: meshTerms,
-    citation_count: paper.citation_count,
-    journal_id: paper.journal_id,
-    journal_name: journal.name,
-    journal_abbreviation: journal.abbreviation,
-    journal_color: journal.color,
-    journal_slug: journal.slug,
-    topic_tags: topicTags,
-    authors: authors.map((a) => ({
-      last_name: a.last_name,
-      first_name: a.first_name,
-      initials: a.initials,
-      affiliation: a.affiliation,
-      position: a.position,
-    })),
-  };
-}
-
-function resolveDisplayedPublicationDate(
-  epubDate: string | null | undefined,
-  publicationDate: string | null | undefined,
-): string {
-  return epubDate || publicationDate || "1970-01-01";
 }
