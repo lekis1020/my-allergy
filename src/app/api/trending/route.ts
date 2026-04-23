@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAnonClient } from "@/lib/supabase/server";
 import { toPaperDto, type PaperRow } from "@/lib/papers/transform";
+import { ALLERGY_JOURNAL_SLUGS } from "@/lib/constants/journals";
 
 export async function GET() {
   const supabase = createAnonClient();
@@ -21,6 +22,7 @@ export async function GET() {
     )
     .not("abstract", "is", null)
     .neq("abstract", "")
+    .in("journals.slug", ALLERGY_JOURNAL_SLUGS)
     .gte("epub_date", fromDate)
     .not("citation_count", "is", null)
     .gt("citation_count", 0)

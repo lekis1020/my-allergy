@@ -4,6 +4,7 @@ import { createAnonClient } from "@/lib/supabase/server";
 import { toPaperDto, type PaperRow } from "@/lib/papers/transform";
 import { TrendingFeed } from "@/components/papers/trending-feed";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
+import { ALLERGY_JOURNAL_SLUGS } from "@/lib/constants/journals";
 
 export const metadata: Metadata = {
   title: "Trending | My Allergy",
@@ -29,6 +30,7 @@ async function fetchTrendingPapers() {
     )
     .not("abstract", "is", null)
     .neq("abstract", "")
+    .in("journals.slug", ALLERGY_JOURNAL_SLUGS)
     .gte("epub_date", fromDate)
     .not("citation_count", "is", null)
     .gt("citation_count", 0)

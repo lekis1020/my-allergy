@@ -83,6 +83,21 @@ function buildMeshFilter(meshTerms: string[], tiabTerms: string[]): string {
 const ALLERGY_FILTER = buildMeshFilter(ALLERGY_MESH_TERMS, ALLERGY_TIAB_TERMS);
 const RESPIRATORY_FILTER = buildMeshFilter(RESPIRATORY_MESH_TERMS, RESPIRATORY_TIAB_TERMS);
 
+// General / respiratory journals – carry allergy-filtered papers but are not
+// dedicated allergy & clinical immunology journals.
+const GENERAL_JOURNAL_SLUGS = new Set([
+  "frontiers-immunology",
+  "lancet",
+  "nejm",
+  "jama",
+  "bmj",
+  "lancet-respir-med",
+  "eur-respir-j",
+  "ajrccm",
+  "chest",
+  "thorax",
+]);
+
 export const JOURNALS: JournalConfig[] = [
   {
     name: "Allergy",
@@ -445,3 +460,8 @@ export const JOURNALS: JournalConfig[] = [
     pubmedQuery: `"Thorax"[ta] AND ${RESPIRATORY_FILTER}`,
   },
 ];
+
+/** Slugs of dedicated allergy & clinical immunology journals (excludes general/respiratory). */
+export const ALLERGY_JOURNAL_SLUGS = JOURNALS
+  .filter((j) => !GENERAL_JOURNAL_SLUGS.has(j.slug))
+  .map((j) => j.slug);
