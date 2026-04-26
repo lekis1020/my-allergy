@@ -16,6 +16,8 @@ interface UnpaywallResponse {
 export interface OpenAccessInfo {
   isOa: boolean;
   pdfUrl: string | null;
+  /** Alternative PDF URLs from other sources, tried if pdfUrl fails */
+  fallbackPdfUrls?: string[];
   oaUrl: string | null;
   license: string | null;
   source: string | null;
@@ -37,26 +39,27 @@ export async function findOpenAccessPdf(
 
   const cleanDoi = doi?.replace(/^https?:\/\/doi\.org\//, "") ?? null;
 
-  // Try Unpaywall first (needs DOI)
-  const unpaywall = cleanDoi ? await tryUnpaywall(cleanDoi) : null;
-  if (unpaywall?.pdfUrl) return unpaywall;
+  // Collect PDF URLs from all sources concurrently for fallback support.
+  // The primary URL comes from the first source that returns one;
+  // remaining URLs are stored as fallbacks in case the primary is blocked (e.g. 403).
+  const [unpaywall, pmc, europePmc, semanticScholar] = await Promise.all([
+    cleanDoi ? tryUnpaywall(cleanDoi) : null,
+    pmid ? tryPmc(pmid) : null,
+    cleanDoi ? tryEuropePmc(cleanDoi) : null,
+    cleanDoi ? trySemanticScholar(cleanDoi) : null,
+  ]);
 
-  // Fallback: PubMed Central (needs PMID)
-  if (pmid) {
-    const pmc = await tryPmc(pmid);
-    if (pmc?.pdfUrl) return pmc;
-  }
+  // Rank sources by reliability: PMC > Europe PMC > Unpaywall > Semantic Scholar
+  const ranked = [pmc, europePmc, unpaywall, semanticScholar];
+  const primary = ranked.find((r) => r?.pdfUrl) ?? unpaywall;
 
-  // Fallback: Europe PMC (needs DOI)
-  if (cleanDoi) {
-    const europePmc = await tryEuropePmc(cleanDoi);
-    if (europePmc?.pdfUrl) return europePmc;
-  }
+  if (primary?.pdfUrl) {
+    // Gather alternative PDF URLs from other sources
+    const fallbackPdfUrls = ranked
+      .filter((r) => r?.pdfUrl && r.pdfUrl !== primary.pdfUrl)
+      .map((r) => r!.pdfUrl!);
 
-  // Fallback: Semantic Scholar (needs DOI)
-  if (cleanDoi) {
-    const semanticScholar = await trySemanticScholar(cleanDoi);
-    if (semanticScholar?.pdfUrl) return semanticScholar;
+    return { ...primary, fallbackPdfUrls };
   }
 
   // Return Unpaywall result even without PDF (may have oaUrl)

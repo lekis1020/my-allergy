@@ -81,12 +81,23 @@ export async function POST(
     );
   }
 
-  // Fetch PDF
-  let pdfBuffer: ArrayBuffer;
-  try {
-    pdfBuffer = await fetchPdfBuffer(openAccess.pdfUrl, pmid);
-  } catch (err) {
-    console.error(`[Chat] PDF download failed: url=${openAccess.pdfUrl}, pmid=${pmid}`, err);
+  // Fetch PDF — try primary URL first, then fallbacks
+  let pdfBuffer: ArrayBuffer | null = null;
+  const urlsToTry = [openAccess.pdfUrl, ...(openAccess.fallbackPdfUrls ?? [])];
+  let lastError: unknown;
+
+  for (const url of urlsToTry) {
+    try {
+      pdfBuffer = await fetchPdfBuffer(url, pmid);
+      break;
+    } catch (err) {
+      console.warn(`[Chat] PDF download failed: url=${url}, pmid=${pmid}`, err);
+      lastError = err;
+    }
+  }
+
+  if (!pdfBuffer) {
+    console.error(`[Chat] All PDF sources exhausted for pmid=${pmid}`, lastError);
     return NextResponse.json(
       { error: "PDF 다운로드에 실패했습니다." },
       { status: 502 }
