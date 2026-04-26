@@ -114,20 +114,22 @@ export function HomePage({ initialData }: HomePageProps) {
               <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Home</h1>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 text-sm">
-              <button
-                onClick={() => handleTabChange("timeline")}
-                className={tabClass(activeTab === "timeline")}
-              >
-                Timeline
-              </button>
-              <button
-                onClick={() => handleTabChange("for_you")}
-                className={tabClass(activeTab === "for_you")}
-              >
-                For you
-              </button>
-            </div>
+            {user && (
+              <div className="mt-3 grid grid-cols-2 text-sm">
+                <button
+                  onClick={() => handleTabChange("timeline")}
+                  className={tabClass(activeTab === "timeline")}
+                >
+                  Timeline
+                </button>
+                <button
+                  onClick={() => handleTabChange("for_you")}
+                  className={tabClass(activeTab === "for_you")}
+                >
+                  For you
+                </button>
+              </div>
+            )}
 
             {(
               <>
