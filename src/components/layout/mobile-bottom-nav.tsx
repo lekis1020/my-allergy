@@ -2,27 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, TrendingUp, MessagesSquare, Microscope, CalendarDays, Clock } from "lucide-react";
+import { Home, TrendingUp, MessagesSquare, CalendarDays, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+
+const baseTabs = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/trending", label: "Trending", icon: TrendingUp },
+  { href: "/agora", label: "Agora", icon: MessagesSquare },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
+];
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const { user } = useAuth();
 
   const tabs = user
-    ? [
-        { href: "/", label: "Home", icon: Home },
-        { href: "/trending", label: "Trending", icon: TrendingUp },
-        { href: "/agora", label: "Agora", icon: MessagesSquare },
-        { href: "/calendar", label: "Calendar", icon: CalendarDays },
-        { href: "/bookmarks", label: "History", icon: Clock },
-      ]
-    : [
-        { href: "/", label: "Home", icon: Home },
-        { href: "/trending", label: "Trending", icon: TrendingUp },
-        { href: "/clinical-trials", label: "Trials", icon: Microscope },
-        { href: "/calendar", label: "Calendar", icon: CalendarDays },
-      ];
+    ? [...baseTabs, { href: "/bookmarks", label: "History", icon: Clock }]
+    : baseTabs;
 
   return (
     <nav
