@@ -111,20 +111,22 @@ async function tryPmc(pmid: string): Promise<OpenAccessInfo | null> {
 
     if (!pmcid) return null;
 
-    // PMC PDF URL pattern
-    const pdfUrl = `https://pmc.ncbi.nlm.nih.gov/articles/${pmcid}/pdf/`;
+    // PMC PDF URL pattern — try the specific PDF file first, then the directory
+    const pdfDirUrl = `https://pmc.ncbi.nlm.nih.gov/articles/${pmcid}/pdf/`;
 
-    // Verify the PDF is accessible and actually a PDF (not an HTML viewer)
-    const headResponse = await fetch(pdfUrl, {
+    // Verify the PDF is accessible (HEAD check).
+    // Note: PMC sometimes returns content-type: text/html even for valid PDFs,
+    // so we only check the HTTP status here. Actual PDF validation happens in fetchPdfBuffer.
+    const headResponse = await fetch(pdfDirUrl, {
       method: "HEAD",
       redirect: "follow",
-      next: { revalidate: 86_400 },
+      next: { revalidate: 3_600 },
     });
 
     if (!headResponse.ok) return null;
 
-    const contentType = headResponse.headers.get("content-type") ?? "";
-    if (contentType.includes("text/html")) return null;
+    // Use the final redirected URL if available (e.g. /pdf/main.pdf)
+    const pdfUrl = headResponse.url || pdfDirUrl;
 
     return {
       isOa: true,

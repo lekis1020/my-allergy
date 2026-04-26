@@ -13,6 +13,14 @@ export function getGeminiClient(): GoogleGenerativeAI {
   return client;
 }
 
+/** Check if a buffer starts with the PDF magic bytes (%PDF-) */
+function isPdfBuffer(buf: ArrayBuffer): boolean {
+  if (buf.byteLength < 5) return false;
+  const header = new Uint8Array(buf, 0, 5);
+  // %PDF- = [0x25, 0x50, 0x44, 0x46, 0x2D]
+  return header[0] === 0x25 && header[1] === 0x50 && header[2] === 0x44 && header[3] === 0x46 && header[4] === 0x2D;
+}
+
 // In-memory PDF cache with 10-minute TTL
 const pdfCache = new Map<string, { buffer: ArrayBuffer; expiry: number }>();
 const PDF_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -35,42 +43,41 @@ export async function fetchPdfBuffer(pdfUrl: string, pmid: string): Promise<Arra
     throw new Error(`Failed to fetch PDF: ${response.status} from ${pdfUrl}`);
   }
 
-  const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("text/html")) {
-    // Some publishers (BMJ, Wiley) return an HTML viewer — try common PDF URL variants.
-    const variants = [
-      pdfUrl.replace(/\/?$/, ".full.pdf"),
-      pdfUrl.replace(/\/?$/, "/pdf"),
-    ];
-    for (const variant of variants) {
-      try {
-        const retryRes = await fetch(variant, {
-          headers: {
-            accept: "application/pdf",
-            "user-agent": "my-allergy-app/1.0 (academic-research; mailto:my-allergy-app@users.noreply.github.com)",
-          },
-          signal: AbortSignal.timeout(15_000),
-        });
-        const retryType = retryRes.headers.get("content-type") ?? "";
-        if (retryRes.ok && !retryType.includes("text/html")) {
-          const buf = await retryRes.arrayBuffer();
-          pdfCache.set(pmid, { buffer: buf, expiry: Date.now() + PDF_CACHE_TTL_MS });
-          return buf;
-        }
-      } catch {
-        // try next variant
-      }
-    }
-    throw new Error(`Expected PDF but received HTML from ${pdfUrl}`);
-  }
-
+  // Read the buffer first, then validate by magic bytes (%PDF-) rather than
+  // relying solely on content-type, since some servers (e.g. PMC) return
+  // content-type: text/html even for valid PDF files.
   const buffer = await response.arrayBuffer();
-  pdfCache.set(pmid, { buffer, expiry: Date.now() + PDF_CACHE_TTL_MS });
 
-  // Evict expired entries
-  for (const [key, val] of pdfCache) {
-    if (val.expiry < Date.now()) pdfCache.delete(key);
+  if (isPdfBuffer(buffer)) {
+    // Valid PDF regardless of content-type header
+    pdfCache.set(pmid, { buffer, expiry: Date.now() + PDF_CACHE_TTL_MS });
+    return buffer;
   }
 
-  return buffer;
+  // Not a PDF — likely an HTML viewer page. Try common URL variants.
+  const variants = [
+    pdfUrl.replace(/\/?$/, ".full.pdf"),
+    pdfUrl.replace(/\/?$/, "/pdf"),
+  ];
+  for (const variant of variants) {
+    try {
+      const retryRes = await fetch(variant, {
+        headers: {
+          accept: "application/pdf",
+          "user-agent": "my-allergy-app/1.0 (academic-research; mailto:my-allergy-app@users.noreply.github.com)",
+        },
+        redirect: "follow",
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!retryRes.ok) continue;
+      const retryBuf = await retryRes.arrayBuffer();
+      if (isPdfBuffer(retryBuf)) {
+        pdfCache.set(pmid, { buffer: retryBuf, expiry: Date.now() + PDF_CACHE_TTL_MS });
+        return retryBuf;
+      }
+    } catch {
+      // try next variant
+    }
+  }
+  throw new Error(`Expected PDF but received non-PDF content from ${pdfUrl}`);
 }
