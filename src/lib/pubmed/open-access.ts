@@ -68,7 +68,7 @@ async function tryUnpaywall(doi: string): Promise<OpenAccessInfo | null> {
     const url = `https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=${UNPAYWALL_EMAIL}`;
     const response = await fetch(url, {
       headers: { accept: "application/json" },
-      next: { revalidate: 86_400 },
+      next: { revalidate: 3_600 },
     });
 
     if (!response.ok) return null;
@@ -100,7 +100,7 @@ async function tryPmc(pmid: string): Promise<OpenAccessInfo | null> {
     // Convert PMID to PMCID via NCBI ID Converter
     const convUrl = `https://pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/?ids=${pmid}&format=json`;
     const convResponse = await fetch(convUrl, {
-      next: { revalidate: 86_400 },
+      next: { revalidate: 3_600 },
     });
 
     if (!convResponse.ok) return null;
@@ -111,13 +111,12 @@ async function tryPmc(pmid: string): Promise<OpenAccessInfo | null> {
 
     if (!pmcid) return null;
 
-    // PMC PDF URL pattern — try the specific PDF file first, then the directory
-    const pdfDirUrl = `https://pmc.ncbi.nlm.nih.gov/articles/${pmcid}/pdf/`;
+    // PMC PDF URL pattern
+    const pdfUrl = `https://pmc.ncbi.nlm.nih.gov/articles/${pmcid}/pdf/`;
 
-    // Verify the PDF is accessible (HEAD check).
-    // Note: PMC sometimes returns content-type: text/html even for valid PDFs,
-    // so we only check the HTTP status here. Actual PDF validation happens in fetchPdfBuffer.
-    const headResponse = await fetch(pdfDirUrl, {
+    // Verify the PDF is accessible via HEAD check.
+    // Reject if content-type is text/html (PMC HTML viewer, not actual PDF).
+    const headResponse = await fetch(pdfUrl, {
       method: "HEAD",
       redirect: "follow",
       next: { revalidate: 3_600 },
@@ -125,8 +124,8 @@ async function tryPmc(pmid: string): Promise<OpenAccessInfo | null> {
 
     if (!headResponse.ok) return null;
 
-    // Use the final redirected URL if available (e.g. /pdf/main.pdf)
-    const pdfUrl = headResponse.url || pdfDirUrl;
+    const contentType = headResponse.headers.get("content-type") ?? "";
+    if (contentType.includes("text/html")) return null;
 
     return {
       isOa: true,
@@ -145,7 +144,7 @@ async function tryEuropePmc(doi: string): Promise<OpenAccessInfo | null> {
     const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:${encodeURIComponent(doi)}&resultType=core&format=json`;
     const response = await fetch(url, {
       headers: { accept: "application/json" },
-      next: { revalidate: 86_400 },
+      next: { revalidate: 3_600 },
     });
 
     if (!response.ok) return null;
@@ -185,7 +184,7 @@ async function trySemanticScholar(doi: string): Promise<OpenAccessInfo | null> {
     const url = `https://api.semanticscholar.org/graph/v1/paper/DOI:${encodeURIComponent(doi)}?fields=isOpenAccess,openAccessPdf`;
     const response = await fetch(url, {
       headers: { accept: "application/json" },
-      next: { revalidate: 86_400 },
+      next: { revalidate: 3_600 },
     });
 
     if (!response.ok) return null;

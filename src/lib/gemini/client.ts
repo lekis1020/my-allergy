@@ -36,6 +36,7 @@ export async function fetchPdfBuffer(pdfUrl: string, pmid: string): Promise<Arra
       accept: "application/pdf",
       "user-agent": "my-allergy-app/1.0 (academic-research; mailto:my-allergy-app@users.noreply.github.com)",
     },
+    redirect: "follow",
     signal: AbortSignal.timeout(30_000),
   });
 
