@@ -4,11 +4,8 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Microscope, X } from "lucide-react";
-import { MobileDrawer } from "@/components/layout/mobile-drawer";
-
 const RightRail = dynamic(() => import("@/components/layout/right-rail").then((m) => ({ default: m.RightRail })), { ssr: false });
 const TopicMonitorPanel = dynamic(() => import("@/components/layout/topic-monitor-panel").then((m) => ({ default: m.TopicMonitorPanel })), { ssr: false });
-import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { PaperFeed } from "@/components/papers/paper-feed";
 import { FilterBar } from "@/components/papers/filter-bar";
 import { SearchInput } from "@/components/papers/search-input";
@@ -47,7 +44,6 @@ export function HomePage({ initialData }: HomePageProps) {
     loadMore,
     dataSource,
   } = usePapers(effectiveFilters, initialData);
-  const { open: drawerOpen, close: closeDrawer } = useMobileDrawer();
 
   useEffect(() => {
     const q = searchParams.get("q");
@@ -89,12 +85,6 @@ export function HomePage({ initialData }: HomePageProps) {
     setFilters({ journals: updated.length > 0 ? updated : undefined });
   };
 
-  const handleDrawerActivate = (topic: string) => {
-    setActiveTab("for_you");
-    setFilters({ q: topic, sort: "date_desc", trial: undefined });
-    closeDrawer();
-  };
-
   const tabClass = (isActive: boolean) =>
     `border-b-2 px-3 py-3 font-semibold transition-colors ${
       isActive
@@ -104,15 +94,6 @@ export function HomePage({ initialData }: HomePageProps) {
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-0 sm:px-4 sm:py-4">
-      <MobileDrawer
-        open={drawerOpen}
-        onClose={closeDrawer}
-        activeQuery={filters.q}
-        onActivate={handleDrawerActivate}
-        onClearActive={() => setFilters({ q: undefined })}
-        total={total}
-        papers={papers}
-      />
       <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_320px]">
         <div className="hidden lg:block lg:pr-4">
           <div className="sticky top-20 max-h-[calc(100vh-96px)] overflow-y-auto pr-1">
@@ -133,20 +114,22 @@ export function HomePage({ initialData }: HomePageProps) {
               <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Home</h1>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 text-sm">
-              <button
-                onClick={() => handleTabChange("timeline")}
-                className={tabClass(activeTab === "timeline")}
-              >
-                Timeline
-              </button>
-              <button
-                onClick={() => handleTabChange("for_you")}
-                className={tabClass(activeTab === "for_you")}
-              >
-                For you
-              </button>
-            </div>
+            {user && (
+              <div className="mt-3 grid grid-cols-2 text-sm">
+                <button
+                  onClick={() => handleTabChange("timeline")}
+                  className={tabClass(activeTab === "timeline")}
+                >
+                  Timeline
+                </button>
+                <button
+                  onClick={() => handleTabChange("for_you")}
+                  className={tabClass(activeTab === "for_you")}
+                >
+                  For you
+                </button>
+              </div>
+            )}
 
             {(
               <>

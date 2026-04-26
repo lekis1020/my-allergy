@@ -1,37 +1,54 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
-import { X, FolderTree, BarChart3 } from "lucide-react";
-import { TopicMonitorPanel } from "@/components/layout/topic-monitor-panel";
-import { RightRail } from "@/components/layout/right-rail";
-import type { PaperWithJournal } from "@/types/filters";
+import { useEffect, useCallback } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  X,
+  Home,
+  TrendingUp,
+  Microscope,
+  MessagesSquare,
+  Clock,
+  CalendarDays,
+  Bell,
+  BarChart3,
+  Settings,
+} from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
-type Tab = "topics" | "insights";
+const publicNavItems = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/trending", label: "Trending", icon: TrendingUp },
+  { href: "/clinical-trials", label: "Trials", icon: Microscope },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/alerts", label: "Alerts", icon: Bell },
+  { href: "/insights", label: "Insights", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
+
+const authNavItems = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/trending", label: "Trending", icon: TrendingUp },
+  { href: "/clinical-trials", label: "Trials", icon: Microscope },
+  { href: "/agora", label: "Agora", icon: MessagesSquare },
+  { href: "/bookmarks", label: "History", icon: Clock },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/alerts", label: "Alerts", icon: Bell },
+  { href: "/insights", label: "Insights", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
 
 interface MobileDrawerProps {
   open: boolean;
   onClose: () => void;
-  // TopicMonitorPanel props
-  activeQuery?: string;
-  onActivate: (topic: string) => void;
-  onClearActive: () => void;
-  // RightRail props
-  total: number;
-  papers: PaperWithJournal[];
 }
 
-export function MobileDrawer({
-  open,
-  onClose,
-  activeQuery,
-  onActivate,
-  onClearActive,
-  total,
-  papers,
-}: MobileDrawerProps) {
-  const [tab, setTab] = useState<Tab>("topics");
+export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  const navItems = user ? authNavItems : publicNavItems;
 
-  // Lock body scroll when open
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -43,7 +60,6 @@ export function MobileDrawer({
     };
   }, [open]);
 
-  // Close on ESC
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -71,7 +87,7 @@ export function MobileDrawer({
 
       {/* Drawer */}
       <div
-        className={`fixed inset-y-0 left-0 z-[70] flex w-80 max-w-[85vw] flex-col bg-white transition-transform duration-200 ease-out dark:bg-gray-950 ${
+        className={`fixed inset-y-0 left-0 z-[70] flex w-72 max-w-[85vw] flex-col bg-white transition-transform duration-200 ease-out dark:bg-gray-950 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
         role="dialog"
@@ -92,44 +108,29 @@ export function MobileDrawer({
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="grid grid-cols-2 border-b border-gray-200 text-sm dark:border-gray-800">
-          <button
-            onClick={() => setTab("topics")}
-            className={`flex items-center justify-center gap-1.5 border-b-2 py-2.5 font-medium transition-colors ${
-              tab === "topics"
-                ? "border-blue-500 text-gray-900 dark:text-gray-100"
-                : "border-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-            }`}
-          >
-            <FolderTree className="h-3.5 w-3.5" />
-            Topics
-          </button>
-          <button
-            onClick={() => setTab("insights")}
-            className={`flex items-center justify-center gap-1.5 border-b-2 py-2.5 font-medium transition-colors ${
-              tab === "insights"
-                ? "border-blue-500 text-gray-900 dark:text-gray-100"
-                : "border-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-            }`}
-          >
-            <BarChart3 className="h-3.5 w-3.5" />
-            Insights
-          </button>
-        </div>
+        {/* Navigation Links */}
+        <nav className="flex-1 overflow-y-auto py-2">
+          {navItems.map(({ href, label, icon: Icon }) => {
+            const isActive =
+              href === "/" ? pathname === "/" : pathname.startsWith(href);
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {tab === "topics" ? (
-            <TopicMonitorPanel
-              activeQuery={activeQuery}
-              onActivate={onActivate}
-              onClearActive={onClearActive}
-            />
-          ) : (
-            <RightRail total={total} papers={papers} />
-          )}
-        </div>
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={onClose}
+                className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
+                    : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-900"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
       </div>
     </>
   );
