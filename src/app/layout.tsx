@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { MobileDrawerProvider } from "@/components/layout/mobile-drawer-context";
+import { MobileDrawerWrapper } from "@/components/layout/mobile-drawer-wrapper";
 import { CommentNotificationsProvider } from "@/components/comments/comment-notifications-provider";
 
 const manrope = Manrope({
@@ -58,6 +59,7 @@ export default function RootLayout({
               <main className="flex-1 pb-16 md:pb-0">{children}</main>
               <Footer />
             </div>
+            <MobileDrawerWrapper />
             <MobileBottomNav />
           </CommentNotificationsProvider>
         </MobileDrawerProvider>

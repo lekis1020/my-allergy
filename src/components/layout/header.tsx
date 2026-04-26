@@ -70,11 +70,18 @@ export function Header() {
             <CalendarDays className="h-4 w-4" />
             Calendar
           </Link>
-          <Link href="/alerts" className={linkClass("/alerts")}>
-            <Bell className="h-4 w-4" />
-            Alerts
-          </Link>
-          <div className="ml-1 border-l border-gray-200 pl-2 dark:border-gray-700 sm:ml-2 sm:pl-3">
+          <div className="ml-1 flex items-center gap-1 border-l border-gray-200 pl-2 dark:border-gray-700 sm:ml-2 sm:gap-2 sm:pl-3">
+            <Link
+              href="/alerts"
+              className={`relative rounded-full p-2 transition-colors ${
+                pathname.startsWith("/alerts")
+                  ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+              }`}
+              aria-label="Alerts"
+            >
+              <Bell className="h-5 w-5" />
+            </Link>
             <AuthButton />
           </div>
         </nav>
