@@ -170,9 +170,19 @@ async function tryEuropePmc(doi: string): Promise<OpenAccessInfo | null> {
 
     if (!pdfEntry && !htmlEntry) return null;
 
+    // Prefer the direct API URL over the redirect URL (?pdf=render)
+    // to avoid slow redirects that cause timeouts.
+    let pdfUrl = pdfEntry?.url ?? null;
+    if (pdfUrl) {
+      const pmcidMatch = pdfUrl.match(/PMC\d+/);
+      if (pmcidMatch) {
+        pdfUrl = `https://europepmc.org/api/getPdf?pmcid=${pmcidMatch[0]}`;
+      }
+    }
+
     return {
       isOa: true,
-      pdfUrl: pdfEntry?.url ?? null,
+      pdfUrl,
       oaUrl: htmlEntry?.url ?? pdfEntry?.url ?? null,
       license: result.license ?? null,
       source: "europepmc",
