@@ -15,8 +15,19 @@ import {
   BarChart3,
   Settings,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
-const navItems = [
+const publicNavItems = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/trending", label: "Trending", icon: TrendingUp },
+  { href: "/clinical-trials", label: "Trials", icon: Microscope },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/alerts", label: "Alerts", icon: Bell },
+  { href: "/insights", label: "Insights", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
+
+const authNavItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/trending", label: "Trending", icon: TrendingUp },
   { href: "/clinical-trials", label: "Trials", icon: Microscope },
@@ -26,7 +37,7 @@ const navItems = [
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/insights", label: "Insights", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
-] as const;
+];
 
 interface MobileDrawerProps {
   open: boolean;
@@ -35,6 +46,8 @@ interface MobileDrawerProps {
 
 export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const navItems = user ? authNavItems : publicNavItems;
 
   useEffect(() => {
     if (open) {
