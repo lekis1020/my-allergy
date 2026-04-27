@@ -84,6 +84,29 @@ export function InsightsView() {
 
   return (
     <div className="space-y-6">
+      {/* Stats Summary */}
+      {geoInsights && (
+        <div className="mb-6 rounded-xl bg-blue-50/50 p-4 dark:bg-blue-950/20">
+          <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+            최근 6개월간 <strong>{authorInsights?.totalPapers?.toLocaleString() ?? '—'}편</strong>의 논문이 등록되었으며,
+            {" "}<strong>{geoInsights.totalFirstAuthors?.toLocaleString() ?? '—'}명</strong>의 저자가 참여했습니다.
+            {geoInsights.locations?.[0] && (
+              <>
+                {" "}가장 많은 연구가 이루어진 지역은{" "}
+                <strong>{geoInsights.locations[0].location}</strong>
+                ({geoInsights.locations[0].count}편)
+                {geoInsights.locations[1] && (
+                  <>
+                    이며, <strong>{geoInsights.locations[1].location}</strong>,{" "}
+                    <strong>{geoInsights.locations[2]?.location}</strong> 순으로 이어집니다.
+                  </>
+                )}
+              </>
+            )}
+          </p>
+        </div>
+      )}
+
       {/* Geography */}
       <section className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
         <h2 className="mb-1 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-gray-100">
