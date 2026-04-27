@@ -15,6 +15,7 @@ export interface PaperRow {
   pages: string | null;
   keywords: string[] | null;
   mesh_terms: string[] | null;
+  ai_summary: string | null;
   citation_count: number | null;
   journal_id: string;
   publication_types: string[] | null;
@@ -70,6 +71,7 @@ export function toPaperDto(paper: PaperRow): PaperWithJournal {
     journal_color: journal.color,
     journal_slug: journal.slug,
     topic_tags: topicTags,
+    ai_summary: paper.ai_summary ?? null,
     authors: authors.map((a) => ({
       last_name: a.last_name,
       first_name: a.first_name,

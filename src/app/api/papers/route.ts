@@ -50,17 +50,18 @@ interface QueryArgs {
 
 function buildPapersQuery(args: QueryArgs) {
   const supabase = createAnonClient();
-  let query = supabase
-    .from("papers")
-    .select(
-      `
-      id, pmid, doi, title, abstract, publication_date, epub_date,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const papersTable = (supabase as any).from("papers");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query: any = papersTable.select(
+    `
+      id, pmid, doi, title, abstract, ai_summary, publication_date, epub_date,
       volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
       journals!inner (id, name, abbreviation, color, slug),
       paper_authors (last_name, first_name, initials, affiliation, position)
     `,
-      { count: "exact" },
-    )
+    { count: "exact" },
+  )
     .not("abstract", "is", null)
     .neq("abstract", "");
 
@@ -182,7 +183,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch papers" }, { status: 500 });
   }
 
-  let rawRows = data || [];
+  let rawRows: PaperRow[] = (data as unknown as PaperRow[]) || [];
   let dbTotal = count || 0;
   let dataSource: "db" | "db+live" | "db (timeout)" = "db";
 
@@ -273,7 +274,34 @@ export async function GET(request: NextRequest) {
     rawRows = scored.slice(offset, offset + limit).map((s) => s.paper);
   }
 
-  const papers = rawRows.map((row) => toPaperDto(row as unknown as PaperRow));
+  const paperDtos = rawRows.map((row) => toPaperDto(row as unknown as PaperRow));
+
+  // Collect like and bookmark counts for returned papers
+  const paperPmids = paperDtos.map((p) => p.pmid);
+  const anonClient = createAnonClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [{ data: likeRows }, { data: bookmarkRows }] = await Promise.all([
+    (anonClient.from("paper_likes") as any).select("paper_pmid").in("paper_pmid", paperPmids),
+    (anonClient.from("bookmarks") as any).select("paper_pmid").in("paper_pmid", paperPmids),
+  ]) as [{ data: Array<{ paper_pmid: string }> | null }, { data: Array<{ paper_pmid: string }> | null }];
+
+  const likeMap = new Map<string, number>();
+  for (const row of likeRows ?? []) {
+    likeMap.set(row.paper_pmid, (likeMap.get(row.paper_pmid) ?? 0) + 1);
+  }
+
+  const bookmarkMap = new Map<string, number>();
+  for (const row of bookmarkRows ?? []) {
+    bookmarkMap.set(row.paper_pmid, (bookmarkMap.get(row.paper_pmid) ?? 0) + 1);
+  }
+
+  const papers = paperDtos.map((paper) => ({
+    ...paper,
+    like_count: likeMap.get(paper.pmid) ?? 0,
+    bookmark_count: bookmarkMap.get(paper.pmid) ?? 0,
+  }));
+
   const total = personalizedActive ? (personalizedTotal ?? 0) : dbTotal;
   const hasMore = personalizedActive
     ? offset + limit < (personalizedTotal ?? 0)
