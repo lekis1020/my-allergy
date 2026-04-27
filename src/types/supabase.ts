@@ -506,6 +506,27 @@ export type Database = {
         }
         Relationships: []
       }
+      paper_likes: {
+        Row: {
+          id: string
+          user_id: string
+          paper_pmid: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          paper_pmid: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          paper_pmid?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
