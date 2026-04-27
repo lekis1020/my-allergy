@@ -6,6 +6,7 @@ import { enrichPapersWithCrossRef } from "@/lib/sync/enricher";
 import { collectCitations } from "@/lib/sync/citations";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getDateRange } from "@/lib/utils/date";
+import { generatePaperSummary } from "@/lib/gemini/summarize";
 /**
  * Syncs a single journal: fetch from PubMed, store, then enrich with CrossRef.
  */
@@ -105,6 +106,32 @@ export const syncJournalFn = inngest.createFunction(
       // Enrich with CrossRef data
       const enrichResult = await step.run("enrich-crossref", async () => {
         return enrichPapersWithCrossRef(supabase, 100);
+      });
+
+      // Generate AI summaries for papers without one
+      const summarized = await step.run("generate-ai-summaries", async () => {
+        const serviceClient = createServiceClient();
+        const { data: unsummarized } = await serviceClient
+          .from("papers")
+          .select("pmid, abstract")
+          .eq("journal_id", journalId)
+          .is("ai_summary", null)
+          .not("abstract", "is", null)
+          .order("publication_date", { ascending: false })
+          .limit(20);
+
+        let count = 0;
+        for (const paper of unsummarized ?? []) {
+          const summary = await generatePaperSummary(paper.abstract);
+          if (summary) {
+            await serviceClient
+              .from("papers")
+              .update({ ai_summary: summary })
+              .eq("pmid", paper.pmid);
+            count++;
+          }
+        }
+        return count;
       });
 
       // Collect citation relationships for newly inserted papers
