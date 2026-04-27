@@ -10,7 +10,7 @@ import { Loader2, FileSearch } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { DataSource } from "@/hooks/use-papers";
 
-const AD_INTERVAL = 5;
+const AD_INTERVAL = 12;
 
 const ARTICLE_TYPES: ArticleType[] = [
   "original",
