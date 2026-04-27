@@ -530,6 +530,30 @@ export type Database = {
         }
         Relationships: []
       }
+      trending_analysis: {
+        Row: {
+          id: string
+          date: string
+          ai_summary: string | null
+          stats_json: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          date: string
+          ai_summary?: string | null
+          stats_json?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          date?: string
+          ai_summary?: string | null
+          stats_json?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

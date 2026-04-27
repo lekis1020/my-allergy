@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { BarChart3 } from "lucide-react";
 import { createAnonClient } from "@/lib/supabase/server";
 import { toPaperDto, type PaperRow } from "@/lib/papers/transform";
 import { TrendingFeed } from "@/components/papers/trending-feed";
@@ -53,8 +54,23 @@ async function fetchTrendingPapers() {
     .slice(0, RESULT_LIMIT);
 }
 
+async function fetchTrendingAnalysis() {
+  const supabase = createAnonClient();
+  const { data } = await supabase
+    .from("trending_analysis")
+    .select("ai_summary, stats_json, date")
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data;
+}
+
 export default async function TrendingPage() {
-  const papers = await fetchTrendingPapers();
+  const [papers, analysis] = await Promise.all([
+    fetchTrendingPapers(),
+    fetchTrendingAnalysis(),
+  ]);
 
   return (
     <Suspense
@@ -70,6 +86,26 @@ export default async function TrendingPage() {
         </div>
       }
     >
+      {analysis && (
+        <div className="border-b border-gray-200 px-4 py-5 dark:border-gray-800">
+          <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-gray-900 dark:text-gray-100">
+            <BarChart3 className="h-5 w-5 text-blue-500" />
+            이번 달 연구 동향
+          </h2>
+          <div className="whitespace-pre-line text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+            {analysis.ai_summary}
+          </div>
+          {(analysis.stats_json as any)?.topTopics && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {((analysis.stats_json as any).topTopics as Array<{ name: string; count: number }>).map((t) => (
+                <span key={t.name} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                  {t.name} · {t.count}편
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <TrendingFeed initialPapers={papers} />
     </Suspense>
   );
