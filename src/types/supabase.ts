@@ -304,6 +304,7 @@ export type Database = {
       papers: {
         Row: {
           abstract: string | null
+          ai_summary: string | null
           citation_count: number | null
           created_at: string
           crossref_data: Json | null
@@ -325,6 +326,7 @@ export type Database = {
         }
         Insert: {
           abstract?: string | null
+          ai_summary?: string | null
           citation_count?: number | null
           created_at?: string
           crossref_data?: Json | null
@@ -346,6 +348,7 @@ export type Database = {
         }
         Update: {
           abstract?: string | null
+          ai_summary?: string | null
           citation_count?: number | null
           created_at?: string
           crossref_data?: Json | null
