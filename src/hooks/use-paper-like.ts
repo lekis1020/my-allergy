@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 
 export function usePaperLike(pmid: string, initialCount: number) {
@@ -8,6 +8,21 @@ export function usePaperLike(pmid: string, initialCount: number) {
   const [liked, setLiked] = useState(false);
   const [count, setCount] = useState(initialCount);
   const [loading, setLoading] = useState(false);
+
+  // Check if current user has liked this paper
+  useEffect(() => {
+    if (!user) {
+      setLiked(false);
+      return;
+    }
+
+    fetch(`/api/papers/${pmid}/like`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setLiked(data.liked);
+      })
+      .catch(() => {});
+  }, [pmid, user]);
 
   const toggle = useCallback(async () => {
     if (!user || loading) return;

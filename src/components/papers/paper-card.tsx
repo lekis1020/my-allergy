@@ -213,7 +213,7 @@ export function PaperCard({ paper }: PaperCardProps) {
 
           {/* Social Actions */}
           <div className="flex items-center gap-5 border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-gray-800 dark:text-gray-500">
-            <BookmarkButton pmid={paper.pmid} />
+            <BookmarkButton pmid={paper.pmid} count={paper.bookmark_count ?? 0} />
             <span className="text-gray-300 dark:text-gray-700">·</span>
             <LikeButton pmid={paper.pmid} count={paper.like_count ?? 0} />
             <span className="text-gray-300 dark:text-gray-700">·</span>
