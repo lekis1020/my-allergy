@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { ChevronRight, Flame } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { TRENDING_CATEGORIES } from "@/lib/constants/trending-categories";
 import { useTrendingTopics } from "@/hooks/use-trending-topics";
 
@@ -95,6 +95,20 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
     }
   };
 
+  const activeIndex = TRENDING_CATEGORIES.findIndex((c) => c.id === activeCategory);
+
+  const handlePrev = () => {
+    if (activeIndex > 0) {
+      handleTabClick(TRENDING_CATEGORIES[activeIndex - 1].id, activeIndex - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (activeIndex < TRENDING_CATEGORIES.length - 1) {
+      handleTabClick(TRENDING_CATEGORIES[activeIndex + 1].id, activeIndex + 1);
+    }
+  };
+
   const contentStyle =
     CATEGORY_STYLES[activeCategory] || DEFAULT_STYLE;
 
@@ -139,10 +153,32 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
           })}
         </div>
 
-        {/* Swipeable content area */}
+        {/* Swipeable content area with nav arrows */}
         <div
-          className={`rounded-b-xl border border-t-0 ${contentStyle.activeBorder} overflow-hidden`}
+          className={`relative rounded-b-xl border border-t-0 ${contentStyle.activeBorder} overflow-hidden`}
         >
+          {/* Left arrow */}
+          {activeIndex > 0 && (
+            <button
+              onClick={handlePrev}
+              className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-1 shadow-md transition-colors hover:bg-gray-100 dark:bg-gray-800/90 dark:hover:bg-gray-700"
+              aria-label="Previous category"
+            >
+              <ChevronLeft className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+            </button>
+          )}
+
+          {/* Right arrow */}
+          {activeIndex < TRENDING_CATEGORIES.length - 1 && (
+            <button
+              onClick={handleNext}
+              className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-1 shadow-md transition-colors hover:bg-gray-100 dark:bg-gray-800/90 dark:hover:bg-gray-700"
+              aria-label="Next category"
+            >
+              <ChevronRight className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+            </button>
+          )}
+
           <div
             ref={scrollRef}
             onScroll={handleScroll}
