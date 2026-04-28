@@ -281,10 +281,15 @@ export async function GET(request: NextRequest) {
   const anonClient = createAnonClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [{ data: likeRows }, { data: bookmarkRows }] = await Promise.all([
+  const [{ data: likeRows }, { data: bookmarkRows }, { data: commentRows }] = await Promise.all([
     (anonClient.from("paper_likes") as any).select("paper_pmid").in("paper_pmid", paperPmids),
-    (anonClient.from("bookmarks") as any).select("paper_pmid").in("paper_pmid", paperPmids),
-  ]) as [{ data: Array<{ paper_pmid: string }> | null }, { data: Array<{ paper_pmid: string }> | null }];
+    (anonClient.from("bookmarks") as any).select("pmid").in("pmid", paperPmids),
+    (anonClient.from("paper_comments") as any).select("paper_pmid").in("paper_pmid", paperPmids).is("deleted_at", null),
+  ]) as [
+    { data: Array<{ paper_pmid: string }> | null },
+    { data: Array<{ pmid: string }> | null },
+    { data: Array<{ paper_pmid: string }> | null },
+  ];
 
   const likeMap = new Map<string, number>();
   for (const row of likeRows ?? []) {
@@ -293,13 +298,19 @@ export async function GET(request: NextRequest) {
 
   const bookmarkMap = new Map<string, number>();
   for (const row of bookmarkRows ?? []) {
-    bookmarkMap.set(row.paper_pmid, (bookmarkMap.get(row.paper_pmid) ?? 0) + 1);
+    bookmarkMap.set(row.pmid, (bookmarkMap.get(row.pmid) ?? 0) + 1);
+  }
+
+  const commentMap = new Map<string, number>();
+  for (const row of commentRows ?? []) {
+    commentMap.set(row.paper_pmid, (commentMap.get(row.paper_pmid) ?? 0) + 1);
   }
 
   const papers = paperDtos.map((paper) => ({
     ...paper,
     like_count: likeMap.get(paper.pmid) ?? 0,
     bookmark_count: bookmarkMap.get(paper.pmid) ?? 0,
+    comment_count: commentMap.get(paper.pmid) ?? 0,
   }));
 
   const total = personalizedActive ? (personalizedTotal ?? 0) : dbTotal;

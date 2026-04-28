@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronRight, Flame } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { TRENDING_CATEGORIES } from "@/lib/constants/trending-categories";
 import { useTrendingTopics } from "@/hooks/use-trending-topics";
 
@@ -75,8 +75,39 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
   const [activeCategory, setActiveCategory] = useState(
     TRENDING_CATEGORIES[0].id,
   );
-  const { topics, totalStudies, isLoading } =
-    useTrendingTopics(activeCategory);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const index = Math.round(el.scrollLeft / el.clientWidth);
+    const cat = TRENDING_CATEGORIES[index];
+    if (cat && cat.id !== activeCategory) {
+      setActiveCategory(cat.id);
+    }
+  }, [activeCategory]);
+
+  const handleTabClick = (catId: string, index: number) => {
+    setActiveCategory(catId);
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollTo({ left: index * el.clientWidth, behavior: "smooth" });
+    }
+  };
+
+  const activeIndex = TRENDING_CATEGORIES.findIndex((c) => c.id === activeCategory);
+
+  const handlePrev = () => {
+    if (activeIndex > 0) {
+      handleTabClick(TRENDING_CATEGORIES[activeIndex - 1].id, activeIndex - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (activeIndex < TRENDING_CATEGORIES.length - 1) {
+      handleTabClick(TRENDING_CATEGORIES[activeIndex + 1].id, activeIndex + 1);
+    }
+  };
 
   const contentStyle =
     CATEGORY_STYLES[activeCategory] || DEFAULT_STYLE;
@@ -99,14 +130,14 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
           className="-mb-px flex gap-0.5 overflow-x-auto border-b border-gray-200 dark:border-gray-800"
           style={{ scrollbarWidth: "none" }}
         >
-          {TRENDING_CATEGORIES.map((cat) => {
+          {TRENDING_CATEGORIES.map((cat, index) => {
             const style = CATEGORY_STYLES[cat.id] || DEFAULT_STYLE;
             const isActive = activeCategory === cat.id;
 
             return (
               <button
                 key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
+                onClick={() => handleTabClick(cat.id, index)}
                 className={`relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-lg border border-b-0 px-3 py-2 text-xs font-medium transition-colors ${
                   isActive
                     ? `${style.active} ${style.activeBorder} z-10`
@@ -122,49 +153,101 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
           })}
         </div>
 
-        {/* Content area */}
+        {/* Swipeable content area with nav arrows */}
         <div
-          className={`rounded-b-xl border border-t-0 ${contentStyle.activeBorder} p-4`}
+          className={`relative rounded-b-xl border border-t-0 ${contentStyle.activeBorder} overflow-hidden`}
         >
-          {isLoading ? (
-            <TrendingTopicsSkeleton />
-          ) : topics.length === 0 ? (
-            <p className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
-              No ranked outcomes found for this category.
-            </p>
-          ) : (
-            <>
-              <ul className="space-y-1">
-                {topics.map((topic, i) => (
-                  <li key={topic.keyword}>
-                    <button
-                      onClick={() => onTopicClick(topic.keyword)}
-                      className="group flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-900"
-                    >
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                        {i + 1}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {topic.keyword}
-                      </span>
-                      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs tabular-nums text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                        {topic.count}
-                      </span>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover:text-gray-500 dark:text-gray-600 dark:group-hover:text-gray-400" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {totalStudies > 0 && (
-                <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-                  Based on {totalStudies} ongoing trials
-                </p>
-              )}
-            </>
+          {/* Left arrow */}
+          {activeIndex > 0 && (
+            <button
+              onClick={handlePrev}
+              className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-1 shadow-md transition-colors hover:bg-gray-100 dark:bg-gray-800/90 dark:hover:bg-gray-700"
+              aria-label="Previous category"
+            >
+              <ChevronLeft className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+            </button>
           )}
+
+          {/* Right arrow */}
+          {activeIndex < TRENDING_CATEGORIES.length - 1 && (
+            <button
+              onClick={handleNext}
+              className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-1 shadow-md transition-colors hover:bg-gray-100 dark:bg-gray-800/90 dark:hover:bg-gray-700"
+              aria-label="Next category"
+            >
+              <ChevronRight className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+            </button>
+          )}
+
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex snap-x snap-mandatory overflow-x-auto"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {TRENDING_CATEGORIES.map((cat) => (
+              <div key={cat.id} className="w-full flex-shrink-0 snap-center p-4">
+                <CategoryContent
+                  categoryId={cat.id}
+                  onTopicClick={onTopicClick}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function CategoryContent({
+  categoryId,
+  onTopicClick,
+}: {
+  categoryId: string;
+  onTopicClick: (keyword: string) => void;
+}) {
+  const { topics, totalStudies, isLoading } = useTrendingTopics(categoryId);
+
+  if (isLoading) return <TrendingTopicsSkeleton />;
+
+  if (topics.length === 0) {
+    return (
+      <p className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+        No ranked outcomes found for this category.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <ul className="space-y-1">
+        {topics.map((topic, i) => (
+          <li key={topic.keyword}>
+            <button
+              onClick={() => onTopicClick(topic.keyword)}
+              className="group flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-900"
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                {i + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                {topic.keyword}
+              </span>
+              <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs tabular-nums text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                {topic.count}
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover:text-gray-500 dark:text-gray-600 dark:group-hover:text-gray-400" />
+            </button>
+          </li>
+        ))}
+      </ul>
+      {totalStudies > 0 && (
+        <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
+          Based on {totalStudies} ongoing trials
+        </p>
+      )}
+    </>
   );
 }
 

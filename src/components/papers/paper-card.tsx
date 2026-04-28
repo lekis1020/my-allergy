@@ -7,9 +7,8 @@ import { formatCitationCount } from "@/lib/utils/text";
 import { TOPIC_META } from "@/lib/utils/topic-tags";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 import type { PaperWithJournal } from "@/types/filters";
-import { MessageCircle, Quote, Users, ThumbsDown, ThumbsUp } from "lucide-react";
+import { MessageCircle, Quote, Users, ThumbsUp } from "lucide-react";
 import { BookmarkButton } from "./bookmark-button";
-import { useFeedback } from "@/hooks/use-feedback";
 import { usePaperLike } from "@/hooks/use-paper-like";
 
 function LikeButton({ pmid, count }: { pmid: string; count: number }) {
@@ -36,32 +35,7 @@ interface PaperCardProps {
 
 export function PaperCard({ paper }: PaperCardProps) {
   const [isAbstractOpen, setIsAbstractOpen] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const { getFeedback, setFeedback, clearFeedback, isLoggedIn } = useFeedback();
-  const currentFeedback = getFeedback(paper.pmid);
 
-  const handleInterested = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isLoggedIn) return;
-    if (currentFeedback === "interested") {
-      void clearFeedback(paper.pmid);
-    } else {
-      void setFeedback(paper.pmid, "interested");
-    }
-  };
-
-  const handleNotInterested = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isLoggedIn) return;
-    if (currentFeedback === "not_interested") {
-      void clearFeedback(paper.pmid);
-    } else {
-      setDismissed(true);
-      void setFeedback(paper.pmid, "not_interested");
-    }
-  };
   const avatarLabel = paper.journal_abbreviation
     .split(" ")
     .slice(0, 2)
@@ -72,41 +46,8 @@ export function PaperCard({ paper }: PaperCardProps) {
 
   return (
     <article
-      className={`relative px-4 py-4 transition-all duration-300 hover:bg-gray-50/70 dark:hover:bg-gray-900/70 ${
-        dismissed ? "pointer-events-none max-h-0 overflow-hidden py-0 opacity-0" : ""
-      }`}
-      aria-hidden={dismissed}
+      className="relative px-4 py-4 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-900/70"
     >
-      {isLoggedIn && (
-        <div className="absolute right-3 top-3 flex items-center gap-1">
-          <button
-            type="button"
-            onClick={handleInterested}
-            className={`rounded-full p-1.5 transition-colors ${
-              currentFeedback === "interested"
-                ? "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
-                : "text-gray-400 hover:bg-blue-50 hover:text-blue-500 dark:text-gray-500 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
-            }`}
-            aria-label="Interested"
-            title="Interested in this paper"
-          >
-            <ThumbsUp className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={handleNotInterested}
-            className={`rounded-full p-1.5 transition-colors ${
-              currentFeedback === "not_interested"
-                ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
-                : "text-gray-400 hover:bg-red-50 hover:text-red-500 dark:text-gray-500 dark:hover:bg-red-900/30 dark:hover:text-red-400"
-            }`}
-            aria-label="Not interested"
-            title="Not interested in this paper"
-          >
-            <ThumbsDown className="h-4 w-4" />
-          </button>
-        </div>
-      )}
       <div className="flex gap-3">
         <div
           className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold"
