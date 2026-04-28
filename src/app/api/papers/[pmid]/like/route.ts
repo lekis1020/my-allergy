@@ -1,5 +1,15 @@
 import { createServerAuthClient } from "@/lib/supabase/server";
+import { createAnonClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+
+async function getTotalLikes(pmid: string): Promise<number> {
+  const supabase = createAnonClient();
+  const { count } = await supabase
+    .from("paper_likes")
+    .select("*", { count: "exact", head: true })
+    .eq("paper_pmid", pmid);
+  return count ?? 0;
+}
 
 export async function GET(
   _req: NextRequest,
@@ -11,8 +21,10 @@ export async function GET(
     data: { user },
   } = await supabase.auth.getUser();
 
+  const totalCount = await getTotalLikes(pmid);
+
   if (!user) {
-    return NextResponse.json({ liked: false });
+    return NextResponse.json({ liked: false, count: totalCount });
   }
 
   const { data: existing } = await supabase
@@ -22,7 +34,7 @@ export async function GET(
     .eq("paper_pmid", pmid)
     .maybeSingle();
 
-  return NextResponse.json({ liked: !!existing });
+  return NextResponse.json({ liked: !!existing, count: totalCount });
 }
 
 export async function POST(
@@ -39,7 +51,6 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check if already liked
   const { data: existing } = await supabase
     .from("paper_likes")
     .select("id")
@@ -49,13 +60,13 @@ export async function POST(
 
   if (existing) {
     await supabase.from("paper_likes").delete().eq("id", existing.id);
-    return NextResponse.json({ liked: false });
+  } else {
+    await supabase.from("paper_likes").insert({
+      user_id: user.id,
+      paper_pmid: pmid,
+    });
   }
 
-  await supabase.from("paper_likes").insert({
-    user_id: user.id,
-    paper_pmid: pmid,
-  });
-
-  return NextResponse.json({ liked: true });
+  const totalCount = await getTotalLikes(pmid);
+  return NextResponse.json({ liked: !existing, count: totalCount });
 }
