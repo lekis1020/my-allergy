@@ -9,20 +9,18 @@ export function usePaperLike(pmid: string, initialCount: number) {
   const [count, setCount] = useState(initialCount);
   const [loading, setLoading] = useState(false);
 
-  // Check if current user has liked this paper
+  // Check if current user has liked this paper + get total count
   useEffect(() => {
-    if (!user) {
-      setLiked(false);
-      return;
-    }
-
     fetch(`/api/papers/${pmid}/like`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data) setLiked(data.liked);
+        if (data) {
+          setLiked(data.liked);
+          setCount(data.count);
+        }
       })
       .catch(() => {});
-  }, [pmid, user]);
+  }, [pmid]);
 
   const toggle = useCallback(async () => {
     if (!user || loading) return;
@@ -37,7 +35,6 @@ export function usePaperLike(pmid: string, initialCount: number) {
     try {
       const res = await fetch(`/api/papers/${pmid}/like`, { method: "POST" });
       if (!res.ok) {
-        // Revert on error
         setLiked(prevLiked);
         setCount(prevCount);
         return;
@@ -45,6 +42,7 @@ export function usePaperLike(pmid: string, initialCount: number) {
 
       const data = await res.json();
       setLiked(data.liked);
+      setCount(data.count);
     } finally {
       setLoading(false);
     }
