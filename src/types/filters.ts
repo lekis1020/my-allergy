@@ -82,6 +82,9 @@ export interface PaperWithJournal {
   authors: AuthorSummary[];
   comment_count?: number;
   latest_comment_at?: string | null;
+  ai_summary?: string | null;
+  like_count?: number;
+  bookmark_count?: number;
 }
 
 export interface AuthorSummary {

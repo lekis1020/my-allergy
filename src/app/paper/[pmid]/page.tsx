@@ -4,7 +4,7 @@ import { formatDate } from "@/lib/utils/date";
 import { getPubMedUrl, getDoiUrl } from "@/lib/utils/url";
 import { formatCitationCount } from "@/lib/utils/text";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
-import { ArrowLeft, ExternalLink, Calendar, Quote, BookOpen, FileText, Download } from "lucide-react";
+import { ArrowLeft, ExternalLink, Calendar, Quote, BookOpen, FileText, Download, Sparkles } from "lucide-react";
 import { findOpenAccessPdf } from "@/lib/pubmed/open-access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -189,6 +189,19 @@ export default async function PaperDetailPage({ params }: PageProps) {
                 abstract={String(paper.abstract)}
                 title={String(paper.title)}
               />
+            )}
+
+            {/* AI 핵심 요약 - SSR for crawlers */}
+            {paper.ai_summary && (
+              <section className="border-b border-gray-200 px-6 py-4 dark:border-gray-800">
+                <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  <Sparkles className="h-4 w-4 text-blue-500" />
+                  AI 핵심 요약
+                </h2>
+                <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                  {paper.ai_summary}
+                </p>
+              </section>
             )}
 
             {/* Abstract */}

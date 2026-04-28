@@ -304,6 +304,7 @@ export type Database = {
       papers: {
         Row: {
           abstract: string | null
+          ai_summary: string | null
           citation_count: number | null
           created_at: string
           crossref_data: Json | null
@@ -325,6 +326,7 @@ export type Database = {
         }
         Insert: {
           abstract?: string | null
+          ai_summary?: string | null
           citation_count?: number | null
           created_at?: string
           crossref_data?: Json | null
@@ -346,6 +348,7 @@ export type Database = {
         }
         Update: {
           abstract?: string | null
+          ai_summary?: string | null
           citation_count?: number | null
           created_at?: string
           crossref_data?: Json | null
@@ -503,6 +506,51 @@ export type Database = {
           paper_pmid?: string
           used_at?: string
           count?: number
+        }
+        Relationships: []
+      }
+      paper_likes: {
+        Row: {
+          id: string
+          user_id: string
+          paper_pmid: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          paper_pmid: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          paper_pmid?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      trending_analysis: {
+        Row: {
+          id: string
+          date: string
+          ai_summary: string | null
+          stats_json: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          date: string
+          ai_summary?: string | null
+          stats_json?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          date?: string
+          ai_summary?: string | null
+          stats_json?: Json | null
+          created_at?: string
         }
         Relationships: []
       }

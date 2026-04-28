@@ -4,13 +4,31 @@ import { PaperAuthors } from "./paper-authors";
 import { PaperAbstract } from "./paper-abstract";
 import { formatRelativeDate } from "@/lib/utils/date";
 import { formatCitationCount } from "@/lib/utils/text";
-import { getPubMedUrl, getDoiUrl } from "@/lib/utils/url";
 import { TOPIC_META } from "@/lib/utils/topic-tags";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 import type { PaperWithJournal } from "@/types/filters";
-import { ExternalLink, MessageCircle, Quote, Users, ThumbsDown, ThumbsUp } from "lucide-react";
+import { MessageCircle, Quote, Users, ThumbsDown, ThumbsUp } from "lucide-react";
 import { BookmarkButton } from "./bookmark-button";
 import { useFeedback } from "@/hooks/use-feedback";
+import { usePaperLike } from "@/hooks/use-paper-like";
+
+function LikeButton({ pmid, count }: { pmid: string; count: number }) {
+  const { liked, count: likeCount, toggle } = usePaperLike(pmid, count);
+
+  return (
+    <button
+      onClick={toggle}
+      className={`flex items-center gap-1 transition-colors ${
+        liked
+          ? "text-blue-500 dark:text-blue-400"
+          : "hover:text-gray-600 dark:hover:text-gray-300"
+      }`}
+    >
+      <ThumbsUp className="h-4 w-4" />
+      <span>{likeCount}</span>
+    </button>
+  );
+}
 
 interface PaperCardProps {
   paper: PaperWithJournal;
@@ -146,6 +164,14 @@ export function PaperCard({ paper }: PaperCardProps) {
             )}
           </div>
 
+          {/* AI Summary */}
+          {paper.ai_summary && (
+            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+              <span className="font-semibold text-blue-500 dark:text-blue-400">AI:</span>{" "}
+              {paper.ai_summary}
+            </p>
+          )}
+
           <div className="mt-2">
             <PaperAbstract
               abstract={paper.abstract}
@@ -173,27 +199,7 @@ export function PaperCard({ paper }: PaperCardProps) {
                 })}
               </div>
             )}
-            <div className="ml-auto flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-              <a
-                href={getPubMedUrl(paper.pmid)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400"
-              >
-                PubMed <ExternalLink className="h-3 w-3" />
-              </a>
-              {paper.doi && (
-                <a
-                  href={getDoiUrl(paper.doi)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400"
-                >
-                  DOI <ExternalLink className="h-3 w-3" />
-                </a>
-              )}
-              <BookmarkButton pmid={paper.pmid} size="sm" />
-            </div>
+            <div className="ml-auto" />
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
@@ -203,15 +209,21 @@ export function PaperCard({ paper }: PaperCardProps) {
                 {formatCitationCount(paper.citation_count)} citations
               </span>
             )}
-            {typeof paper.comment_count === "number" && paper.comment_count > 0 && (
-              <Link
-                href={`/paper/${paper.pmid}#comments`}
-                className="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
-                {paper.comment_count} {paper.comment_count === 1 ? "comment" : "comments"}
-              </Link>
-            )}
+          </div>
+
+          {/* Social Actions */}
+          <div className="flex items-center gap-5 border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-gray-800 dark:text-gray-500">
+            <BookmarkButton pmid={paper.pmid} />
+            <span className="text-gray-300 dark:text-gray-700">·</span>
+            <LikeButton pmid={paper.pmid} count={paper.like_count ?? 0} />
+            <span className="text-gray-300 dark:text-gray-700">·</span>
+            <Link
+              href={`/paper/${paper.pmid}#comments`}
+              className="flex items-center gap-1 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span>{paper.comment_count ?? 0}</span>
+            </Link>
           </div>
         </div>
       </div>
