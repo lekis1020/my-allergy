@@ -7,9 +7,10 @@ interface BookmarkButtonProps {
   pmid: string;
   size?: "sm" | "md";
   aiSummary?: string | null;
+  count?: number;
 }
 
-export function BookmarkButton({ pmid, size = "sm", aiSummary }: BookmarkButtonProps) {
+export function BookmarkButton({ pmid, size = "sm", aiSummary, count }: BookmarkButtonProps) {
   const { isBookmarked, toggleBookmark, loading } = useBookmarks();
   const saved = isBookmarked(pmid);
 
@@ -37,6 +38,9 @@ export function BookmarkButton({ pmid, size = "sm", aiSummary }: BookmarkButtonP
       <Bookmark
         className={`${iconSize} ${saved ? "fill-blue-500 text-blue-500 dark:fill-blue-400 dark:text-blue-400" : ""}`}
       />
+      {count !== undefined && (
+        <span className="ml-0.5 text-xs">{count}</span>
+      )}
     </button>
   );
 }

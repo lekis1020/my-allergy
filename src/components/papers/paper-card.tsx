@@ -199,32 +199,29 @@ export function PaperCard({ paper }: PaperCardProps) {
                 })}
               </div>
             )}
-            <div className="ml-auto" />
+
+            {/* Social Actions — same row as tags, right-aligned */}
+            <div className="ml-auto flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+              <BookmarkButton pmid={paper.pmid} count={paper.bookmark_count ?? 0} />
+              <LikeButton pmid={paper.pmid} count={paper.like_count ?? 0} />
+              <Link
+                href={`/paper/${paper.pmid}#comments`}
+                className="flex items-center gap-1 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span>{paper.comment_count ?? 0}</span>
+              </Link>
+            </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
-            {paper.citation_count !== null && paper.citation_count > 0 && (
+          {paper.citation_count !== null && paper.citation_count > 0 && (
+            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               <span className="flex items-center gap-1">
                 <Quote className="h-3.5 w-3.5" />
                 {formatCitationCount(paper.citation_count)} citations
               </span>
-            )}
-          </div>
-
-          {/* Social Actions */}
-          <div className="flex items-center gap-5 border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-gray-800 dark:text-gray-500">
-            <BookmarkButton pmid={paper.pmid} />
-            <span className="text-gray-300 dark:text-gray-700">·</span>
-            <LikeButton pmid={paper.pmid} count={paper.like_count ?? 0} />
-            <span className="text-gray-300 dark:text-gray-700">·</span>
-            <Link
-              href={`/paper/${paper.pmid}#comments`}
-              className="flex items-center gap-1 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span>{paper.comment_count ?? 0}</span>
-            </Link>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </article>
