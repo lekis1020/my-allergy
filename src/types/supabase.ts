@@ -554,6 +554,30 @@ export type Database = {
         }
         Relationships: []
       }
+      paper_mentions: {
+        Row: {
+          id: string
+          comment_id: string
+          source_pmid: string
+          mentioned_pmid: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          comment_id: string
+          source_pmid: string
+          mentioned_pmid: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          comment_id?: string
+          source_pmid?: string
+          mentioned_pmid?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
