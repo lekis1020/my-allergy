@@ -12,7 +12,7 @@ interface BookmarkButtonProps {
 }
 
 export function BookmarkButton({ pmid, size = "sm", aiSummary, count: initialCount }: BookmarkButtonProps) {
-  const { isBookmarked, toggleBookmark, loading } = useBookmarks();
+  const { isBookmarked, toggleBookmark, loading, isLoggedIn } = useBookmarks();
   const saved = isBookmarked(pmid);
   const [count, setCount] = useState(initialCount ?? 0);
   const [prevSaved, setPrevSaved] = useState<boolean | null>(null);
@@ -40,6 +40,10 @@ export function BookmarkButton({ pmid, size = "sm", aiSummary, count: initialCou
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (!isLoggedIn) {
+          window.location.href = "/login";
+          return;
+        }
         toggleBookmark(pmid, aiSummary ?? undefined);
       }}
       className={`flex items-center gap-0.5 rounded-full p-1.5 transition-colors ${
@@ -47,8 +51,8 @@ export function BookmarkButton({ pmid, size = "sm", aiSummary, count: initialCou
           ? "text-blue-500 dark:text-blue-400"
           : "text-gray-400 hover:bg-blue-50 hover:text-blue-500 dark:text-gray-500 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
       }`}
-      aria-label={saved ? "Remove bookmark" : "Save paper"}
-      title={saved ? "Remove bookmark" : "Save paper"}
+      aria-label={saved ? "Remove bookmark" : isLoggedIn ? "Save paper" : "Login to bookmark"}
+      title={saved ? "Remove bookmark" : isLoggedIn ? "Save paper" : "Login to bookmark"}
     >
       <Bookmark
         className={`${iconSize} ${saved ? "fill-blue-500 dark:fill-blue-400" : ""}`}
