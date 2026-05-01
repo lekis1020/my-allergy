@@ -11,20 +11,33 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const { data: bookmarks, error: bmError } = await supabase
     .from("bookmarks")
-    .select("pmid, papers!inner(title)")
+    .select("pmid")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (bmError) {
+    return NextResponse.json({ error: bmError.message }, { status: 500 });
   }
 
-  const papers = (data ?? []).map((b) => ({
-    pmid: b.pmid,
-    title: String((b.papers as unknown as { title: string }).title ?? ""),
-  }));
+  const pmids = (bookmarks ?? []).map((b) => b.pmid);
+  if (pmids.length === 0) {
+    return NextResponse.json({ papers: [] });
+  }
+
+  const { data: paperRows } = await supabase
+    .from("papers")
+    .select("pmid, title")
+    .in("pmid", pmids);
+
+  const titleMap = new Map(
+    (paperRows ?? []).map((p) => [String(p.pmid), String(p.title ?? "")])
+  );
+
+  const papers = pmids
+    .filter((pmid) => titleMap.has(pmid))
+    .map((pmid) => ({ pmid, title: titleMap.get(pmid)! }));
 
   return NextResponse.json({ papers });
 }
