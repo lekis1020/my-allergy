@@ -85,6 +85,7 @@ export interface PaperWithJournal {
   ai_summary?: string | null;
   like_count?: number;
   bookmark_count?: number;
+  connection_count?: number;
 }
 
 export interface AuthorSummary {

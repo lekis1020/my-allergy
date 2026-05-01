@@ -281,14 +281,18 @@ export async function GET(request: NextRequest) {
   const anonClient = createAnonClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [{ data: likeRows }, { data: bookmarkRows }, { data: commentRows }] = await Promise.all([
+  const [{ data: likeRows }, { data: bookmarkRows }, { data: commentRows }, { data: citationRows }, { data: mentionRows }] = await Promise.all([
     (anonClient.from("paper_likes") as any).select("paper_pmid").in("paper_pmid", paperPmids),
     (anonClient.from("bookmarks") as any).select("pmid").in("pmid", paperPmids),
     (anonClient.from("paper_comments") as any).select("paper_pmid").in("paper_pmid", paperPmids).is("deleted_at", null),
+    (anonClient.from("paper_citations") as any).select("source_pmid, target_pmid").or(`source_pmid.in.(${paperPmids.join(",")}),target_pmid.in.(${paperPmids.join(",")})`),
+    (anonClient.from("paper_mentions") as any).select("source_pmid, mentioned_pmid").or(`source_pmid.in.(${paperPmids.join(",")}),mentioned_pmid.in.(${paperPmids.join(",")})`),
   ]) as [
     { data: Array<{ paper_pmid: string }> | null },
     { data: Array<{ pmid: string }> | null },
     { data: Array<{ paper_pmid: string }> | null },
+    { data: Array<{ source_pmid: string; target_pmid: string }> | null },
+    { data: Array<{ source_pmid: string; mentioned_pmid: string }> | null },
   ];
 
   const likeMap = new Map<string, number>();
@@ -306,11 +310,40 @@ export async function GET(request: NextRequest) {
     commentMap.set(row.paper_pmid, (commentMap.get(row.paper_pmid) ?? 0) + 1);
   }
 
+  const connectionSet = new Map<string, Set<string>>();
+  for (const row of citationRows ?? []) {
+    const pmidsSet = new Set(paperPmids);
+    if (pmidsSet.has(row.source_pmid)) {
+      const s = connectionSet.get(row.source_pmid) ?? new Set();
+      s.add(row.target_pmid);
+      connectionSet.set(row.source_pmid, s);
+    }
+    if (pmidsSet.has(row.target_pmid)) {
+      const s = connectionSet.get(row.target_pmid) ?? new Set();
+      s.add(row.source_pmid);
+      connectionSet.set(row.target_pmid, s);
+    }
+  }
+  for (const row of mentionRows ?? []) {
+    const pmidsSet = new Set(paperPmids);
+    if (pmidsSet.has(row.source_pmid)) {
+      const s = connectionSet.get(row.source_pmid) ?? new Set();
+      s.add(row.mentioned_pmid);
+      connectionSet.set(row.source_pmid, s);
+    }
+    if (pmidsSet.has(row.mentioned_pmid)) {
+      const s = connectionSet.get(row.mentioned_pmid) ?? new Set();
+      s.add(row.source_pmid);
+      connectionSet.set(row.mentioned_pmid, s);
+    }
+  }
+
   const papers = paperDtos.map((paper) => ({
     ...paper,
     like_count: likeMap.get(paper.pmid) ?? 0,
     bookmark_count: bookmarkMap.get(paper.pmid) ?? 0,
     comment_count: commentMap.get(paper.pmid) ?? 0,
+    connection_count: connectionSet.get(paper.pmid)?.size ?? 0,
   }));
 
   const total = personalizedActive ? (personalizedTotal ?? 0) : dbTotal;

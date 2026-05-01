@@ -7,27 +7,7 @@ import { formatCitationCount } from "@/lib/utils/text";
 import { TOPIC_META } from "@/lib/utils/topic-tags";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 import type { PaperWithJournal } from "@/types/filters";
-import { MessageCircle, Quote, Users, ThumbsUp } from "lucide-react";
-import { BookmarkButton } from "./bookmark-button";
-import { usePaperLike } from "@/hooks/use-paper-like";
-
-function LikeButton({ pmid, count }: { pmid: string; count: number }) {
-  const { liked, count: likeCount, toggle } = usePaperLike(pmid, count);
-
-  return (
-    <button
-      onClick={toggle}
-      className={`flex items-center gap-1 transition-colors ${
-        liked
-          ? "text-blue-500 dark:text-blue-400"
-          : "hover:text-gray-600 dark:hover:text-gray-300"
-      }`}
-    >
-      <ThumbsUp className="h-4 w-4" />
-      <span>{likeCount}</span>
-    </button>
-  );
-}
+import { Bookmark, MessageCircle, Network, Quote, ThumbsUp, Users } from "lucide-react";
 
 interface PaperCardProps {
   paper: PaperWithJournal;
@@ -141,17 +121,26 @@ export function PaperCard({ paper }: PaperCardProps) {
               </div>
             )}
 
-            {/* Social Actions — same row as tags, right-aligned */}
+            {/* Social Stats — display only, right-aligned */}
             <div className="ml-auto flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
-              <BookmarkButton pmid={paper.pmid} count={paper.bookmark_count ?? 0} />
-              <LikeButton pmid={paper.pmid} count={paper.like_count ?? 0} />
-              <Link
-                href={`/paper/${paper.pmid}#comments`}
-                className="flex items-center gap-1 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
-              >
+              <span className="flex items-center gap-0.5">
+                <Bookmark className={`h-4 w-4 ${(paper.bookmark_count ?? 0) > 0 ? "fill-blue-500 text-blue-500 dark:fill-blue-400 dark:text-blue-400" : ""}`} />
+                <span>{paper.bookmark_count ?? 0}</span>
+              </span>
+              <span className="flex items-center gap-0.5">
+                <ThumbsUp className={`h-4 w-4 ${(paper.like_count ?? 0) > 0 ? "text-blue-500 dark:text-blue-400" : ""}`} />
+                <span>{paper.like_count ?? 0}</span>
+              </span>
+              <span className="flex items-center gap-0.5">
                 <MessageCircle className="h-4 w-4" />
                 <span>{paper.comment_count ?? 0}</span>
-              </Link>
+              </span>
+              {(paper.connection_count ?? 0) > 0 && (
+                <span className="flex items-center gap-0.5 text-purple-500 dark:text-purple-400">
+                  <Network className="h-4 w-4" />
+                  <span>{paper.connection_count}</span>
+                </span>
+              )}
             </div>
           </div>
 
