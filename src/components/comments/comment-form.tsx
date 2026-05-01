@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { Loader2, Send } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { registerOwnComment } from "@/hooks/use-comment-notifications";
+import { useBookmarksWithTitles, type BookmarkPaper } from "@/hooks/use-bookmarks-with-titles";
+import { MentionDropdown } from "./mention-dropdown";
 
 interface CommentFormProps {
   pmid: string;
@@ -27,6 +29,10 @@ export function CommentForm({
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { papers: bookmarkPapers } = useBookmarksWithTitles();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionActive, setMentionActive] = useState(false);
 
   if (authLoading) {
     return (
@@ -56,6 +62,45 @@ export function CommentForm({
         이메일 인증이 필요합니다. 받은 편지함의 확인 메일을 열어 인증을 완료해 주세요.
       </div>
     );
+  }
+
+  function handleContentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const val = e.target.value;
+    setContent(val);
+    const cursor = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, cursor);
+    const mentionMatch = textBeforeCursor.match(/(?:^|[\s])@([^\s@]*)$/);
+    if (mentionMatch) {
+      setMentionQuery(mentionMatch[1]);
+      setMentionActive(true);
+    } else {
+      setMentionActive(false);
+      setMentionQuery(null);
+    }
+  }
+
+  function handleMentionSelect(paper: BookmarkPaper) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const cursor = textarea.selectionStart;
+    const textBeforeCursor = content.slice(0, cursor);
+    const atIndex = textBeforeCursor.lastIndexOf("@");
+    if (atIndex === -1) return;
+    const shortTitle = paper.title.length > 60
+      ? paper.title.slice(0, 57) + "..."
+      : paper.title;
+    const mention = `[@${shortTitle}](pmid:${paper.pmid})`;
+    const before = content.slice(0, atIndex);
+    const after = content.slice(cursor);
+    const newContent = before + mention + " " + after;
+    setContent(newContent);
+    setMentionActive(false);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const newCursor = before.length + mention.length + 1;
+      textarea.setSelectionRange(newCursor, newCursor);
+    });
   }
 
   async function submit(e: React.FormEvent) {
@@ -95,15 +140,33 @@ export function CommentForm({
 
   return (
     <form onSubmit={submit} className="space-y-2">
-      <textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder={placeholder}
-        autoFocus={autoFocus}
-        rows={parentId ? 2 : 3}
-        maxLength={2000}
-        className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
-      />
+      <div className="relative">
+        <MentionDropdown
+          query={mentionQuery ?? ""}
+          papers={bookmarkPapers}
+          onSelect={handleMentionSelect}
+          visible={mentionActive}
+        />
+        <textarea
+          ref={textareaRef}
+          value={content}
+          onChange={handleContentChange}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && mentionActive) {
+              setMentionActive(false);
+              setMentionQuery(null);
+            }
+          }}
+          onBlur={() => {
+            setTimeout(() => setMentionActive(false), 200);
+          }}
+          placeholder={placeholder}
+          autoFocus={autoFocus}
+          rows={parentId ? 2 : 3}
+          maxLength={2000}
+          className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
+        />
+      </div>
       {error && (
         <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
       )}

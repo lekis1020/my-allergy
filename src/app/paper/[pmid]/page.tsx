@@ -17,6 +17,7 @@ import {
   type LinkedPaper,
 } from "@/components/papers/paper-list-section";
 import { PaperChat } from "@/components/chat/paper-chat";
+import { ConnectionGraphPreview } from "@/components/graph/connection-graph-preview";
 
 interface AuthorData {
   last_name: string;
@@ -239,6 +240,8 @@ export default async function PaperDetailPage({ params }: PageProps) {
                 {externalLinks}
               </section>
 
+              <ConnectionGraphPreview pmid={pmid} />
+
               {hasCitations && (
                 <>
                   {referencesPapers.length > 0 && (
@@ -282,6 +285,8 @@ export default async function PaperDetailPage({ params }: PageProps) {
                   {keywordChips}
                 </div>
               )}
+
+              <ConnectionGraphPreview pmid={pmid} />
 
               {hasCitations && (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">

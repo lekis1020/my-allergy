@@ -9,6 +9,7 @@ import type {
 
 import { isAdmin } from "@/lib/auth/admin";
 import { buildNotificationRows } from "@/lib/notifications/generate";
+import { parseMentions } from "@/lib/comments/mention-parser";
 
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
 
@@ -243,6 +244,23 @@ export async function POST(
     console.error("[Notifications] Failed to generate notifications:", err);
   }
 
+  // Extract and save paper mentions (fire-and-forget)
+  try {
+    const mentions = parseMentions(content);
+    if (mentions.length > 0) {
+      const mentionServiceClient = createServiceClient();
+      await mentionServiceClient.from("paper_mentions").upsert(
+        mentions.map((m) => ({
+          comment_id: inserted.id,
+          source_pmid: pmid,
+          mentioned_pmid: m.pmid,
+        })),
+        { onConflict: "comment_id,mentioned_pmid", ignoreDuplicates: true }
+      );
+    }
+  } catch (err) {
+    console.error("[Mentions] Failed to save paper mentions:", err);
+  }
 
   return NextResponse.json({ comment: toDto(inserted, user.id, isAdmin(user.email)) }, { status: 201 });
 }

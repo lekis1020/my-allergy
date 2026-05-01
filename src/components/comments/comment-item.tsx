@@ -1,11 +1,36 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Flag, MessageSquare, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { formatRelativeDate } from "@/lib/utils/date";
 import { formatAnonId } from "@/lib/comments/anon-id-client";
+import { segmentContent } from "@/lib/comments/mention-parser";
 import type { CommentDTO } from "@/lib/comments/types";
 import { CommentForm } from "./comment-form";
+
+function CommentContent({ content }: { content: string }) {
+  const segments = segmentContent(content);
+
+  return (
+    <p className="mt-1 whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">
+      {segments.map((seg, i) =>
+        seg.type === "mention" ? (
+          <Link
+            key={i}
+            href={`/paper/${seg.pmid}`}
+            className="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1 py-0.5 text-xs font-medium text-blue-600 hover:bg-blue-100 hover:underline dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-900/40"
+            title={`PMID: ${seg.pmid}`}
+          >
+            📄 {seg.title}
+          </Link>
+        ) : (
+          <span key={i}>{seg.value}</span>
+        )
+      )}
+    </p>
+  );
+}
 
 interface CommentItemProps {
   comment: CommentDTO;
@@ -148,9 +173,7 @@ export function CommentItem({
               </div>
             </div>
           ) : (
-            <p className="mt-1 whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">
-              {comment.content}
-            </p>
+            <CommentContent content={comment.content} />
           )}
 
           {!isDeleted && !editing && (
