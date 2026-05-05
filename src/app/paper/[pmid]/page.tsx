@@ -1,15 +1,17 @@
+import type { Metadata } from "next";
 import { createAnonClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils/date";
 import { getPubMedUrl, getDoiUrl } from "@/lib/utils/url";
 import { formatCitationCount } from "@/lib/utils/text";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
-import { ArrowLeft, ExternalLink, Calendar, Quote, BookOpen, FileText, Download, Sparkles } from "lucide-react";
+import { ArrowLeft, ExternalLink, Calendar, Quote, BookOpen, FileText, Download, Sparkles, Info } from "lucide-react";
 import { findOpenAccessPdf } from "@/lib/pubmed/open-access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PaperActions } from "@/components/papers/paper-actions";
 import { StructuredAbstract } from "@/components/papers/structured-abstract";
+import { CollapsibleAbstract } from "@/components/papers/collapsible-abstract";
 import { CommentThread } from "@/components/comments/comment-thread";
 import { AuthorsList } from "@/components/papers/authors-list";
 import {
@@ -32,6 +34,50 @@ export const revalidate = 3600;
 
 interface PageProps {
   params: Promise<{ pmid: string }>;
+}
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://my-allergy.vercel.app";
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { pmid } = await params;
+  const supabase = createAnonClient();
+
+  const { data: paper } = await supabase
+    .from("papers")
+    .select("title, abstract, ai_summary, journals!inner (name, abbreviation)")
+    .eq("pmid", pmid)
+    .single();
+
+  if (!paper) {
+    return { title: "Paper Not Found" };
+  }
+
+  const title = decodeHtmlEntities(String(paper.title));
+  const description = paper.ai_summary
+    ? String(paper.ai_summary)
+    : paper.abstract
+      ? decodeHtmlEntities(String(paper.abstract)).slice(0, 200) + "..."
+      : `Research paper from ${paper.journals.name}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      url: `${SITE_URL}/paper/${pmid}`,
+      siteName: "My Allergy",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
+    alternates: {
+      canonical: `${SITE_URL}/paper/${pmid}`,
+    },
+  };
 }
 
 export default async function PaperDetailPage({ params }: PageProps) {
@@ -125,8 +171,36 @@ export default async function PaperDetailPage({ params }: PageProps) {
     </div>
   );
 
+  const decodedTitle = decodeHtmlEntities(String(paper.title));
+  const firstAuthor = authors.length > 0
+    ? `${authors[0].last_name}${authors[0].first_name ? ` ${authors[0].first_name}` : ""}`
+    : null;
+
+  // JSON-LD structured data
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ScholarlyArticle",
+    headline: decodedTitle,
+    ...(paper.abstract && { abstract: decodeHtmlEntities(String(paper.abstract)).slice(0, 500) }),
+    datePublished: displayPublicationDate,
+    ...(paper.doi && { identifier: { "@type": "PropertyValue", propertyID: "DOI", value: String(paper.doi) } }),
+    url: `${SITE_URL}/paper/${pmid}`,
+    isPartOf: {
+      "@type": "Periodical",
+      name: journal.name,
+    },
+    ...(firstAuthor && { author: { "@type": "Person", name: firstAuthor } }),
+    publisher: { "@type": "Organization", name: "My Allergy" },
+    ...(paper.ai_summary && { description: String(paper.ai_summary) }),
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <Link
         href="/"
         className="mb-6 inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -172,7 +246,7 @@ export default async function PaperDetailPage({ params }: PageProps) {
           </div>
 
           <h1 className="text-3xl font-bold leading-tight text-gray-900 lg:text-[2.75rem] lg:leading-tight dark:text-gray-100">
-            {decodeHtmlEntities(String(paper.title))}
+            {decodedTitle}
           </h1>
         </header>
 
@@ -192,12 +266,15 @@ export default async function PaperDetailPage({ params }: PageProps) {
               />
             )}
 
-            {/* AI 핵심 요약 - SSR for crawlers */}
+            {/* AI 핵심 요약 — primary original content, prominent display */}
             {paper.ai_summary && (
-              <section className="border-b border-gray-200 px-6 py-4 dark:border-gray-800">
-                <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <section className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50/50 p-5 dark:border-blue-800/50 dark:from-blue-950/40 dark:to-indigo-950/30">
+                <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
                   <Sparkles className="h-4 w-4 text-blue-500" />
                   AI 핵심 요약
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-900/50 dark:text-blue-400">
+                    My Allergy 오리지널
+                  </span>
                 </h2>
                 <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                   {paper.ai_summary}
@@ -205,14 +282,23 @@ export default async function PaperDetailPage({ params }: PageProps) {
               </section>
             )}
 
-            {/* Abstract */}
+            {/* Source attribution */}
+            <div className="flex items-start gap-2 rounded-lg bg-gray-50 px-4 py-2.5 text-xs text-gray-500 dark:bg-gray-900/50 dark:text-gray-400">
+              <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+              <p>
+                아래 초록(Abstract)은{" "}
+                <a href={getPubMedUrl(pmid)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline dark:text-blue-400">
+                  PubMed
+                </a>
+                에서 제공하는 원문 데이터입니다. AI 분석은 My Allergy에서 독자적으로 생성한 콘텐츠입니다.
+              </p>
+            </div>
+
+            {/* Abstract — collapsible, secondary to AI analysis */}
             {paper.abstract && (
-              <section>
-                <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Abstract
-                </h2>
+              <CollapsibleAbstract>
                 <StructuredAbstract text={decodeHtmlEntities(String(paper.abstract))} />
-              </section>
+              </CollapsibleAbstract>
             )}
 
             {/* Comments — moved up from bottom */}
