@@ -257,16 +257,7 @@ export default async function PaperDetailPage({ params }: PageProps) {
             {/* Authors — collapsible if ≥ 10 */}
             <AuthorsList authors={authors} collapseThreshold={10} />
 
-            {/* AI summary + bookmark (all viewports, between Authors and Abstract) */}
-            {paper.abstract && (
-              <PaperActions
-                pmid={pmid}
-                abstract={String(paper.abstract)}
-                title={String(paper.title)}
-              />
-            )}
-
-            {/* AI 핵심 요약 — primary original content, prominent display */}
+            {/* AI 핵심 요약 — primary original content, right after authors */}
             {paper.ai_summary && (
               <section className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50/50 p-5 dark:border-blue-800/50 dark:from-blue-950/40 dark:to-indigo-950/30">
                 <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -281,6 +272,18 @@ export default async function PaperDetailPage({ params }: PageProps) {
                 </p>
               </section>
             )}
+
+            {/* AI 추가 요약 버튼 + 북마크 */}
+            {paper.abstract && (
+              <PaperActions
+                pmid={pmid}
+                abstract={String(paper.abstract)}
+                title={String(paper.title)}
+              />
+            )}
+
+            {/* AI 채팅 — AI 요약 섹션 바로 아래 */}
+            <PaperChat pmid={pmid} isOa={!!openAccess?.pdfUrl} />
 
             {/* Source attribution */}
             <div className="flex items-start gap-2 rounded-lg bg-gray-50 px-4 py-2.5 text-xs text-gray-500 dark:bg-gray-900/50 dark:text-gray-400">
@@ -301,14 +304,13 @@ export default async function PaperDetailPage({ params }: PageProps) {
               </CollapsibleAbstract>
             )}
 
-            {/* Comments — moved up from bottom */}
+            {/* Comments */}
             <section id="comments">
               <CommentThread pmid={pmid} />
             </section>
 
-            {/* Mobile-only: keywords, external links, related papers (full cards) */}
+            {/* Mobile-only: keywords, external links, related papers */}
             <div className="space-y-8 lg:hidden">
-              <PaperChat pmid={pmid} isOa={!!openAccess?.pdfUrl} />
 
               {allTags.length > 0 && (
                 <section>
@@ -360,8 +362,6 @@ export default async function PaperDetailPage({ params }: PageProps) {
                 </h2>
                 {externalLinks}
               </div>
-
-              <PaperChat pmid={pmid} isOa={!!openAccess?.pdfUrl} />
 
               {allTags.length > 0 && (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
