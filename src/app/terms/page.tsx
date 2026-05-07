@@ -174,10 +174,12 @@ export default function TermsPage() {
           <p>
             약관에 관한 문의사항은{" "}
             <a
-              href="mailto:contact@my-allergy.com"
+              href="https://x.com/lekis1020"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-blue-600 hover:underline dark:text-blue-400"
             >
-              contact@my-allergy.com
+              @lekis1020
             </a>
             으로 연락해 주세요.
           </p>

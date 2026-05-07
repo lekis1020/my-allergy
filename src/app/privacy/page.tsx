@@ -142,10 +142,12 @@ export default function PrivacyPage() {
           <p>
             개인정보 관련 문의사항은{" "}
             <a
-              href="mailto:contact@my-allergy.com"
+              href="https://x.com/lekis1020"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-blue-600 hover:underline dark:text-blue-400"
             >
-              contact@my-allergy.com
+              @lekis1020
             </a>
             으로 연락해 주세요.
           </p>

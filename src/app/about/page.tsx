@@ -207,12 +207,14 @@ export default function AboutPage() {
           <p className="text-sm text-gray-500 dark:text-gray-400">
             문의 사항이나 피드백은{" "}
             <a
-              href="mailto:contact@my-allergy.com"
+              href="https://x.com/lekis1020"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-blue-600 hover:underline dark:text-blue-400"
             >
-              contact@my-allergy.com
+              @lekis1020
             </a>
-            으로 보내주세요.
+            으로 연락해 주세요.
           </p>
           <div className="mt-4 flex justify-center gap-4 text-sm">
             <Link
