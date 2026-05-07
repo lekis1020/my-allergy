@@ -7,7 +7,7 @@ import { formatCitationCount } from "@/lib/utils/text";
 import { TOPIC_META } from "@/lib/utils/topic-tags";
 import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 import type { PaperWithJournal } from "@/types/filters";
-import { Bookmark, MessageCircle, Network, Quote, ThumbsUp, Users } from "lucide-react";
+import { Bookmark, MessageCircle, Network, Quote, Sparkles, ThumbsUp, Users } from "lucide-react";
 
 interface PaperCardProps {
   paper: PaperWithJournal;
@@ -85,14 +85,20 @@ export function PaperCard({ paper }: PaperCardProps) {
             )}
           </div>
 
-          {/* AI Summary */}
+          {/* AI Summary — primary original content */}
           {paper.ai_summary && (
-            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-              <span className="font-semibold text-blue-500 dark:text-blue-400">AI:</span>{" "}
-              {paper.ai_summary}
-            </p>
+            <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50/50 px-3 py-2 dark:border-blue-900/50 dark:bg-blue-950/30">
+              <p className="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
+                <span className="mr-1 inline-flex items-center gap-0.5 font-semibold text-blue-600 dark:text-blue-400">
+                  <Sparkles className="h-3 w-3" />
+                  AI 분석
+                </span>
+                {paper.ai_summary}
+              </p>
+            </div>
           )}
 
+          {/* Abstract — collapsed by default, secondary to AI summary */}
           <div className="mt-2">
             <PaperAbstract
               abstract={paper.abstract}

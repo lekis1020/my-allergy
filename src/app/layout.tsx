@@ -26,10 +26,34 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://my-allergy.vercel.app";
+
 export const metadata: Metadata = {
-  title: "My Allergy - Allergy & Clinical Immunology Journal Portal",
+  title: {
+    default: "My Allergy - Allergy & Clinical Immunology Research Portal",
+    template: "%s | My Allergy",
+  },
   description:
-    "Browse the latest papers from top allergy and clinical immunology journals in a social media-style timeline feed.",
+    "알레르기 전문의가 큐레이션하는 연구 포털. 9개 핵심 저널의 최신 논문을 AI 분석과 함께 제공합니다. Expert-curated allergy & immunology research with AI-powered analysis.",
+  metadataBase: new URL(SITE_URL),
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    siteName: "My Allergy",
+    title: "My Allergy - Allergy & Clinical Immunology Research Portal",
+    description:
+      "알레르기 전문의가 큐레이션하는 연구 포털. AI 기반 논문 분석, 트렌드 리포트, 전문가 커뮤니티.",
+    url: SITE_URL,
+  },
+  twitter: {
+    card: "summary",
+    title: "My Allergy",
+    description:
+      "Expert-curated allergy & immunology research portal with AI-powered analysis.",
+  },
+  alternates: {
+    canonical: SITE_URL,
+  },
 };
 
 export default function RootLayout({
