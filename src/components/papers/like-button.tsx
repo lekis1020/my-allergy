@@ -47,7 +47,9 @@ export function LikeButton({ pmid, size = "sm", initialCount = 0 }: LikeButtonPr
       <ThumbsUp
         className={`${iconSize} ${liked ? "fill-blue-500 dark:fill-blue-400" : ""}`}
       />
-      <span className="text-xs font-medium">{count}</span>
+      <span className="text-xs font-medium">
+        추천 <span className="tabular-nums">{count}</span>
+      </span>
     </button>
   );
 }
