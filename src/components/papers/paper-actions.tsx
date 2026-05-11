@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { AbstractSummary } from "@/components/papers/abstract-summary";
 import { BookmarkButton } from "@/components/papers/bookmark-button";
+import { LikeButton } from "@/components/papers/like-button";
 
 interface PaperActionsProps {
   pmid: string;
@@ -23,7 +24,10 @@ export function PaperActions({ pmid, abstract, title }: PaperActionsProps) {
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
           AI 요약
         </h2>
-        <BookmarkButton pmid={pmid} size="md" aiSummary={aiSummary} />
+        <div className="flex items-center gap-1">
+          <LikeButton pmid={pmid} size="md" />
+          <BookmarkButton pmid={pmid} size="md" aiSummary={aiSummary} />
+        </div>
       </div>
       <AbstractSummary
         abstract={abstract}

@@ -42,7 +42,8 @@ export function usePapers(filters: PaperFilters, initialData?: PapersResponse) {
   const { data, error, size, setSize, isLoading, isValidating, mutate } =
     useSWRInfinite<PapersResponse & { __source: DataSource }>(getKey, fetcher, {
       revalidateFirstPage: false,
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      revalidateOnMount: true,
       keepPreviousData: true,
       fallbackData: fallback,
       onSuccess: (pages) => {
