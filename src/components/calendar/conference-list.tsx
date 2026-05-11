@@ -336,7 +336,7 @@ export function ConferenceList({ conferences }: ConferenceListProps) {
             className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             <History className="h-3.5 w-3.5" />
-            {showOlder ? "이전 일정 숨기기" : `이전 일정 보기 (${olderCount})`}
+            {showOlder ? "이전 일정 숨기기" : "이전 일정 보기"}
           </button>
         )}
       </div>
