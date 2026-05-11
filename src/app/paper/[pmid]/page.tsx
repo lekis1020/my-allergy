@@ -11,7 +11,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PaperActions } from "@/components/papers/paper-actions";
 import { StructuredAbstract } from "@/components/papers/structured-abstract";
-import { CollapsibleAbstract } from "@/components/papers/collapsible-abstract";
 import { CommentThread } from "@/components/comments/comment-thread";
 import { AuthorsList } from "@/components/papers/authors-list";
 import {
@@ -297,11 +296,14 @@ export default async function PaperDetailPage({ params }: PageProps) {
               </p>
             </div>
 
-            {/* Abstract — collapsible, secondary to AI analysis */}
+            {/* Abstract — always visible, secondary to AI analysis */}
             {paper.abstract && (
-              <CollapsibleAbstract>
+              <section>
+                <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Original Abstract
+                </h2>
                 <StructuredAbstract text={decodeHtmlEntities(String(paper.abstract))} />
-              </CollapsibleAbstract>
+              </section>
             )}
 
             {/* Comments */}

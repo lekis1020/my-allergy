@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAnonClient, createServerAuthClient } from "@/lib/supabase/server";
+import { createAnonClient, createServerAuthClient, createServiceClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/rate-limit";
 import { classifyPaperTopics } from "@/lib/utils/topic-tags";
 import { loadScoringContext } from "@/lib/recommend/affinity";
@@ -278,15 +278,18 @@ export async function GET(request: NextRequest) {
 
   // Collect like and bookmark counts for returned papers
   const paperPmids = paperDtos.map((p) => p.pmid);
-  const anonClient = createAnonClient();
+  // Use service client for aggregate counts only — `bookmarks` and `paper_comments`
+  // RLS restricts SELECT to the row owner / authed users, which would zero out the
+  // counts under an anon client. We expose only aggregate numbers, not row data.
+  const statsClient = createServiceClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [{ data: likeRows }, { data: bookmarkRows }, { data: commentRows }, { data: citationRows }, { data: mentionRows }] = await Promise.all([
-    (anonClient.from("paper_likes") as any).select("paper_pmid").in("paper_pmid", paperPmids),
-    (anonClient.from("bookmarks") as any).select("pmid").in("pmid", paperPmids),
-    (anonClient.from("paper_comments") as any).select("paper_pmid").in("paper_pmid", paperPmids).is("deleted_at", null),
-    (anonClient.from("paper_citations") as any).select("source_pmid, target_pmid").or(`source_pmid.in.(${paperPmids.join(",")}),target_pmid.in.(${paperPmids.join(",")})`),
-    (anonClient.from("paper_mentions") as any).select("source_pmid, mentioned_pmid").or(`source_pmid.in.(${paperPmids.join(",")}),mentioned_pmid.in.(${paperPmids.join(",")})`),
+    (statsClient.from("paper_likes") as any).select("paper_pmid").in("paper_pmid", paperPmids),
+    (statsClient.from("bookmarks") as any).select("pmid").in("pmid", paperPmids),
+    (statsClient.from("paper_comments") as any).select("paper_pmid").in("paper_pmid", paperPmids).is("deleted_at", null),
+    (statsClient.from("paper_citations") as any).select("source_pmid, target_pmid").or(`source_pmid.in.(${paperPmids.join(",")}),target_pmid.in.(${paperPmids.join(",")})`),
+    (statsClient.from("paper_mentions") as any).select("source_pmid, mentioned_pmid").or(`source_pmid.in.(${paperPmids.join(",")}),mentioned_pmid.in.(${paperPmids.join(",")})`),
   ]) as [
     { data: Array<{ paper_pmid: string }> | null },
     { data: Array<{ pmid: string }> | null },
