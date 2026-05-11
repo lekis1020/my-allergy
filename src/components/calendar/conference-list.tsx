@@ -2,7 +2,14 @@
 
 import { useState, useMemo } from "react";
 import { type Conference } from "@/lib/constants/conferences";
-import { MapPin, CalendarDays, ExternalLink, HelpCircle } from "lucide-react";
+import { MapPin, CalendarDays, ExternalLink, HelpCircle, History } from "lucide-react";
+
+const RECENT_PAST_DAYS = 30;
+
+function isOlderPast(endDate: string, cutoffMs: number): boolean {
+  if (!endDate) return false;
+  return new Date(endDate + "T00:00:00").getTime() < cutoffMs;
+}
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -285,22 +292,53 @@ interface ConferenceListProps {
 
 export function ConferenceList({ conferences }: ConferenceListProps) {
   const [mobileTab, setMobileTab] = useState<"international" | "korean">("international");
+  const [showOlder, setShowOlder] = useState(false);
 
-  const international = useMemo(() => conferences.filter((c) => !c.isKorean), [conferences]);
-  const korean = useMemo(() => conferences.filter((c) => c.isKorean), [conferences]);
+  const { visible, olderCount } = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - RECENT_PAST_DAYS);
+    const cutoffMs = cutoff.getTime();
+
+    let older = 0;
+    const kept: Conference[] = [];
+    for (const c of conferences) {
+      if (isOlderPast(c.endDate, cutoffMs)) {
+        older += 1;
+        if (showOlder) kept.push(c);
+      } else {
+        kept.push(c);
+      }
+    }
+    return { visible: kept, olderCount: older };
+  }, [conferences, showOlder]);
+
+  const international = useMemo(() => visible.filter((c) => !c.isKorean), [visible]);
+  const korean = useMemo(() => visible.filter((c) => c.isKorean), [visible]);
 
   return (
     <div>
       {/* Legend */}
-      <div className="mb-5 flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-blue-500 bg-white dark:border-blue-400 dark:bg-gray-900" />
-          날짜 확정
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-amber-400 bg-white dark:border-amber-500 dark:bg-gray-900" />
-          날짜 미정 (작년 기준 월)
-        </span>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-blue-500 bg-white dark:border-blue-400 dark:bg-gray-900" />
+            날짜 확정
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-amber-400 bg-white dark:border-amber-500 dark:bg-gray-900" />
+            날짜 미정 (작년 기준 월)
+          </span>
+        </div>
+        {olderCount > 0 && (
+          <button
+            onClick={() => setShowOlder((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            <History className="h-3.5 w-3.5" />
+            {showOlder ? "이전 일정 숨기기" : "이전 일정 보기"}
+          </button>
+        )}
       </div>
 
       {/* Mobile tabs */}
