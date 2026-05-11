@@ -70,6 +70,16 @@ export default function RootLayout({
         <link rel="preload" href="/api/papers?page=1&limit=10&sort=date_desc" as="fetch" crossOrigin="anonymous" />
       </head>
       <body className={`${manrope.variable} ${spaceGrotesk.variable} antialiased`}>
+        {/* Google Funding Choices (IAB TCF v2.2 CMP) — must load before AdSense */}
+        <Script
+          id="google-fc-present"
+          strategy="beforeInteractive"
+        >{`(function(){function signalGooglefcPresent(){if(!window.frames['googlefcPresent']){if(document.body){var iframe=document.createElement('iframe');iframe.style='width:0;height:0;border:none;z-index:-1000;left:-1000px;top:-1000px;display:none';iframe.name='googlefcPresent';document.body.appendChild(iframe);}else{setTimeout(signalGooglefcPresent,0);}}}signalGooglefcPresent();})();`}</Script>
+        <Script
+          async
+          src="https://fundingchoicesmessages.google.com/i/pub-8245767086450488?ers=2"
+          strategy="afterInteractive"
+        />
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8245767086450488"

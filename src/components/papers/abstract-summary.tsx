@@ -74,7 +74,14 @@ export function AbstractSummary({ abstract, title, pmid, onSummaryGenerated }: A
 
       {open && summary && (
         <div className="mt-3 rounded-xl border border-purple-200 bg-purple-50/50 p-4 text-sm leading-relaxed text-gray-800 dark:border-purple-800 dark:bg-purple-950/50 dark:text-gray-200">
+          <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">
+            <Sparkles className="h-2.5 w-2.5" />
+            AI 생성
+          </div>
           <MarkdownContent content={summary} />
+          <p className="mt-3 border-t border-purple-200/60 pt-2 text-[11px] leading-relaxed text-gray-500 dark:border-purple-800/40 dark:text-gray-400">
+            ⚠️ AI가 자동 생성한 요약이며 오류가 있을 수 있습니다. 의학적 판단의 근거로 사용하지 마시고, 원문을 직접 확인하세요. 본 정보는 의료 조언을 대체하지 않습니다.
+          </p>
         </div>
       )}
     </div>

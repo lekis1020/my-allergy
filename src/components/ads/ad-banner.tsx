@@ -55,7 +55,7 @@ export function AdBanner({ variant, className = "" }: AdBannerProps) {
   return (
     <div className={wrapperClass}>
       <p className="mb-1.5 text-[11px] font-medium tracking-wide text-gray-400 dark:text-gray-500">
-        Sponsored
+        광고 · Advertisement
       </p>
       <ins
         ref={adRef}

@@ -263,11 +263,14 @@ export default async function PaperDetailPage({ params }: PageProps) {
                   <Sparkles className="h-4 w-4 text-blue-500" />
                   AI 핵심 요약
                   <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-900/50 dark:text-blue-400">
-                    My Allergy 오리지널
+                    AI 생성 · My Allergy 오리지널
                   </span>
                 </h2>
                 <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                   {paper.ai_summary}
+                </p>
+                <p className="mt-3 border-t border-blue-200/60 pt-2 text-[11px] leading-relaxed text-gray-500 dark:border-blue-800/40 dark:text-gray-400">
+                  ⚠️ 본 요약은 AI가 자동 생성한 콘텐츠로 오류가 있을 수 있습니다. 의학적 판단의 근거로 사용하지 마시고, 원문(Abstract/Full Text)을 직접 확인하세요. 본 사이트의 정보는 의료 조언을 대체하지 않습니다.
                 </p>
               </section>
             )}
@@ -284,16 +287,21 @@ export default async function PaperDetailPage({ params }: PageProps) {
             {/* AI 채팅 — AI 요약 섹션 바로 아래 */}
             <PaperChat pmid={pmid} isOa={!!openAccess?.pdfUrl} />
 
-            {/* Source attribution */}
+            {/* Source attribution + medical disclaimer */}
             <div className="flex items-start gap-2 rounded-lg bg-gray-50 px-4 py-2.5 text-xs text-gray-500 dark:bg-gray-900/50 dark:text-gray-400">
               <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-              <p>
-                아래 초록(Abstract)은{" "}
-                <a href={getPubMedUrl(pmid)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline dark:text-blue-400">
-                  PubMed
-                </a>
-                에서 제공하는 원문 데이터입니다. AI 분석은 My Allergy에서 독자적으로 생성한 콘텐츠입니다.
-              </p>
+              <div className="space-y-1">
+                <p>
+                  아래 초록(Abstract)은{" "}
+                  <a href={getPubMedUrl(pmid)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline dark:text-blue-400">
+                    PubMed
+                  </a>
+                  에서 제공하는 원문 데이터이며, 저작권은 각 저널에 귀속됩니다. AI 분석은 My Allergy에서 독자적으로 생성한 콘텐츠입니다.
+                </p>
+                <p>
+                  ⚠️ 본 사이트의 모든 정보는 의료 전문가의 참고용이며, 의료 조언·진단·치료를 대체하지 않습니다.
+                </p>
+              </div>
             </div>
 
             {/* Abstract — always visible, secondary to AI analysis */}
