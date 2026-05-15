@@ -86,6 +86,8 @@ export interface PaperWithJournal {
   like_count?: number;
   bookmark_count?: number;
   connection_count?: number;
+  is_bookmarked?: boolean;
+  is_liked?: boolean;
 }
 
 export interface AuthorSummary {
