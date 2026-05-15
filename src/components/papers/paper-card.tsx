@@ -130,11 +130,11 @@ export function PaperCard({ paper }: PaperCardProps) {
             {/* Social Stats — display only, right-aligned */}
             <div className="ml-auto flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
               <span className="flex items-center gap-0.5">
-                <Bookmark className={`h-4 w-4 ${(paper.bookmark_count ?? 0) > 0 ? "fill-blue-500 text-blue-500 dark:fill-blue-400 dark:text-blue-400" : ""}`} />
+                <Bookmark className={`h-4 w-4 ${paper.is_bookmarked ? "fill-blue-500 text-blue-500 dark:fill-blue-400 dark:text-blue-400" : ""}`} />
                 <span>{paper.bookmark_count ?? 0}</span>
               </span>
               <span className="flex items-center gap-0.5">
-                <ThumbsUp className={`h-4 w-4 ${(paper.like_count ?? 0) > 0 ? "text-blue-500 dark:text-blue-400" : ""}`} />
+                <ThumbsUp className={`h-4 w-4 ${paper.is_liked ? "fill-blue-500 text-blue-500 dark:fill-blue-400 dark:text-blue-400" : ""}`} />
                 <span>{paper.like_count ?? 0}</span>
               </span>
               <span className="flex items-center gap-0.5">

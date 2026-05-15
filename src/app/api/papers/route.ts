@@ -155,14 +155,11 @@ export async function GET(request: NextRequest) {
     ? sortParam
     : "date_desc";
 
-  // Only resolve auth when personalization is requested — skip for anonymous timeline.
-  let user = null;
-  let authClient = null;
-  if (personalized) {
-    authClient = await createServerAuthClient();
-    const { data: { session } } = await authClient.auth.getSession();
-    user = session?.user ?? null;
-  }
+  // Resolve auth for every request — needed for per-user social flags
+  // (is_bookmarked / is_liked) on cards, even outside personalization.
+  const authClient = await createServerAuthClient();
+  const { data: { session } } = await authClient.auth.getSession();
+  const user = session?.user ?? null;
   const personalizedActive = personalized && !!user;
 
   const queryArgs: QueryArgs = { q, pmids, journals, from, to, sort, articleType };
@@ -227,7 +224,7 @@ export async function GET(request: NextRequest) {
   // ---- Personalization re-rank (authed only) ----
   let personalizedTotal: number | null = null;
   if (personalizedActive && user) {
-    const context = await loadScoringContext(authClient!, user.id);
+    const context = await loadScoringContext(authClient, user.id);
     const now = new Date();
     const scored = rawRows.map((paper) => {
       const journal = paper.journals;
@@ -313,6 +310,29 @@ export async function GET(request: NextRequest) {
     commentMap.set(row.paper_pmid, (commentMap.get(row.paper_pmid) ?? 0) + 1);
   }
 
+  // Per-user social state — only fetch when authenticated.
+  const userBookmarkedSet = new Set<string>();
+  const userLikedSet = new Set<string>();
+  if (user && paperPmids.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [{ data: myBookmarks }, { data: myLikes }] = await Promise.all([
+      (statsClient.from("bookmarks") as any)
+        .select("pmid")
+        .eq("user_id", user.id)
+        .in("pmid", paperPmids),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (statsClient.from("paper_likes") as any)
+        .select("paper_pmid")
+        .eq("user_id", user.id)
+        .in("paper_pmid", paperPmids),
+    ]) as [
+      { data: Array<{ pmid: string }> | null },
+      { data: Array<{ paper_pmid: string }> | null },
+    ];
+    for (const row of myBookmarks ?? []) userBookmarkedSet.add(row.pmid);
+    for (const row of myLikes ?? []) userLikedSet.add(row.paper_pmid);
+  }
+
   const connectionSet = new Map<string, Set<string>>();
   for (const row of citationRows ?? []) {
     const pmidsSet = new Set(paperPmids);
@@ -347,6 +367,8 @@ export async function GET(request: NextRequest) {
     bookmark_count: bookmarkMap.get(paper.pmid) ?? 0,
     comment_count: commentMap.get(paper.pmid) ?? 0,
     connection_count: connectionSet.get(paper.pmid)?.size ?? 0,
+    is_bookmarked: userBookmarkedSet.has(paper.pmid),
+    is_liked: userLikedSet.has(paper.pmid),
   }));
 
   const total = personalizedActive ? (personalizedTotal ?? 0) : dbTotal;
@@ -363,8 +385,9 @@ export async function GET(request: NextRequest) {
     personalized: personalizedActive,
   });
 
-  // CDN cache: personalized or live merged results must not be shared across users.
-  if (personalizedActive || dataSource !== "db") {
+  // CDN cache: authed (per-user social flags), personalized, or live merged
+  // results must not be shared across users.
+  if (user || personalizedActive || dataSource !== "db") {
     response.headers.set("Cache-Control", "private, no-store");
   } else {
     response.headers.set(
