@@ -121,7 +121,9 @@ export const syncJournalFn = inngest.createFunction(
           .limit(20);
 
         let count = 0;
-        for (const paper of unsummarized ?? []) {
+        const list = unsummarized ?? [];
+        for (let i = 0; i < list.length; i++) {
+          const paper = list[i];
           const summary = await generatePaperSummary(paper.abstract);
           if (summary) {
             await serviceClient
@@ -129,6 +131,12 @@ export const syncJournalFn = inngest.createFunction(
               .update({ ai_summary: summary })
               .eq("pmid", paper.pmid);
             count++;
+          }
+          // Throttle to stay under the Gemini free-tier RPM limit.
+          // generatePaperSummary already retries 429s, but spacing calls out
+          // avoids hitting the limit in the first place.
+          if (i < list.length - 1) {
+            await new Promise((r) => setTimeout(r, 1500));
           }
         }
         return count;
