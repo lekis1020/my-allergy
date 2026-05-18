@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { generatePaperSummary } from "@/lib/gemini/summarize";
+import { generatePaperSummary } from "@/lib/openai/summarize";
 
-// Allow up to 5 minutes — each summary is throttled ~1s to respect the
-// Gemini rate limit, so a batch of 100 needs well over the default limit.
+// Allow up to 5 minutes — a batch of 100 summaries plus throttling needs
+// well over the default function duration.
 export const maxDuration = 300;
 
 // Stop starting new summaries past this point so the handler returns a
@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
         .eq("pmid", paper.pmid);
       generated++;
     }
-    // Rate limit: ~1 req/sec
-    await new Promise((r) => setTimeout(r, 1000));
+    // Light throttle — OpenAI rate limits are generous.
+    await new Promise((r) => setTimeout(r, 250));
   }
 
   return NextResponse.json({

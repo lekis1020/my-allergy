@@ -6,7 +6,7 @@ import { enrichPapersWithCrossRef } from "@/lib/sync/enricher";
 import { collectCitations } from "@/lib/sync/citations";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getDateRange } from "@/lib/utils/date";
-import { generatePaperSummary } from "@/lib/gemini/summarize";
+import { generatePaperSummary } from "@/lib/openai/summarize";
 /**
  * Syncs a single journal: fetch from PubMed, store, then enrich with CrossRef.
  */
@@ -132,11 +132,11 @@ export const syncJournalFn = inngest.createFunction(
               .eq("pmid", paper.pmid);
             count++;
           }
-          // Throttle to stay under the Gemini free-tier RPM limit.
-          // generatePaperSummary already retries 429s, but spacing calls out
-          // avoids hitting the limit in the first place.
+          // Light throttle between OpenAI calls; generatePaperSummary also
+          // retries 429s. OpenAI rate limits are generous, so a short gap
+          // is plenty.
           if (i < list.length - 1) {
-            await new Promise((r) => setTimeout(r, 1500));
+            await new Promise((r) => setTimeout(r, 250));
           }
         }
         return count;
