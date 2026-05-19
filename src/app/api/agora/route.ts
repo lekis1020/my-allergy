@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAnonClient, createServerAuthClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/rate-limit";
-import { toPaperDto, type PaperRow } from "@/lib/papers/transform";
+import { fetchAgoraPage } from "@/lib/papers/fetch-agora";
 
 const limiter = rateLimit({ windowMs: 60_000, maxRequests: 60 });
-
-// Cap on how many recent comment rows we scan to derive the active-paper list.
-// 2000 is generous for the current discussion volume; revisit when the
-// community grows enough that this becomes a bottleneck.
-const COMMENT_SCAN_LIMIT = 2000;
 
 export async function GET(request: NextRequest) {
   const ip =
@@ -38,92 +32,10 @@ export async function GET(request: NextRequest) {
     Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20),
     100,
   );
-  const offset = (page - 1) * limit;
 
-  const supabase = createAnonClient();
+  const result = await fetchAgoraPage(page, limit);
 
-  // 1. Pull recent comment rows using auth client (comments require login to read).
-  const authClient = await createServerAuthClient();
-  const { data: commentRows, error: commentError } = await authClient
-    .from("paper_comments")
-    .select("paper_pmid, created_at")
-    .order("created_at", { ascending: false })
-    .limit(COMMENT_SCAN_LIMIT);
-
-  if (commentError) {
-    console.error("Agora comment query error:", commentError);
-    return NextResponse.json({ error: "Failed to load Agora feed" }, { status: 500 });
-  }
-
-  // 2. Aggregate: count per pmid + remember most-recent comment timestamp.
-  const counts = new Map<string, number>();
-  const latest = new Map<string, string>();
-  for (const row of commentRows ?? []) {
-    const pmid = row.paper_pmid as string;
-    const createdAt = row.created_at as string;
-    counts.set(pmid, (counts.get(pmid) ?? 0) + 1);
-    if (!latest.has(pmid)) latest.set(pmid, createdAt);
-  }
-
-  const sortedPmids = Array.from(latest.entries())
-    .sort(([, a], [, b]) => (a < b ? 1 : a > b ? -1 : 0))
-    .map(([pmid]) => pmid);
-
-  const total = sortedPmids.length;
-  const pagePmids = sortedPmids.slice(offset, offset + limit);
-
-  if (pagePmids.length === 0) {
-    return NextResponse.json({
-      papers: [],
-      total,
-      page,
-      limit,
-      hasMore: false,
-    });
-  }
-
-  // 3. Fetch full paper data for the paginated pmids.
-  const { data: papersData, error: papersError } = await supabase
-    .from("papers")
-    .select(
-      `
-      id, pmid, doi, title, abstract, publication_date, epub_date,
-      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
-      journals!inner (id, name, abbreviation, color, slug),
-      paper_authors (last_name, first_name, initials, affiliation, position)
-    `,
-    )
-    .in("pmid", pagePmids)
-    .order("position", { referencedTable: "paper_authors", ascending: true });
-
-  if (papersError) {
-    console.error("Agora paper query error:", papersError);
-    return NextResponse.json({ error: "Failed to load papers" }, { status: 500 });
-  }
-
-  const papersByPmid = new Map<string, PaperRow>();
-  for (const p of (papersData ?? []) as unknown as PaperRow[]) {
-    papersByPmid.set(p.pmid, p);
-  }
-
-  // Preserve the latest-comment ordering from step 2.
-  const ordered = pagePmids
-    .map((pmid) => papersByPmid.get(pmid))
-    .filter((p): p is PaperRow => Boolean(p))
-    .map((p) => ({
-      ...toPaperDto(p),
-      comment_count: counts.get(p.pmid) ?? 0,
-      latest_comment_at: latest.get(p.pmid) ?? null,
-    }));
-
-  const response = NextResponse.json({
-    papers: ordered,
-    total,
-    page,
-    limit,
-    hasMore: offset + limit < total,
-  });
-
+  const response = NextResponse.json(result);
   response.headers.set("Cache-Control", "public, s-maxage=5, stale-while-revalidate=10");
   response.headers.set("RateLimit-Remaining", String(remaining));
   response.headers.set("RateLimit-Reset", String(Math.ceil(resetAt / 1000)));

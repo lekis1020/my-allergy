@@ -26,8 +26,13 @@ export function useAgora(
 
   const { data, error, size, setSize, isLoading, isValidating, mutate } =
     useSWRInfinite<PapersResponse>(getKey, fetcher, {
-      revalidateFirstPage: true,
-      revalidateOnFocus: true,
+      revalidateFirstPage: false,
+      revalidateOnFocus: false,
+      // The SSR `initialData` is produced by the same anonymous query the API
+      // runs, so the on-mount revalidation only repeats an expensive comment
+      // scan for an identical result. Skip it when SSR data is present.
+      revalidateOnMount: !fallback,
+      keepPreviousData: true,
       fallbackData: fallback,
     });
 
