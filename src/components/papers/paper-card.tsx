@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useMemo, useState } from "react";
 import Link from "next/link";
 import { PaperAuthors } from "./paper-authors";
 import { PaperAbstract } from "./paper-abstract";
@@ -13,15 +13,19 @@ interface PaperCardProps {
   paper: PaperWithJournal;
 }
 
-export function PaperCard({ paper }: PaperCardProps) {
+function PaperCardComponent({ paper }: PaperCardProps) {
   const [isAbstractOpen, setIsAbstractOpen] = useState(false);
 
-  const avatarLabel = paper.journal_abbreviation
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
+  const avatarLabel = useMemo(
+    () =>
+      paper.journal_abbreviation
+        .split(" ")
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase(),
+    [paper.journal_abbreviation],
+  );
   const hasAbstract = Boolean(paper.abstract && paper.abstract.trim().length > 0);
 
   return (
@@ -163,3 +167,7 @@ export function PaperCard({ paper }: PaperCardProps) {
     </article>
   );
 }
+
+// Memoized: the feed rebuilds the `papers` array on every render (loadMore,
+// filter/tab changes), so without memo every accumulated card re-renders.
+export const PaperCard = memo(PaperCardComponent);
