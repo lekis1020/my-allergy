@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CalendarDays, Clock, Home, Menu, MessagesSquare, Microscope, Stethoscope, TrendingUp } from "lucide-react";
+import { Bell, CalendarDays, Clock, Home, Menu, MessagesSquare, Microscope, TrendingUp } from "lucide-react";
+import { EosinophilIcon } from "@/components/icons/eosinophil-icon";
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { AuthButton } from "@/components/layout/auth-button";
 import { UnreadRepliesBadge } from "@/components/comments/unread-badge";
@@ -32,8 +33,8 @@ export function Header() {
             <Menu className="h-5 w-5" />
           </button>
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
-              <Stethoscope className="h-4 w-4" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white ring-1 ring-gray-200 dark:ring-gray-700">
+              <EosinophilIcon className="h-5 w-5" />
             </div>
             <span className="text-base font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
               My Allergy
