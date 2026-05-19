@@ -50,3 +50,6 @@ supabase/.temp/
 
 # playwright MCP
 .playwright-mcp/
+
+# Superpowers brainstorm artifacts
+.superpowers/
