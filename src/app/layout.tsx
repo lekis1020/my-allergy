@@ -67,7 +67,7 @@ export default function RootLayout({
         <meta name="google-adsense-account" content="ca-pub-8245767086450488" />
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
-        <link rel="preload" href="/api/papers?page=1&limit=10&sort=date_desc" as="fetch" crossOrigin="anonymous" />
+        <link rel="preload" href="/api/papers?limit=10" as="fetch" crossOrigin="anonymous" />
       </head>
       <body className={`${manrope.variable} ${spaceGrotesk.variable} antialiased`}>
         {/* Google Funding Choices (IAB TCF v2.2 CMP) — must load before AdSense */}
