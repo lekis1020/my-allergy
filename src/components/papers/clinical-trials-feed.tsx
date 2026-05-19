@@ -41,24 +41,29 @@ export function ClinicalTrialsFeed() {
           </div>
         </div>
 
-        {/* Top widgets: 2-column on md+, stacked on mobile.
-            The [&>section]:border-t-0 selectors suppress inherited top borders
-            inside child components (ClinicalTrialSummary wraps itself with
-            border-t for its original context). */}
-        <div className="grid grid-cols-1 border-b border-gray-200 lg:grid-cols-2 lg:divide-x lg:divide-gray-200 [&>*>div]:border-t-0 dark:border-gray-800 dark:lg:divide-gray-800">
-          <div className="min-w-0 border-b border-gray-200 lg:border-b-0 dark:border-gray-800">
-            <ClinicalTrialSummary
-              onItemClick={handleHighlightClick}
-              showViewAll={false}
-            />
-          </div>
-          <div className="min-w-0">
-            <TrendingTopicsPanel onTopicClick={handleTopicClick} />
-          </div>
-        </div>
+        {/* Two-column layout: leaderboard sidebar on the left, the Clinical
+            Trial Monitor as the central main page. Stacks on mobile.
+            The [&>div]:border-t-0 selector suppresses the border-t that
+            ClinicalTrialSummary wraps itself with for its original context. */}
+        <div className="lg:flex lg:divide-x lg:divide-gray-200 dark:lg:divide-gray-800">
+          {/* Left sidebar: Trial Highlights + Trending Trial Outcomes leaderboards */}
+          <aside className="shrink-0 border-b border-gray-200 lg:w-80 lg:border-b-0 dark:border-gray-800">
+            <div className="[&>div]:border-t-0">
+              <ClinicalTrialSummary
+                onItemClick={handleHighlightClick}
+                showViewAll={false}
+              />
+            </div>
+            <div className="border-t border-gray-200 dark:border-gray-800">
+              <TrendingTopicsPanel onTopicClick={handleTopicClick} />
+            </div>
+          </aside>
 
-        {/* Full-width main feed */}
-        <ClinicalTrialMonitorPanel onSelectStudy={handleSelectStudy} />
+          {/* Center main page: Clinical Trial Monitor */}
+          <main className="min-w-0 flex-1 [&>section]:border-b-0">
+            <ClinicalTrialMonitorPanel onSelectStudy={handleSelectStudy} />
+          </main>
+        </div>
       </div>
     </div>
   );
