@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { TRENDING_CATEGORIES } from "@/lib/constants/trending-categories";
 import { useTrendingTopics } from "@/hooks/use-trending-topics";
@@ -76,6 +76,17 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
     TRENDING_CATEGORIES[0].id,
   );
   const scrollRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // Keep the active category tab visible when navigation (arrows or swipe)
+  // moves it out of the horizontally-scrollable tab strip.
+  useEffect(() => {
+    tabRefs.current[activeCategory]?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [activeCategory]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -137,6 +148,9 @@ export function TrendingTopicsPanel({ onTopicClick }: TrendingTopicsPanelProps) 
             return (
               <button
                 key={cat.id}
+                ref={(el) => {
+                  tabRefs.current[cat.id] = el;
+                }}
                 onClick={() => handleTabClick(cat.id, index)}
                 className={`relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-lg border border-b-0 px-3 py-2 text-xs font-medium transition-colors ${
                   isActive
