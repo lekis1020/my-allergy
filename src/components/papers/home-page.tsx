@@ -242,7 +242,7 @@ export function HomePage({ initialData }: HomePageProps) {
 
         <div className="hidden xl:block xl:pl-4">
           <div className="sticky top-20 max-h-[calc(100vh-96px)] overflow-y-auto pr-1">
-            <RightRail total={total} papers={papers} />
+            <RightRail total={total} />
           </div>
         </div>
       </div>
