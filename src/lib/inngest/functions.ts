@@ -7,6 +7,7 @@ import { collectCitations } from "@/lib/sync/citations";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getDateRange } from "@/lib/utils/date";
 import { generatePaperSummary } from "@/lib/openai/summarize";
+import { computeAuthorGeography } from "@/lib/insights/author-geography";
 /**
  * Syncs a single journal: fetch from PubMed, store, then enrich with CrossRef.
  */
@@ -422,5 +423,50 @@ export const generateTrendingAnalysisFn = inngest.createFunction(
 
     return { date: new Date().toISOString().split("T")[0], stats };
   }
+);
+
+/**
+ * Daily cron job that precomputes the First Author Geography insight.
+ * Runs at 07:00 UTC — an hour after the paper sync — so the snapshot reflects
+ * the freshly synced papers. The /api/insights/author-geography route then
+ * just reads the stored row instead of aggregating per request.
+ */
+const GEOGRAPHY_INSIGHT_DAYS = 180;
+
+export const generateGeographyInsightsFn = inngest.createFunction(
+  { id: "generate-geography-insights", retries: 2 },
+  { cron: "0 7 * * *" },
+  async ({ step }) => {
+    const result = await step.run("compute-geography", async () => {
+      const supabase = createServiceClient();
+      return computeAuthorGeography(supabase, GEOGRAPHY_INSIGHT_DAYS);
+    });
+
+    await step.run("save-geography", async () => {
+      const supabase = createServiceClient();
+      // geography_insights is not in the generated Supabase types yet.
+      await (supabase as unknown as {
+        from: (table: string) => {
+          upsert: (
+            values: Record<string, unknown>,
+            options: { onConflict: string },
+          ) => Promise<{ error: unknown }>;
+        };
+      })
+        .from("geography_insights")
+        .upsert(
+          {
+            days: result.days,
+            from_date: result.fromDate,
+            total_first_authors: result.totalFirstAuthors,
+            locations: result.locations,
+            computed_at: new Date().toISOString(),
+          },
+          { onConflict: "days" },
+        );
+    });
+
+    return { days: result.days, totalFirstAuthors: result.totalFirstAuthors };
+  },
 );
 

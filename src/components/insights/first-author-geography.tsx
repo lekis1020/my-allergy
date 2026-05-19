@@ -30,7 +30,7 @@ export function FirstAuthorGeography() {
   useEffect(() => {
     let active = true;
 
-    fetch("/api/insights/author-geography?days=180", { cache: "no-store" })
+    fetch("/api/insights/author-geography?days=180")
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (!active) return;
