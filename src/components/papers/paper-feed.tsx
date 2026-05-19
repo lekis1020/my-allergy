@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useState, useMemo, useCallback } from "react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { PaperCard } from "./paper-card";
 import { PaperCardSkeleton } from "@/components/ui/skeleton";
 import { AdBanner } from "@/components/ads/ad-banner";
@@ -11,6 +12,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import type { DataSource } from "@/hooks/use-papers";
 
 const AD_INTERVAL = 12;
+// Rough average card height — only an initial estimate; real heights are
+// measured per-row once mounted, so this just seeds the scroll geometry.
+const ESTIMATED_ROW_HEIGHT = 220;
+// Start loading the next page once the tail of the list enters the overscan.
+const LOAD_MORE_THRESHOLD = 3;
 
 const ARTICLE_TYPES: ArticleType[] = [
   "original",
@@ -21,6 +27,11 @@ const ARTICLE_TYPES: ArticleType[] = [
   "retrospective",
   "case_report",
 ];
+
+// A virtualized feed row is either a paper card or an inline ad slot.
+type FeedItem =
+  | { kind: "paper"; id: string; paper: PaperWithJournal }
+  | { kind: "ad"; id: string };
 
 interface PaperFeedProps {
   papers: PaperWithJournal[];
@@ -49,30 +60,58 @@ export function PaperFeed({
   dataSource,
   isLiveLoading,
 }: PaperFeedProps) {
-  const observerRef = useRef<HTMLDivElement>(null);
-
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [entry] = entries;
-      if (entry.isIntersecting && hasMore && !isLoadingMore) {
-        onLoadMore();
+  // Flat list interleaving papers with an inline ad after every AD_INTERVAL.
+  const items = useMemo<FeedItem[]>(() => {
+    const out: FeedItem[] = [];
+    papers.forEach((paper, index) => {
+      out.push({ kind: "paper", id: paper.id, paper });
+      if ((index + 1) % AD_INTERVAL === 0) {
+        out.push({ kind: "ad", id: `ad-${paper.id}` });
       }
-    },
-    [hasMore, isLoadingMore, onLoadMore]
-  );
+    });
+    return out;
+  }, [papers]);
+
+  // Virtualization is client-only (it needs `window`). Until the list offset
+  // is measured we render a plain list, which keeps the SSR markup and the
+  // first client render identical (no hydration mismatch).
+  const listRef = useRef<HTMLDivElement>(null);
+  const [listOffset, setListOffset] = useState<number | null>(null);
 
   useEffect(() => {
-    const element = observerRef.current;
-    if (!element) return;
+    const measure = () => {
+      if (listRef.current) setListOffset(listRef.current.offsetTop);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
-    const observer = new IntersectionObserver(handleObserver, {
-      threshold: 0,
-      rootMargin: "200px",
-    });
+  const virtualizer = useWindowVirtualizer({
+    count: items.length,
+    estimateSize: () => ESTIMATED_ROW_HEIGHT,
+    overscan: 6,
+    scrollMargin: listOffset ?? 0,
+    getItemKey: (index) => items[index]?.id ?? index,
+  });
 
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [handleObserver]);
+  const virtualItems = virtualizer.getVirtualItems();
+  const virtualize = listOffset !== null;
+
+  // Infinite scroll: load the next page as the tail of the list is reached.
+  useEffect(() => {
+    if (!virtualize) return;
+    const last = virtualItems[virtualItems.length - 1];
+    if (!last) return;
+    if (last.index >= items.length - LOAD_MORE_THRESHOLD && hasMore && !isLoadingMore) {
+      onLoadMore();
+    }
+  }, [virtualize, virtualItems, items.length, hasMore, isLoadingMore, onLoadMore]);
+
+  const renderItem = useCallback((item: FeedItem) => {
+    if (item.kind === "ad") return <AdBanner variant="feed-inline" />;
+    return <PaperCard paper={item.paper} />;
+  }, []);
 
   const typeFilter = onArticleTypeChange ? (
     <div className="flex flex-wrap gap-1.5 border-b border-gray-200 px-3 py-2 dark:border-gray-800">
@@ -159,18 +198,37 @@ export function PaperFeed({
           </span>
         )}
       </div>
-      <div className="divide-y divide-gray-200 dark:divide-gray-800">
-        {papers.map((paper, index) => (
-          <div key={paper.id}>
-            <PaperCard paper={paper} />
-            {(index + 1) % AD_INTERVAL === 0 && (
-              <AdBanner variant="feed-inline" />
-            )}
+
+      <div ref={listRef}>
+        {virtualize ? (
+          <div
+            className="relative w-full"
+            style={{ height: virtualizer.getTotalSize() }}
+          >
+            {virtualItems.map((vi) => (
+              <div
+                key={vi.key}
+                data-index={vi.index}
+                ref={virtualizer.measureElement}
+                className="absolute left-0 top-0 w-full border-b border-gray-200 dark:border-gray-800"
+                style={{
+                  transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)`,
+                }}
+              >
+                {renderItem(items[vi.index])}
+              </div>
+            ))}
           </div>
-        ))}
+        ) : (
+          <div className="divide-y divide-gray-200 dark:divide-gray-800">
+            {items.map((item) => (
+              <div key={item.id}>{renderItem(item)}</div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div ref={observerRef} className="flex justify-center py-8">
+      <div className="flex justify-center py-8">
         {isLoadingMore && (
           <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
         )}
