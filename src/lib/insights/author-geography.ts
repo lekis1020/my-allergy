@@ -12,6 +12,10 @@ type SupabaseClientType = ReturnType<typeof createAnonClient>;
 // realistically well under this; it only guards against pathological volume.
 const ROW_LIMIT = 20000;
 
+// PostgREST caps a single response at db-max-rows (1000 on this project), so
+// the full window is fetched by paging at this size until a short page lands.
+const PAGE_SIZE = 1000;
+
 export interface GeographyLocation {
   location: string;
   count: number;
@@ -28,6 +32,7 @@ export interface AuthorGeographyResult {
 }
 
 interface JoinedAuthorRow {
+  paper_id: string;
   affiliation: string | null;
   papers:
     | { publication_date: string }
@@ -56,18 +61,36 @@ export async function computeAuthorGeography(
     .toISOString()
     .slice(0, 10);
 
-  const { data, error } = await supabase
-    .from("paper_authors")
-    .select("affiliation, papers!inner(publication_date)")
-    .eq("position", 1)
-    .gte("papers.publication_date", fromDate)
-    .limit(ROW_LIMIT);
+  // Page through the full window. A single query would be silently truncated
+  // at db-max-rows (1000), so geography would only reflect a 1000-row sample.
+  // Keyset pagination on paper_id rides the idx_paper_authors_first_author
+  // partial index (paper_id WHERE position = 1) — ordering by an unindexed
+  // column instead forces a sort of the join and hits the statement timeout.
+  const rows: JoinedAuthorRow[] = [];
+  let afterPaperId: string | null = null;
+  for (let page = 0; page < ROW_LIMIT / PAGE_SIZE; page++) {
+    let query = supabase
+      .from("paper_authors")
+      .select("paper_id, affiliation, papers!inner(publication_date)")
+      .eq("position", 1)
+      .gte("papers.publication_date", fromDate)
+      .order("paper_id", { ascending: true })
+      .limit(PAGE_SIZE);
 
-  if (error) {
-    throw new Error(`author-geography query failed: ${error.message}`);
+    if (afterPaperId) {
+      query = query.gt("paper_id", afterPaperId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      throw new Error(`author-geography query failed: ${error.message}`);
+    }
+
+    const pageRows = (data ?? []) as unknown as JoinedAuthorRow[];
+    rows.push(...pageRows);
+    if (pageRows.length < PAGE_SIZE) break;
+    afterPaperId = pageRows[pageRows.length - 1].paper_id;
   }
-
-  const rows = (data ?? []) as unknown as JoinedAuthorRow[];
 
   const locationCounter = new Map<
     string,

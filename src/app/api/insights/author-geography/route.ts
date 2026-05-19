@@ -101,9 +101,12 @@ export async function GET(request: NextRequest) {
   }
 
   // Fallback: compute live. Reached before the first cron run, or for a
-  // non-standard `days` value the cron does not precompute.
+  // non-standard `days` value the cron does not precompute. Use the service
+  // client — the anon role's tight statement timeout cancels the multi-page
+  // aggregation, while the service role has a generous one (same client the
+  // cron uses).
   try {
-    const result = await computeAuthorGeography(supabase, days);
+    const result = await computeAuthorGeography(createServiceClient(), days);
     // Seed the snapshot so the next request takes the fast path without
     // waiting for the daily cron. Best-effort — never fails the response.
     await persistSnapshot(result);
