@@ -280,34 +280,40 @@ export async function GET(request: NextRequest) {
   // counts under an anon client. We expose only aggregate numbers, not row data.
   const statsClient = createServiceClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [{ data: likeRows }, { data: bookmarkRows }, { data: commentRows }, { data: citationRows }, { data: mentionRows }] = await Promise.all([
-    (statsClient.from("paper_likes") as any).select("paper_pmid").in("paper_pmid", paperPmids),
-    (statsClient.from("bookmarks") as any).select("pmid").in("pmid", paperPmids),
-    (statsClient.from("paper_comments") as any).select("paper_pmid").in("paper_pmid", paperPmids).is("deleted_at", null),
-    (statsClient.from("paper_citations") as any).select("source_pmid, target_pmid").or(`source_pmid.in.(${paperPmids.join(",")}),target_pmid.in.(${paperPmids.join(",")})`),
-    (statsClient.from("paper_mentions") as any).select("source_pmid, mentioned_pmid").or(`source_pmid.in.(${paperPmids.join(",")}),mentioned_pmid.in.(${paperPmids.join(",")})`),
-  ]) as [
-    { data: Array<{ paper_pmid: string }> | null },
-    { data: Array<{ pmid: string }> | null },
-    { data: Array<{ paper_pmid: string }> | null },
-    { data: Array<{ source_pmid: string; target_pmid: string }> | null },
-    { data: Array<{ source_pmid: string; mentioned_pmid: string }> | null },
-  ];
-
-  const likeMap = new Map<string, number>();
-  for (const row of likeRows ?? []) {
-    likeMap.set(row.paper_pmid, (likeMap.get(row.paper_pmid) ?? 0) + 1);
+  // Aggregate like / bookmark / comment / connection counts in a single RPC
+  // round-trip instead of fetching every matching row across 5 tables and
+  // counting them in JS. The function returns one row per input pmid.
+  interface SocialCounts {
+    like: number;
+    bookmark: number;
+    comment: number;
+    connection: number;
   }
-
-  const bookmarkMap = new Map<string, number>();
-  for (const row of bookmarkRows ?? []) {
-    bookmarkMap.set(row.pmid, (bookmarkMap.get(row.pmid) ?? 0) + 1);
-  }
-
-  const commentMap = new Map<string, number>();
-  for (const row of commentRows ?? []) {
-    commentMap.set(row.paper_pmid, (commentMap.get(row.paper_pmid) ?? 0) + 1);
+  const countMap = new Map<string, SocialCounts>();
+  if (paperPmids.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: countRows, error: countErr } = await (statsClient.rpc as any)(
+      "get_paper_social_counts",
+      { p_pmids: paperPmids },
+    );
+    if (countErr) {
+      console.warn("[Papers] social counts RPC failed:", countErr);
+    }
+    const rows = (countRows as Array<{
+      pmid: string;
+      like_count: number;
+      bookmark_count: number;
+      comment_count: number;
+      connection_count: number;
+    }> | null) ?? [];
+    for (const row of rows) {
+      countMap.set(row.pmid, {
+        like: Number(row.like_count) || 0,
+        bookmark: Number(row.bookmark_count) || 0,
+        comment: Number(row.comment_count) || 0,
+        connection: Number(row.connection_count) || 0,
+      });
+    }
   }
 
   // Per-user social state — only fetch when authenticated.
@@ -333,43 +339,18 @@ export async function GET(request: NextRequest) {
     for (const row of myLikes ?? []) userLikedSet.add(row.paper_pmid);
   }
 
-  const connectionSet = new Map<string, Set<string>>();
-  for (const row of citationRows ?? []) {
-    const pmidsSet = new Set(paperPmids);
-    if (pmidsSet.has(row.source_pmid)) {
-      const s = connectionSet.get(row.source_pmid) ?? new Set();
-      s.add(row.target_pmid);
-      connectionSet.set(row.source_pmid, s);
-    }
-    if (pmidsSet.has(row.target_pmid)) {
-      const s = connectionSet.get(row.target_pmid) ?? new Set();
-      s.add(row.source_pmid);
-      connectionSet.set(row.target_pmid, s);
-    }
-  }
-  for (const row of mentionRows ?? []) {
-    const pmidsSet = new Set(paperPmids);
-    if (pmidsSet.has(row.source_pmid)) {
-      const s = connectionSet.get(row.source_pmid) ?? new Set();
-      s.add(row.mentioned_pmid);
-      connectionSet.set(row.source_pmid, s);
-    }
-    if (pmidsSet.has(row.mentioned_pmid)) {
-      const s = connectionSet.get(row.mentioned_pmid) ?? new Set();
-      s.add(row.source_pmid);
-      connectionSet.set(row.mentioned_pmid, s);
-    }
-  }
-
-  const papers = paperDtos.map((paper) => ({
-    ...paper,
-    like_count: likeMap.get(paper.pmid) ?? 0,
-    bookmark_count: bookmarkMap.get(paper.pmid) ?? 0,
-    comment_count: commentMap.get(paper.pmid) ?? 0,
-    connection_count: connectionSet.get(paper.pmid)?.size ?? 0,
-    is_bookmarked: userBookmarkedSet.has(paper.pmid),
-    is_liked: userLikedSet.has(paper.pmid),
-  }));
+  const papers = paperDtos.map((paper) => {
+    const counts = countMap.get(paper.pmid);
+    return {
+      ...paper,
+      like_count: counts?.like ?? 0,
+      bookmark_count: counts?.bookmark ?? 0,
+      comment_count: counts?.comment ?? 0,
+      connection_count: counts?.connection ?? 0,
+      is_bookmarked: userBookmarkedSet.has(paper.pmid),
+      is_liked: userLikedSet.has(paper.pmid),
+    };
+  });
 
   const total = personalizedActive ? (personalizedTotal ?? 0) : dbTotal;
   const hasMore = personalizedActive
