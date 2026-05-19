@@ -6,6 +6,7 @@ import { loadScoringContext } from "@/lib/recommend/affinity";
 import { scorePaper } from "@/lib/recommend/score";
 import { fetchOnDemand } from "@/lib/pubmed/on-demand";
 import { toPaperDto, type PaperRow } from "@/lib/papers/transform";
+import { encodeCursor, decodeCursor, type FeedCursor } from "@/lib/papers/cursor";
 
 const limiter = rateLimit({ windowMs: 60_000, maxRequests: 60 });
 
@@ -48,19 +49,26 @@ interface QueryArgs {
   articleType: string;
 }
 
-function buildPapersQuery(args: QueryArgs) {
+// The column each sort orders by — also the keyset cursor's `v` value.
+function sortColumn(sort: string): "epub_date" | "citation_count" {
+  return sort === "citations" ? "citation_count" : "epub_date";
+}
+
+function buildPapersQuery(args: QueryArgs, withCount: boolean) {
   const supabase = createAnonClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const papersTable = (supabase as any).from("papers");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query: any = papersTable.select(
-    `
+  const selectCols = `
       id, pmid, doi, title, abstract, ai_summary, publication_date, epub_date,
       volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
       journals!inner (id, name, abbreviation, color, slug),
       paper_authors (last_name, first_name, initials, affiliation, position)
-    `,
-    { count: "exact" },
+    `;
+  // `estimated` count (planner stats, no scan) only on the first page — it
+  // feeds the header label and the on-demand-fetch heuristic. Cursor pages
+  // skip counting entirely.
+  let query: any = (withCount
+    ? papersTable.select(selectCols, { count: "estimated" })
+    : papersTable.select(selectCols)
   )
     .not("abstract", "is", null)
     .neq("abstract", "");
@@ -100,18 +108,31 @@ function buildPapersQuery(args: QueryArgs) {
     }
   }
 
-  switch (args.sort) {
-    case "date_asc":
-      query = query.order("epub_date", { ascending: true, nullsFirst: false });
-      break;
-    case "citations":
-      query = query.order("citation_count", { ascending: false, nullsFirst: false });
-      break;
-    default:
-      query = query.order("epub_date", { ascending: false, nullsFirst: false });
-  }
+  const ascending = args.sort === "date_asc";
+  query = query.order(sortColumn(args.sort), { ascending, nullsFirst: false });
+  // Stable secondary key so keyset pagination never skips or repeats rows when
+  // the sort column has ties (or nulls). id direction follows the sort.
+  query = query.order("id", { ascending });
 
   return query.order("position", { referencedTable: "paper_authors", ascending: true });
+}
+
+// Restricts a query to rows strictly after the keyset cursor, matching the
+// `(sortColumn DESC/ASC NULLS LAST, id DESC/ASC)` ordering.
+function applyKeyset(query: any, sort: string, cursor: { v: string | null; id: string }) {
+  const col = sortColumn(sort);
+  const ascending = sort === "date_asc";
+  if (cursor.v === null) {
+    // The cursor row is already in the NULLS-LAST tail; only id breaks ties.
+    return ascending
+      ? query.is(col, null).gt("id", cursor.id)
+      : query.is(col, null).lt("id", cursor.id);
+  }
+  const cmp = ascending ? "gt" : "lt";
+  // Past the cursor value, OR tied on it but past the id, OR into the null tail.
+  return query.or(
+    `${col}.${cmp}.${cursor.v},and(${col}.eq.${cursor.v},id.${cmp}.${cursor.id}),${col}.is.null`,
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -146,9 +167,14 @@ export async function GET(request: NextRequest) {
   const sortParam = searchParams.get("sort") || "date_desc";
   const personalized = searchParams.get("personalized") === "true";
   const articleType = searchParams.get("articleType") || "";
-  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
   const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20), 100);
-  const offset = (page - 1) * limit;
+
+  // Keyset pagination: the opaque `cursor` replaces page/offset. A missing or
+  // malformed cursor decodes to null and is treated as the first page.
+  const cursor = decodeCursor(searchParams.get("cursor"));
+  const isFirstPage = cursor === null;
+  // The personalized feed paginates by offset into its re-ranked pool.
+  const personalizedOffset = cursor && cursor.m === "o" ? cursor.o : 0;
 
   const validSorts = ["date_desc", "date_asc", "citations"] as const;
   const sort = validSorts.includes(sortParam as (typeof validSorts)[number])
@@ -166,11 +192,16 @@ export async function GET(request: NextRequest) {
 
   // Initial read
   const runInitialQuery = async () => {
-    const base = buildPapersQuery(queryArgs);
-    const ranged = personalizedActive
-      ? base.range(0, POOL_SIZE - 1)
-      : base.range(offset, offset + limit - 1);
-    return ranged;
+    let query = buildPapersQuery(queryArgs, isFirstPage);
+    if (personalizedActive) {
+      // Personalized: pull the whole scoring pool, ranked client-side below.
+      return query.range(0, POOL_SIZE - 1);
+    }
+    if (cursor && cursor.m === "k") {
+      query = applyKeyset(query, sort, cursor);
+    }
+    // Fetch one extra row to detect whether a further page exists.
+    return query.limit(limit + 1);
   };
 
   let { data, error, count } = await runInitialQuery();
@@ -184,9 +215,9 @@ export async function GET(request: NextRequest) {
   let dbTotal = count || 0;
   let dataSource: "db" | "db+live" | "db (timeout)" = "db";
 
-  // ---- On-demand PubMed fetch (authenticated only, page 1) ----
+  // ---- On-demand PubMed fetch (authenticated only, first page) ----
   const shouldAttempt =
-    page === 1 && ((q && (personalizedActive ? rawRows.length : dbTotal) < 20) || isBeyondBuffer(from));
+    isFirstPage && ((q && (personalizedActive ? rawRows.length : dbTotal) < 20) || isBeyondBuffer(from));
 
   if (shouldAttempt && user) {
     const userKey = `user:${user.id}`;
@@ -221,9 +252,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // ---- Personalization re-rank (authed only) ----
+  // ---- Pagination resolution: hasMore + the cursor for the next page ----
   let personalizedTotal: number | null = null;
+  let hasMore = false;
+  let nextCursor: string | null = null;
+
   if (personalizedActive && user) {
+    // Personalization re-rank (authed only).
     const context = await loadScoringContext(authClient, user.id);
     const now = new Date();
     const scored = rawRows.map((paper) => {
@@ -268,7 +303,24 @@ export async function GET(request: NextRequest) {
     });
     scored.sort((a, b) => b.score - a.score);
     personalizedTotal = scored.length;
-    rawRows = scored.slice(offset, offset + limit).map((s) => s.paper);
+    rawRows = scored.slice(personalizedOffset, personalizedOffset + limit).map((s) => s.paper);
+    hasMore = personalizedOffset + limit < scored.length;
+    if (hasMore) {
+      nextCursor = encodeCursor({ m: "o", o: personalizedOffset + limit });
+    }
+  } else {
+    // Timeline keyset: we fetched limit + 1 rows to detect a further page.
+    hasMore = rawRows.length > limit;
+    if (hasMore) rawRows = rawRows.slice(0, limit);
+    const lastRow = rawRows[rawRows.length - 1];
+    if (hasMore && lastRow) {
+      const rawVal = sort === "citations" ? lastRow.citation_count : lastRow.epub_date;
+      nextCursor = encodeCursor({
+        m: "k",
+        v: rawVal === null || rawVal === undefined ? null : String(rawVal),
+        id: lastRow.id,
+      } satisfies FeedCursor);
+    }
   }
 
   const paperDtos = rawRows.map((row) => toPaperDto(row as unknown as PaperRow));
@@ -291,7 +343,6 @@ export async function GET(request: NextRequest) {
   }
   const countMap = new Map<string, SocialCounts>();
   if (paperPmids.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: countRows, error: countErr } = await (statsClient.rpc as any)(
       "get_paper_social_counts",
       { p_pmids: paperPmids },
@@ -320,13 +371,11 @@ export async function GET(request: NextRequest) {
   const userBookmarkedSet = new Set<string>();
   const userLikedSet = new Set<string>();
   if (user && paperPmids.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [{ data: myBookmarks }, { data: myLikes }] = await Promise.all([
       (statsClient.from("bookmarks") as any)
         .select("pmid")
         .eq("user_id", user.id)
         .in("pmid", paperPmids),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (statsClient.from("paper_likes") as any)
         .select("paper_pmid")
         .eq("user_id", user.id)
@@ -353,16 +402,13 @@ export async function GET(request: NextRequest) {
   });
 
   const total = personalizedActive ? (personalizedTotal ?? 0) : dbTotal;
-  const hasMore = personalizedActive
-    ? offset + limit < (personalizedTotal ?? 0)
-    : offset + limit < total;
 
   const response = NextResponse.json({
     papers,
     total,
-    page,
     limit,
     hasMore,
+    nextCursor,
     personalized: personalizedActive,
   });
 

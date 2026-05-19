@@ -32,13 +32,18 @@ export function usePapers(
   const getKey = (pageIndex: number, previousPageData: PapersResponse | null) => {
     if (previousPageData && !previousPageData.hasMore) return null;
 
+    // Keyset pagination: the first page has no cursor; each later page uses the
+    // opaque nextCursor returned by the page before it.
+    const cursor = pageIndex === 0 ? undefined : previousPageData?.nextCursor ?? undefined;
+    if (pageIndex > 0 && !cursor) return null;
+
     return buildApiUrl("/api/papers", {
       q: filters.q,
       journals: filters.journals?.join(","),
       from: filters.from,
       to: filters.to,
       sort: filters.sort,
-      page: pageIndex + 1,
+      cursor,
       limit: filters.limit || 10,
       personalized: filters.personalized ? "true" : undefined,
       articleType: filters.articleType || undefined,

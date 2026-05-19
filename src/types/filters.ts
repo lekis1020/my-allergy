@@ -55,9 +55,12 @@ export type TopicTag =
 export interface PapersResponse {
   papers: PaperWithJournal[];
   total: number;
-  page: number;
   limit: number;
   hasMore: boolean;
+  // Opaque keyset/offset cursor for the next page (papers feed); null when none.
+  nextCursor?: string | null;
+  // Legacy offset page number — still used by the agora feed.
+  page?: number;
 }
 
 export interface PaperWithJournal {
