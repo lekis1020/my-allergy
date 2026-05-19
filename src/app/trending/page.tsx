@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { BarChart3 } from "lucide-react";
 import { createAnonClient } from "@/lib/supabase/server";
 import { toPaperDto, type PaperRow } from "@/lib/papers/transform";
 import { TrendingFeed } from "@/components/papers/trending-feed";
-import { PaperCardSkeleton } from "@/components/ui/skeleton";
+import { TrendingInsightsDrawer } from "@/components/papers/trending-insights-drawer";
+import { TopFirstAuthors } from "@/components/insights/top-first-authors";
+import { FirstAuthorGeography } from "@/components/insights/first-author-geography";
 
 export const metadata: Metadata = {
   title: "Trending | My Allergy",
@@ -77,40 +77,28 @@ export default async function TrendingPage() {
   ]);
 
   return (
-    <Suspense
-      fallback={
-        <div className="mx-auto w-full max-w-[1280px] px-0 sm:px-4 sm:py-4">
-          <div className="mx-auto max-w-2xl border-x border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-            <div className="divide-y divide-gray-200 dark:divide-gray-800">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <PaperCardSkeleton key={i} />
-              ))}
-            </div>
+    <div className="mx-auto w-full max-w-[1280px] px-0 sm:px-4 sm:py-4">
+      <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
+        {/* Left sidebar: top first authors leaderboard (xl+ only) */}
+        <div className="hidden xl:block xl:pr-4">
+          <div className="sticky top-20 max-h-[calc(100vh-96px)] overflow-y-auto pr-1">
+            <TopFirstAuthors />
           </div>
         </div>
-      }
-    >
-      {analysis && (
-        <div className="border-b border-gray-200 px-4 py-5 dark:border-gray-800">
-          <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-gray-900 dark:text-gray-100">
-            <BarChart3 className="h-5 w-5 text-blue-500" />
-            이번 달 연구 동향
-          </h2>
-          <div className="whitespace-pre-line text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-            {analysis.ai_summary}
+
+        {/* Center: trending feed */}
+        <TrendingFeed initialPapers={papers} analysis={analysis} />
+
+        {/* Right sidebar: first author geography (xl+ only) */}
+        <div className="hidden xl:block xl:pl-4">
+          <div className="sticky top-20 max-h-[calc(100vh-96px)] overflow-y-auto pr-1">
+            <FirstAuthorGeography />
           </div>
-          {(analysis.stats_json as any)?.topTopics && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {((analysis.stats_json as any).topTopics as Array<{ name: string; count: number }>).map((t) => (
-                <span key={t.name} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-                  {t.name} · {t.count}편
-                </span>
-              ))}
-            </div>
-          )}
         </div>
-      )}
-      <TrendingFeed initialPapers={papers} />
-    </Suspense>
+      </div>
+
+      {/* Below xl: both insight widgets surface through a slide-in drawer */}
+      <TrendingInsightsDrawer />
+    </div>
   );
 }
