@@ -15,7 +15,18 @@ async function fetcher(url: string): Promise<PapersResponse & { __source: DataSo
   return { ...json, __source: source };
 }
 
-export function usePapers(filters: PaperFilters, initialData?: PapersResponse) {
+interface UsePapersOptions {
+  // When true, skip the on-mount revalidation of the first page. Safe only when
+  // the SSR `initialData` fully matches what the API would return — i.e. for
+  // anonymous users, where no per-user bookmark/like state needs layering in.
+  skipMountRevalidation?: boolean;
+}
+
+export function usePapers(
+  filters: PaperFilters,
+  initialData?: PapersResponse,
+  options?: UsePapersOptions,
+) {
   const [isLive, setIsLive] = useState(false);
 
   const getKey = (pageIndex: number, previousPageData: PapersResponse | null) => {
@@ -42,8 +53,11 @@ export function usePapers(filters: PaperFilters, initialData?: PapersResponse) {
   const { data, error, size, setSize, isLoading, isValidating, mutate } =
     useSWRInfinite<PapersResponse & { __source: DataSource }>(getKey, fetcher, {
       revalidateFirstPage: false,
-      revalidateOnFocus: true,
-      revalidateOnMount: true,
+      revalidateOnFocus: false,
+      // Skip the redundant first-page fetch when SSR data already matches
+      // (anonymous users). Authenticated users still revalidate so their
+      // per-user bookmark/like state is fetched.
+      revalidateOnMount: !(options?.skipMountRevalidation && fallback),
       keepPreviousData: true,
       fallbackData: fallback,
       onSuccess: (pages) => {

@@ -43,7 +43,20 @@ export function HomePage({ initialData }: HomePageProps) {
     isValidating,
     loadMore,
     dataSource,
-  } = usePapers(effectiveFilters, initialData);
+    mutate,
+  } = usePapers(effectiveFilters, initialData, {
+    // SSR initialData is anonymous, so the first page never needs an immediate
+    // re-fetch on mount. Per-user bookmark/like state is layered in by the
+    // effect below once client-side auth resolves.
+    skipMountRevalidation: true,
+  });
+
+  // useAuth resolves the session asynchronously (user is null on first render),
+  // so on-mount revalidation cannot know whether the viewer is authenticated.
+  // Once auth resolves to a logged-in user, revalidate to fetch per-user state.
+  useEffect(() => {
+    if (user) mutate();
+  }, [user, mutate]);
 
   useEffect(() => {
     const q = searchParams.get("q");
