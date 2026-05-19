@@ -37,21 +37,26 @@ export function TrendingFeed({ initialPapers }: TrendingFeedProps) {
               <PaperCardSkeleton key={i} />
             ))}
           </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
-              Failed to load trending papers
-            </p>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Please try again later.
-            </p>
-          </div>
         ) : papers.length === 0 ? (
-          <EmptyState
-            icon={<TrendingUp className="h-12 w-12" />}
-            title="No trending papers yet"
-            description="Most cited papers from the last 6 months will appear here."
-          />
+          // Only fall back to the error/empty UI when there is nothing to
+          // show. A failed *revalidation* must not discard valid papers that
+          // were already rendered (e.g. from the SSR fallback).
+          error ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                Failed to load trending papers
+              </p>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Please try again later.
+              </p>
+            </div>
+          ) : (
+            <EmptyState
+              icon={<TrendingUp className="h-12 w-12" />}
+              title="No trending papers yet"
+              description="Most cited papers from the last 6 months will appear here."
+            />
+          )
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-800">
             {papers.map((paper, index) => (

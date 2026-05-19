@@ -10,7 +10,11 @@ export const metadata: Metadata = {
   title: "Trending | My Allergy",
 };
 
-export const dynamic = "force-dynamic";
+// Trending data only shifts as citations are refreshed (every few hours), so
+// the page does not need a fresh server render per request. ISR serves a
+// cached render and regenerates every 30 minutes — this removes the
+// per-request blocking on the (cold-slow) trending query.
+export const revalidate = 1800;
 
 const POOL_SIZE = 50;
 const RESULT_LIMIT = 10;
