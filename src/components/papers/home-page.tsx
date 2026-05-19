@@ -42,9 +42,15 @@ export function HomePage({ initialData }: HomePageProps) {
     dataSource,
     mutate,
   } = usePapers(effectiveFilters, initialData, {
+    // SSR initialData is anonymous, so the first page never needs an immediate
+    // re-fetch on mount. Per-user bookmark/like state is layered in by the
+    // effect below once client-side auth resolves.
     skipMountRevalidation: true,
   });
 
+  // useAuth resolves the session asynchronously (user is null on first render),
+  // so on-mount revalidation cannot know whether the viewer is authenticated.
+  // Once auth resolves to a logged-in user, revalidate to fetch per-user state.
   useEffect(() => {
     if (user) mutate();
   }, [user, mutate]);
@@ -117,7 +123,7 @@ export function HomePage({ initialData }: HomePageProps) {
 
         <div className="min-w-0 border-x border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
           <div className="sticky top-14 z-20 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-950/90">
-            <div className="grid grid-cols-2 text-sm">
+            <div className={`grid text-sm ${user ? "grid-cols-2" : "grid-cols-1"}`}>
               <button
                 onClick={() => handleTabChange("timeline")}
                 className={tabClass(activeTab === "timeline")}
