@@ -135,6 +135,8 @@ export function RelationshipGraph({ nodes, edges, width, height }: RelationshipG
         ref={svgRef}
         width={width}
         height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
         className="w-full rounded-xl bg-gray-50 dark:bg-gray-900/50"
       />
       <div

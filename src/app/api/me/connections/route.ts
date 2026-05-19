@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerAuthClient, createAnonClient } from "@/lib/supabase/server";
+import { createServerAuthClient, createAnonClient, createServiceClient } from "@/lib/supabase/server";
 import { buildInducedSubgraph } from "@/lib/graph/induced-subgraph";
 import type { GraphNode, GraphResponse } from "@/lib/graph/types";
 
@@ -56,7 +56,9 @@ export async function GET() {
   }
 
   // 2. Paper metadata + edge rows. Reads are RLS-public, so use the anon client.
+  //    paper_mentions has RLS that blocks anon; use the service client for it.
   const supabase = createAnonClient();
+  const serviceClient = createServiceClient();
   const pmidList = [...pmidSet];
 
   const [{ data: papers }, { data: citations }, { data: mentions }] = await Promise.all([
@@ -69,7 +71,7 @@ export async function GET() {
       .select("source_pmid, target_pmid")
       .in("source_pmid", pmidList)
       .in("target_pmid", pmidList),
-    supabase
+    serviceClient
       .from("paper_mentions")
       .select("source_pmid, mentioned_pmid")
       .in("source_pmid", pmidList)

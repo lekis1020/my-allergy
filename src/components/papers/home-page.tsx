@@ -182,21 +182,19 @@ export function HomePage({ initialData }: HomePageProps) {
             </div>
           )}
 
-          <div>
-            <PaperFeed
-              papers={papers}
-              total={total}
-              hasMore={hasMore ?? false}
-              isLoading={isLoading}
-              isLoadingMore={isLoadingMore ?? false}
-              onLoadMore={loadMore}
-              personalized={activeTab === "for_you" && Boolean(user)}
-              articleType={articleType}
-              onArticleTypeChange={setArticleType}
-              dataSource={dataSource}
-              isLiveLoading={isValidating && Boolean(filters.q)}
-            />
-          </div>
+          <PaperFeed
+            papers={papers}
+            total={total}
+            hasMore={hasMore ?? false}
+            isLoading={isLoading}
+            isLoadingMore={isLoadingMore ?? false}
+            onLoadMore={loadMore}
+            personalized={activeTab === "for_you" && Boolean(user)}
+            articleType={articleType}
+            onArticleTypeChange={setArticleType}
+            dataSource={dataSource}
+            isLiveLoading={isValidating && Boolean(filters.q)}
+          />
         </div>
 
         <div className="hidden xl:block xl:pl-4">

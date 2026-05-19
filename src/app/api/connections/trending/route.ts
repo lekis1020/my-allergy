@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createAnonClient } from "@/lib/supabase/server";
+import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
 import { buildInducedSubgraph } from "@/lib/graph/induced-subgraph";
 import type { GraphNode, GraphResponse } from "@/lib/graph/types";
 
@@ -50,13 +50,14 @@ export async function GET() {
 
   // 2. Citation + mention rows where both endpoints are trending pmids.
   const pmidList = [...pmidSet];
+  const serviceClient = createServiceClient();
   const [{ data: citations }, { data: mentions }] = await Promise.all([
     supabase
       .from("paper_citations")
       .select("source_pmid, target_pmid")
       .in("source_pmid", pmidList)
       .in("target_pmid", pmidList),
-    supabase
+    serviceClient
       .from("paper_mentions")
       .select("source_pmid, mentioned_pmid")
       .in("source_pmid", pmidList)
