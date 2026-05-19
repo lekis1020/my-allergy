@@ -6,20 +6,27 @@ import {
   inferLocationFromAffiliation,
 } from "@/lib/utils/author-location";
 
-interface PaperRow {
-  id: string;
-  publication_date: string;
-}
+// Safety cap on first-author rows scanned. 180 days of the tracked journals is
+// realistically well under this; it only guards against pathological volume.
+const ROW_LIMIT = 20000;
 
-interface AuthorRow {
-  paper_id: string;
+interface JoinedAuthorRow {
   affiliation: string | null;
+  papers:
+    | { publication_date: string }
+    | { publication_date: string }[]
+    | null;
 }
 
 const limiter = rateLimit({ windowMs: 60_000, maxRequests: 10 });
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 30;
+
+function publicationDateOf(row: JoinedAuthorRow): string {
+  const paper = Array.isArray(row.papers) ? row.papers[0] : row.papers;
+  return paper?.publication_date ?? "1970-01-01";
+}
 
 export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
@@ -42,65 +49,35 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAnonClient();
 
-  const { data: paperRows, error: paperError } = await supabase
-    .from("papers")
-    .select("id, publication_date")
-    .gte("publication_date", fromDate)
-    .order("publication_date", { ascending: false })
-    .limit(20000);
+  // Single join query: first authors (position 1) of papers published within
+  // the window. Previously this fetched up to 20k papers and then issued ~50
+  // sequential chunked paper_authors queries — that waterfall blew past the
+  // Postgres statement timeout. The inner join does it in one round-trip.
+  const { data: rows, error } = await supabase
+    .from("paper_authors")
+    .select("affiliation, papers!inner(publication_date)")
+    .eq("position", 1)
+    .gte("papers.publication_date", fromDate)
+    .limit(ROW_LIMIT);
 
-  if (paperError) {
+  if (error) {
+    console.error("[author-geography] query error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch papers for geography insights." },
+      { error: "Failed to fetch first-author affiliations." },
       { status: 500 }
     );
   }
 
-  const papers = (paperRows ?? []) as PaperRow[];
-  if (papers.length === 0) {
-    return NextResponse.json({
-      source: "database",
-      days,
-      asOf: asOf.toISOString(),
-      fromDate,
-      totalFirstAuthors: 0,
-      locations: [],
-    });
-  }
-
-  const paperDateMap = new Map<string, string>(papers.map((paper) => [paper.id, paper.publication_date]));
-  const paperIds = papers.map((paper) => paper.id);
-
-  const authorRows: AuthorRow[] = [];
-  for (let index = 0; index < paperIds.length; index += 400) {
-    const chunk = paperIds.slice(index, index + 400);
-    const { data: chunkRows, error: authorError } = await supabase
-      .from("paper_authors")
-      .select("paper_id, affiliation")
-      .eq("position", 1)
-      .in("paper_id", chunk);
-
-    if (authorError) {
-      return NextResponse.json(
-        { error: "Failed to fetch first-author affiliations." },
-        { status: 500 }
-      );
-    }
-
-    authorRows.push(...((chunkRows ?? []) as AuthorRow[]));
-  }
+  const authorRows = (rows ?? []) as unknown as JoinedAuthorRow[];
 
   const locationCounter = new Map<
     string,
-    {
-      count: number;
-      latestPublicationDate: string;
-    }
+    { count: number; latestPublicationDate: string }
   >();
 
   for (const row of authorRows) {
     const location = inferLocationFromAffiliation(row.affiliation);
-    const publicationDate = paperDateMap.get(row.paper_id) ?? "1970-01-01";
+    const publicationDate = publicationDateOf(row);
 
     const current = locationCounter.get(location);
     if (!current) {
@@ -132,7 +109,7 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => b.count - a.count || a.location.localeCompare(b.location))
     .slice(0, 30);
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     source: "database",
     days,
     asOf: asOf.toISOString(),
@@ -140,4 +117,13 @@ export async function GET(request: NextRequest) {
     totalFirstAuthors: authorRows.length,
     locations,
   });
+
+  // Geography shifts at most once per daily sync, so allow the CDN/browser to
+  // serve a cached copy for an hour and revalidate in the background for a day.
+  response.headers.set(
+    "Cache-Control",
+    "public, s-maxage=3600, stale-while-revalidate=86400"
+  );
+
+  return response;
 }
