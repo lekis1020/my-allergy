@@ -15,6 +15,9 @@ export interface MentionRow {
  * relationships where BOTH endpoints are in `pmids` become edges. Edges are
  * undirected and deduplicated per pair; `type` is "both" when a pair has both
  * a citation and a mention. pmids with no edge are dropped from connectedPmids.
+ *
+ * On each edge, `source` is the lexicographically smaller pmid of the pair and
+ * `target` the larger; original citation direction is intentionally not preserved.
  */
 export function buildInducedSubgraph(
   pmids: Set<string>,
@@ -52,5 +55,5 @@ export function buildInducedSubgraph(
     connected.add(target);
   }
 
-  return { edges, connectedPmids: [...connected] };
+  return { edges, connectedPmids: [...connected].sort() };
 }
