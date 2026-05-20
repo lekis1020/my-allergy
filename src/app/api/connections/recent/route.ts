@@ -4,34 +4,38 @@ import { buildInducedSubgraph } from "@/lib/graph/induced-subgraph";
 import type { GraphNode, GraphResponse } from "@/lib/graph/types";
 
 const NODE_CAP = 60;
-const TRENDING_WINDOW_DAYS = 180;
+const RECENT_WINDOW_DAYS = 90;
 
 export async function GET() {
   const supabase = createAnonClient();
 
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - TRENDING_WINDOW_DAYS);
+  cutoff.setDate(cutoff.getDate() - RECENT_WINDOW_DAYS);
   const fromDate = cutoff.toISOString().split("T")[0];
 
-  // 1. Top trending pmids — same selection basis as the trending feed.
-  const { data: trending, error: trendingError } = await supabase
+  // 1. Recent pmids — papers from the last RECENT_WINDOW_DAYS days. We still
+  //    pull at most NODE_CAP and order by citation_count desc so the picked
+  //    slice is biased toward papers more likely to share citation/mention
+  //    edges (the graph would otherwise be visually empty for many windows),
+  //    but no minimum citation threshold is required: a brand-new paper that
+  //    was already mentioned in community comments can show up here.
+  const { data: recent, error: recentError } = await supabase
     .from("papers")
     .select("pmid, title, publication_date, journals!inner(abbreviation, color)")
     .not("abstract", "is", null)
     .neq("abstract", "")
     .gte("epub_date", fromDate)
-    .gt("citation_count", 0)
     .order("citation_count", { ascending: false, nullsFirst: false })
     .order("epub_date", { ascending: false })
     .limit(NODE_CAP);
 
-  if (trendingError) {
-    console.error("trending connections query error:", trendingError);
+  if (recentError) {
+    console.error("recent connections query error:", recentError);
     return NextResponse.json<GraphResponse>({ nodes: [], edges: [] }, { status: 500 });
   }
 
   const paperMap = new Map<string, GraphNode>();
-  for (const row of trending ?? []) {
+  for (const row of recent ?? []) {
     const journal = row.journals as unknown as { abbreviation: string; color: string };
     paperMap.set(String(row.pmid), {
       pmid: String(row.pmid),
@@ -48,7 +52,8 @@ export async function GET() {
     return jsonWithCache({ nodes: [], edges: [] });
   }
 
-  // 2. Citation + mention rows where both endpoints are trending pmids.
+  // 2. Citation + mention rows where both endpoints are in the recent set.
+  //    paper_mentions has RLS that blocks anon; read via service client.
   const pmidList = [...pmidSet];
   const serviceClient = createServiceClient();
   const [{ data: citations }, { data: mentions }] = await Promise.all([
