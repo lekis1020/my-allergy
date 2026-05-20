@@ -9,7 +9,15 @@ interface DbStatus {
   newestPaper: string | null;
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string): Promise<DbStatus> => {
+  const res = await fetch(url);
+  // Throwing on non-2xx keeps SWR from caching an error payload (e.g. a 503
+  // from the route on a transient Supabase count failure) as if it were data —
+  // which previously caused `data.totalPapers` to fall through `?? 0` and
+  // render "0" in the right rail.
+  if (!res.ok) throw new Error(`db-status fetch failed: ${res.status}`);
+  return res.json();
+};
 
 export function useDbStatus() {
   const { data, error, isLoading } = useSWR<DbStatus>(
