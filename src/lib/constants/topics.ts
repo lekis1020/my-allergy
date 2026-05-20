@@ -133,6 +133,22 @@ export const TOPIC_TREE: TopicCategory[] = [
     ],
   },
   {
+    id: "allergen_immunotherapy",
+    label: "Allergen Immunotherapy",
+    searchQuery: "allergen immunotherapy",
+    colorClass: "text-teal-500",
+    subtopics: [
+      { label: "Subcutaneous (SCIT)", searchQuery: "subcutaneous immunotherapy" },
+      { label: "Sublingual (SLIT)", searchQuery: "sublingual immunotherapy" },
+      { label: "Grass Pollen", searchQuery: "grass pollen immunotherapy" },
+      { label: "Tree Pollen", searchQuery: "tree pollen immunotherapy" },
+      { label: "House Dust Mite", searchQuery: "house dust mite immunotherapy" },
+      { label: "Venom (Bee/Wasp)", searchQuery: "venom immunotherapy" },
+      { label: "Cat Allergen", searchQuery: "cat allergen immunotherapy" },
+      { label: "Dog Allergen", searchQuery: "dog allergen immunotherapy" },
+    ],
+  },
+  {
     id: "cross_cutting",
     label: "Cross-Cutting Topics",
     searchQuery: "allergy immunology",
@@ -140,7 +156,6 @@ export const TOPIC_TREE: TopicCategory[] = [
     subtopics: [
       { label: "Anaphylaxis", searchQuery: "anaphylaxis" },
       { label: "Mast Cell Disorders", searchQuery: "mast cell disorders" },
-      { label: "Allergen Immunotherapy", searchQuery: "allergen immunotherapy" },
       { label: "Biologics", searchQuery: "biologics allergy" },
       { label: "Microbiome Allergy", searchQuery: "microbiome allergy" },
       { label: "Allergy Diagnostics", searchQuery: "allergy diagnostics" },
