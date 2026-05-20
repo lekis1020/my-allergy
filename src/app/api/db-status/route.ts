@@ -32,7 +32,19 @@ export async function GET() {
   if (papersResult.error) console.error("[db-status] papers count error:", papersResult.error);
   if (abstractResult.error) console.error("[db-status] abstract count error:", abstractResult.error);
 
-  const totalPapers = papersResult.count ?? 0;
+  // If the core count query failed (or returned null), do NOT serve a falsy
+  // payload with a long-lived CDN cache — a `{ totalPapers: 0 }` response with
+  // `s-maxage=300` would freeze "0" in front of users for up to 15 minutes
+  // (including stale-while-revalidate). Surface a non-cacheable 503 instead so
+  // SWR throws and keeps the previous value.
+  if (papersResult.error || papersResult.count === null) {
+    return NextResponse.json(
+      { error: "db-status query failed" },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  const totalPapers = papersResult.count;
   const papersWithAbstract = abstractResult.count ?? 0;
   const lastSyncAt = syncResult.data?.[0]?.completed_at ?? null;
   const newestPaper = newestResult.data?.[0]?.publication_date ?? null;
