@@ -50,6 +50,7 @@ export type TopicTag =
   | "eosinophilic_disorders"
   | "immunodeficiency"
   | "food_allergy"
+  | "allergen_immunotherapy"
   | "others";
 
 export interface PapersResponse {

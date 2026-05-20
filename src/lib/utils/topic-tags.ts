@@ -137,6 +137,43 @@ const TOPIC_CONFIG: Record<Exclude<TopicTag, "others">, TopicConfig> = {
       "biphasic anaphylaxis",
     ],
   },
+  allergen_immunotherapy: {
+    label: "Allergen Immunotherapy",
+    terms: [
+      // Generic AIT vocabulary — kept allergen-specific (not bare
+      // "immunotherapy", which would over-match oncology / biologic therapy).
+      "allergen immunotherapy",
+      "allergen specific immunotherapy",
+      "allergen-specific immunotherapy",
+      "specific immunotherapy",
+      "subcutaneous immunotherapy",
+      "sublingual immunotherapy",
+      "scit",
+      "slit",
+      "ait",
+      "desensitization immunologic",
+      "immunologic desensitization",
+      // Venom / hymenoptera (bee, wasp)
+      "venom immunotherapy",
+      "hymenoptera venom immunotherapy",
+      "bee venom immunotherapy",
+      "wasp venom immunotherapy",
+      // Pollen
+      "pollen immunotherapy",
+      "grass pollen immunotherapy",
+      "tree pollen immunotherapy",
+      "birch pollen immunotherapy",
+      "ragweed immunotherapy",
+      // Mite
+      "house dust mite immunotherapy",
+      "dust mite immunotherapy",
+      // Pet dander
+      "cat allergen immunotherapy",
+      "dog allergen immunotherapy",
+      "fel d 1 immunotherapy",
+      "can f 1 immunotherapy",
+    ],
+  },
 };
 
 const SOURCE_WEIGHT = {
@@ -184,6 +221,10 @@ export const TOPIC_META: Record<TopicTag, { label: string; className: string }> 
   anaphylaxis: {
     label: "Anaphylaxis",
     className: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
+  },
+  allergen_immunotherapy: {
+    label: "Immunotherapy",
+    className: "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
   },
   others: {
     label: "others",
