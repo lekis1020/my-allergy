@@ -1,8 +1,9 @@
 "use client";
 
-import { Clock3, Database } from "lucide-react";
+import { Clock3, Database, Radio } from "lucide-react";
 import { AdBanner } from "@/components/ads/ad-banner";
 import { useDbStatus } from "@/hooks/use-db-status";
+import { useOnlineCount } from "@/hooks/use-online-count";
 
 interface RightRailProps {
   total: number;
@@ -10,9 +11,31 @@ interface RightRailProps {
 
 export function RightRail({ total }: RightRailProps) {
   const { totalPapers: dbTotal, lastSyncAt, newestPaper, isLoading: dbLoading } = useDbStatus();
+  const { count: onlineCount, ready: onlineReady } = useOnlineCount();
 
   return (
     <aside className="space-y-4">
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <Radio className="h-4 w-4 text-emerald-500" />
+          Live
+        </h3>
+        <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              {onlineReady ? `${onlineCount.toLocaleString()}명 접속 중` : "연결 중…"}
+            </p>
+          </div>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            홈을 보고 있는 다른 사용자 (실시간)
+          </p>
+        </div>
+      </section>
+
       <section className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
           <Database className="h-4 w-4 text-blue-500" />
