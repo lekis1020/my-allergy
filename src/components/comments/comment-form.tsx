@@ -140,6 +140,12 @@ export function CommentForm({
 
   return (
     <form onSubmit={submit} className="space-y-2">
+      {!parentId && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">@</span>
+          을 입력해 다른 논문을 검색하여 인용할 수 있습니다.
+        </p>
+      )}
       <div className="relative">
         <MentionDropdown
           query={mentionQuery ?? ""}
