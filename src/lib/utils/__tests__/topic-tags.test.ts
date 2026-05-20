@@ -52,7 +52,9 @@ describe("classifyPaperTopics — allergen_immunotherapy", () => {
     expect(tags).not.toContain("allergen_immunotherapy");
   });
 
-  it("does NOT swallow oral immunotherapy (food allergy) as AIT", () => {
+  it("tags oral immunotherapy (OIT) as BOTH food_allergy and allergen_immunotherapy", () => {
+    // OIT is allergen-specific immunotherapy delivered orally — it belongs in
+    // both the food-allergy and immunotherapy buckets.
     const tags = classifyPaperTopics({
       title: "Oral immunotherapy for peanut allergy",
       abstract: "OIT achieved sustained unresponsiveness.",
@@ -60,7 +62,7 @@ describe("classifyPaperTopics — allergen_immunotherapy", () => {
       meshTerms: [],
     });
     expect(tags).toContain("food_allergy");
-    expect(tags).not.toContain("allergen_immunotherapy");
+    expect(tags).toContain("allergen_immunotherapy");
   });
 
   it("exposes a TOPIC_META entry for the new tag", () => {
