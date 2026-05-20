@@ -12,14 +12,15 @@ const fetcher = async (url: string): Promise<GraphResponse> => {
 };
 
 interface RelationshipGraphPanelProps {
-  // "for_you" + authenticated → per-user graph; otherwise the trending graph.
+  // "for_you" + authenticated → per-user graph; otherwise the recent-papers
+  // graph (last 90 days) on the Timeline tab.
   activeTab: "timeline" | "for_you";
   isAuthenticated: boolean;
 }
 
 export function RelationshipGraphPanel({ activeTab, isAuthenticated }: RelationshipGraphPanelProps) {
   const useAccountGraph = activeTab === "for_you" && isAuthenticated;
-  const endpoint = useAccountGraph ? "/api/me/connections" : "/api/connections/trending";
+  const endpoint = useAccountGraph ? "/api/me/connections" : "/api/connections/recent";
 
   const { data, error, isLoading } = useSWR<GraphResponse>(endpoint, fetcher, {
     revalidateOnFocus: false,
@@ -44,7 +45,7 @@ export function RelationshipGraphPanel({ activeTab, isAuthenticated }: Relations
         <p className="rounded-xl bg-gray-50 px-3 py-6 text-center text-xs text-gray-500 dark:bg-gray-900/50 dark:text-gray-400">
           {useAccountGraph
             ? "북마크·댓글·좋아요한 논문이 모이면 관계도가 그려집니다."
-            : "트렌딩 논문 간 인용·멘션 관계가 아직 없습니다."}
+            : "최근 3개월 논문 간 인용·멘션 관계가 아직 없습니다."}
         </p>
       ) : (
         <RelationshipGraph nodes={data.nodes} edges={data.edges} width={680} height={360} />
