@@ -47,9 +47,22 @@ export const TOPIC_TREE: TopicCategory[] = [
     subtopics: [
       { label: "Chronic Spontaneous", searchQuery: "chronic spontaneous urticaria" },
       { label: "Chronic Inducible", searchQuery: "chronic inducible urticaria" },
-      { label: "Angioedema", searchQuery: "angioedema" },
-      { label: "Hereditary Angioedema", searchQuery: "hereditary angioedema" },
+      { label: "Cholinergic Urticaria", searchQuery: "cholinergic urticaria" },
       { label: "Omalizumab Urticaria", searchQuery: "omalizumab urticaria" },
+    ],
+  },
+  {
+    id: "angioedema",
+    label: "Angioedema",
+    searchQuery: "angioedema",
+    colorClass: "text-fuchsia-500",
+    subtopics: [
+      { label: "Hereditary Angioedema", searchQuery: "hereditary angioedema" },
+      { label: "Acquired Angioedema", searchQuery: "acquired angioedema" },
+      { label: "ACE-Inhibitor Angioedema", searchQuery: "ACE inhibitor induced angioedema" },
+      { label: "Idiopathic Angioedema", searchQuery: "idiopathic angioedema" },
+      { label: "C1-INH Therapy", searchQuery: "C1 inhibitor concentrate" },
+      { label: "Lanadelumab", searchQuery: "lanadelumab hereditary angioedema" },
     ],
   },
   {
