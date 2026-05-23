@@ -29,9 +29,21 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
   {
     id: "urticaria",
     label: "Urticaria",
-    searchQuery: "urticaria OR angioedema",
+    searchQuery: "urticaria",
     excludeTerms: [
-      "urticaria", "chronic urticaria", "hives", "angioedema",
+      "urticaria", "chronic urticaria", "hives",
+      "allergens", "immunotherapy", "inflammation", "cytokines",
+      "biomarkers",
+    ],
+  },
+  {
+    id: "angioedema",
+    label: "Angioedema",
+    searchQuery: '"hereditary angioedema" OR angioedema',
+    excludeTerms: [
+      "angioedema", "hereditary angioedema", "acquired angioedema",
+      "C1 inhibitor", "C1 esterase inhibitor", "bradykinin",
+      "lanadelumab", "icatibant", "ecallantide", "berotralstat",
       "allergens", "immunotherapy", "inflammation", "cytokines",
       "biomarkers",
     ],

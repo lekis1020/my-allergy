@@ -44,6 +44,7 @@ export type TopicTag =
   | "asthma"
   | "rhinitis"
   | "urticaria"
+  | "angioedema"
   | "anaphylaxis"
   | "atopic_dermatitis"
   | "drug_allergy"

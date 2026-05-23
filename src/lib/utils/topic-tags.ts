@@ -40,10 +40,42 @@ const TOPIC_CONFIG: Record<Exclude<TopicTag, "others">, TopicConfig> = {
     terms: [
       "urticaria",
       "hives",
-      "angioedema",
       "chronic spontaneous urticaria",
       "chronic urticaria",
+      "chronic inducible urticaria",
       "csu",
+    ],
+  },
+  angioedema: {
+    label: "Angioedema",
+    terms: [
+      // HAE is a bradykinin-mediated disorder (C1-INH deficiency) — clinically
+      // distinct from histamine/mast-cell mediated urticaria. We capture HAE,
+      // acquired (AAE), ACE-inhibitor-induced and idiopathic angioedema here,
+      // plus HAE-specific therapeutics that virtually never appear outside
+      // this disease context.
+      "angioedema",
+      "hereditary angioedema",
+      "acquired angioedema",
+      "idiopathic angioedema",
+      "ace inhibitor angioedema",
+      "ace inhibitor induced angioedema",
+      "ace induced angioedema",
+      "bradykinin angioedema",
+      "bradykinin mediated angioedema",
+      "c1 inhibitor",
+      "c1 esterase inhibitor",
+      "c1 inhibitor deficiency",
+      "c1 esterase inhibitor deficiency",
+      "c1 inh",
+      "plasma derived c1 inhibitor",
+      "recombinant c1 inhibitor",
+      "lanadelumab",
+      "icatibant",
+      "ecallantide",
+      "berotralstat",
+      "donidalorsen",
+      "garadacimab",
     ],
   },
   atopic_dermatitis: {
@@ -199,6 +231,10 @@ export const TOPIC_META: Record<TopicTag, { label: string; className: string }> 
   urticaria: {
     label: "Urticaria",
     className: "border-pink-200 bg-pink-50 text-pink-700 dark:border-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
+  },
+  angioedema: {
+    label: "Angioedema",
+    className: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 dark:border-fuchsia-800 dark:bg-fuchsia-900/30 dark:text-fuchsia-300",
   },
   atopic_dermatitis: {
     label: "Atopic Dermatitis",
