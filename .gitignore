@@ -53,3 +53,8 @@ supabase/.temp/
 
 # Superpowers brainstorm artifacts
 .superpowers/
+
+# local QA screenshots (not committed to docs)
+/screenshots/
+docs/images/test-02-drawer-noauth.png
+docs/images/trials-scroll-test.png
