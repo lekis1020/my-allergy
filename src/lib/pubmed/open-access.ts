@@ -26,7 +26,8 @@ export interface OpenAccessInfo {
  * 1. Unpaywall API (by DOI)
  * 2. PubMed Central (by PMID)
  * 3. Europe PMC (by DOI)
- * 4. Semantic Scholar (by DOI)
+ * 4. Crossref (by DOI) — catches hybrid OA on publisher sites that Unpaywall has not yet indexed
+ * 5. Semantic Scholar (by DOI)
  * Returns null on error (non-blocking).
  */
 export async function findOpenAccessPdf(
@@ -51,6 +52,13 @@ export async function findOpenAccessPdf(
   if (cleanDoi) {
     const europePmc = await tryEuropePmc(cleanDoi);
     if (europePmc?.pdfUrl) return europePmc;
+  }
+
+  // Fallback: Crossref (needs DOI) — for fresh hybrid OA where publisher deposited
+  // CC license metadata but aggregators (Unpaywall/PMC) have not yet caught up.
+  if (cleanDoi) {
+    const crossref = await tryCrossref(cleanDoi);
+    if (crossref?.pdfUrl) return crossref;
   }
 
   // Fallback: Semantic Scholar (needs DOI)
@@ -176,6 +184,80 @@ async function tryEuropePmc(doi: string): Promise<OpenAccessInfo | null> {
   } catch {
     return null;
   }
+}
+
+interface CrossrefLicense {
+  URL?: string;
+  "content-version"?: string;
+}
+
+interface CrossrefLink {
+  URL?: string;
+  "content-type"?: string;
+  "content-version"?: string;
+  "intended-application"?: string;
+}
+
+interface CrossrefMessage {
+  license?: CrossrefLicense[];
+  link?: CrossrefLink[];
+  resource?: { primary?: { URL?: string } };
+}
+
+interface CrossrefResponse {
+  message?: CrossrefMessage;
+}
+
+async function tryCrossref(doi: string): Promise<OpenAccessInfo | null> {
+  try {
+    const url = `https://api.crossref.org/works/${encodeURIComponent(doi)}`;
+    const response = await fetch(url, {
+      headers: { accept: "application/json" },
+      next: { revalidate: 86_400 },
+    });
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as CrossrefResponse;
+    const msg = data.message;
+    if (!msg) return null;
+
+    // Confirm the Version of Record carries an open (Creative Commons) license.
+    // Some publishers also deposit TDM-only licenses; those are not OA.
+    const vorCcLicense = msg.license?.find(
+      (l) =>
+        l["content-version"] === "vor" &&
+        typeof l.URL === "string" &&
+        l.URL.toLowerCase().includes("creativecommons.org")
+    );
+    if (!vorCcLicense) return null;
+
+    // Prefer a VoR PDF link; fall back to any PDF link.
+    const pdfLink =
+      msg.link?.find(
+        (l) => l["content-type"] === "application/pdf" && l["content-version"] === "vor"
+      ) ?? msg.link?.find((l) => l["content-type"] === "application/pdf");
+
+    if (!pdfLink?.URL) return null;
+
+    return {
+      isOa: true,
+      pdfUrl: pdfLink.URL,
+      oaUrl: msg.resource?.primary?.URL ?? `https://doi.org/${doi}`,
+      // Normalize to Unpaywall-style short code (e.g. "cc-by-nc-nd") so badge
+      // rendering matches other sources.
+      license: normalizeCcLicenseUrl(vorCcLicense.URL ?? null),
+      source: "crossref",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function normalizeCcLicenseUrl(url: string | null): string | null {
+  if (!url) return null;
+  const m = url.match(/creativecommons\.org\/licenses\/([a-z-]+)/i);
+  return m ? `cc-${m[1].toLowerCase()}` : null;
 }
 
 async function trySemanticScholar(doi: string): Promise<OpenAccessInfo | null> {
