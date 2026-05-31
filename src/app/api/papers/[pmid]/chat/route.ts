@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerAuthClient, createServiceClient } from "@/lib/supabase/server";
 import { findOpenAccessPdf } from "@/lib/pubmed/open-access";
-import { getGeminiClient, fetchPdfBuffer } from "@/lib/gemini/client";
+import { getGeminiClient, fetchPdfBuffer, PdfFetchError } from "@/lib/gemini/client";
 import { PAPER_CHAT_SYSTEM_PROMPT } from "@/lib/gemini/prompts";
 import { encryptChatData, readChatMessages } from "@/lib/crypto/chat-encryption";
 import type { ChatMessage } from "@/types/database";
@@ -87,8 +87,25 @@ export async function POST(
     pdfBuffer = await fetchPdfBuffer(openAccess.pdfUrl, pmid);
   } catch (err) {
     console.error(`[Chat] PDF download failed: url=${openAccess.pdfUrl}, pmid=${pmid}`, err);
+
+    // Publisher-blocked: OA license is valid, but the publisher refuses our
+    // server-side fetch. Surface clear messaging + a link to the publisher's
+    // own page so the user can read the PDF manually.
+    if (err instanceof PdfFetchError && err.kind === "blocked") {
+      return NextResponse.json(
+        {
+          error:
+            "퍼블리셔가 서버 자동 PDF 다운로드를 차단했습니다. Open Access 라이선스이지만 자동 분석이 불가합니다. 아래 링크에서 직접 PDF를 확인하세요.",
+          code: "publisher_blocked",
+          pdfUrl: openAccess.pdfUrl,
+          oaUrl: openAccess.oaUrl,
+        },
+        { status: 502 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "PDF 다운로드에 실패했습니다." },
+      { error: "PDF 다운로드에 실패했습니다.", code: "pdf_unavailable" },
       { status: 502 }
     );
   }

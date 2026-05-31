@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, Send, Square, Sparkles, FlaskConical, AlertTriangle, Lock, Loader2, Maximize2, Minimize2, Download } from "lucide-react";
+import { Bot, Send, Square, Sparkles, FlaskConical, AlertTriangle, Lock, Loader2, Maximize2, Minimize2, Download, ExternalLink } from "lucide-react";
 import { usePaperChat } from "@/hooks/use-paper-chat";
 import { ChatMessage } from "./chat-message";
 import { QUICK_ACTIONS } from "@/lib/gemini/prompts";
@@ -158,8 +158,40 @@ export function PaperChat({ pmid, isOa }: PaperChatProps) {
 
       {/* Error */}
       {error && (
-        <div className="mx-3 mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600 dark:bg-red-900/20 dark:text-red-400">
-          {error}
+        <div
+          className={`mx-3 mb-2 rounded-lg px-3 py-2 text-xs ${
+            error.code === "publisher_blocked"
+              ? "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+              : "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+          }`}
+        >
+          <p>{error.message}</p>
+          {error.code === "publisher_blocked" && (error.pdfUrl || error.oaUrl) && (
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+              {error.pdfUrl && (
+                <a
+                  href={error.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-medium underline underline-offset-2 hover:no-underline"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  원문 PDF
+                </a>
+              )}
+              {error.oaUrl && (
+                <a
+                  href={error.oaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-medium underline underline-offset-2 hover:no-underline"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  논문 사이트
+                </a>
+              )}
+            </div>
+          )}
         </div>
       )}
 

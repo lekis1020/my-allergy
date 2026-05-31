@@ -16,6 +16,13 @@ interface ChatSession {
   usage: ChatUsage;
 }
 
+export interface ChatError {
+  message: string;
+  code?: string;
+  pdfUrl?: string;
+  oaUrl?: string;
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json()) as Promise<ChatSession>;
 
 export function usePaperChat(pmid: string, isAuthenticated: boolean) {
@@ -28,7 +35,7 @@ export function usePaperChat(pmid: string, isAuthenticated: boolean) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingContent, setStreamingContent] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ChatError | null>(null);
   const [usage, setUsage] = useState<ChatUsage | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -70,7 +77,12 @@ export function usePaperChat(pmid: string, isAuthenticated: boolean) {
 
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({ error: "요청 실패" }));
-          setError(errBody.error);
+          setError({
+            message: errBody.error ?? "요청 실패",
+            code: errBody.code,
+            pdfUrl: errBody.pdfUrl,
+            oaUrl: errBody.oaUrl,
+          });
           setIsStreaming(false);
           return;
         }
@@ -102,7 +114,7 @@ export function usePaperChat(pmid: string, isAuthenticated: boolean) {
               } else if (event.type === "done") {
                 setUsage(event.usage);
               } else if (event.type === "error") {
-                setError(event.content);
+                setError({ message: event.content });
               }
             } catch {
               // skip invalid JSON
@@ -122,7 +134,7 @@ export function usePaperChat(pmid: string, isAuthenticated: boolean) {
         mutate();
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
-          setError("네트워크 오류가 발생했습니다.");
+          setError({ message: "네트워크 오류가 발생했습니다." });
         }
       } finally {
         setIsStreaming(false);
