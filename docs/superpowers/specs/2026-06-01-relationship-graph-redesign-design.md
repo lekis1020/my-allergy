@@ -45,6 +45,31 @@ DB-wide structure navigable while keeping interactivity smooth.
 - Per-user personalized map. The For-you tab continues to use the existing
   `/api/me/connections` for now; that endpoint is out of scope for this work.
 
+## 3a. Amendments after schema verification (2026-06-01)
+
+The following deviations from the original spec were locked in after verifying
+the live schema. They override the corresponding paragraphs below.
+
+- **No `is_last_author` migration.** `paper_authors` has `position INTEGER`
+  (1 = first). Last author per paper is `MAX(position) GROUP BY paper_id`,
+  read via SQL aggregation in the cron. Section 7.4 ("Verification required
+  before implementation") and the 00043 migration described there are
+  withdrawn.
+- **`paper_authors` key.** The table FKs to `papers.id` (UUID) via `paper_id`,
+  not directly to `pmid`. The cron joins `paper_authors → papers` to obtain
+  pmid before building edges.
+- **Author name fields** are `last_name`, `first_name`, `initials` (no
+  `full_name`). Normalization key is `${last_name}|${first_initial}`.
+- **Topic utility entry point** is `classifyPaperTopics(signals)` from
+  `src/lib/utils/topic-tags.ts`, taking `{ title, abstract, keywords,
+  meshTerms }`. The cron passes `keywords: []` and `meshTerms: []` because
+  those columns are not part of the cron's fetch set; title+abstract is the
+  same classification path the home sidebar already relies on.
+- **Inngest layout.** Functions live in `src/lib/inngest/functions.ts`. The
+  new function is implemented in `src/lib/inngest/recompute-graph.ts` and
+  re-exported from `functions.ts`. Serve handler is at
+  `src/app/api/inngest/route.ts`.
+
 ## 4. Decision summary (from brainstorming)
 
 | # | Decision | Choice |
