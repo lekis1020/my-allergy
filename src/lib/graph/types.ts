@@ -36,7 +36,7 @@ export interface PaperNode {
   primary_topic: string; // topic_tags[0] or 'others'
 }
 
-export type EdgeType = "citation" | "coauthor" | "mention" | "topic";
+export type EdgeType = "citation" | "coauthor" | "mention" | "topic" | "similarity";
 
 export interface PaperEdge {
   source: string; // pmid (lexicographically smaller)

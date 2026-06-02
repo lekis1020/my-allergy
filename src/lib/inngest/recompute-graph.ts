@@ -4,6 +4,7 @@ import {
   buildGraphSnapshots,
   type SourceData,
   type SourceAuthor,
+  type SourceSimilarity,
 } from "@/lib/graph/build-snapshots";
 import type { GalaxySnapshot, TopicSnapshot } from "@/lib/graph/types";
 
@@ -115,13 +116,53 @@ async function fetchSourceData(): Promise<SourceData> {
     });
   }
 
+  const similarities = await fetchSimilarities(sb);
+
   return {
     papers: papers ?? [],
     citations: citations ?? [],
     mentions: mentions ?? [],
     journals: journals ?? [],
     authors,
+    similarities,
   };
+}
+
+/**
+ * Loads embedding-based similarity edges via the
+ * `paper_similarity_edges_topk` RPC. Returns an empty array (no
+ * similarity edges contributed this run) if pgvector is unavailable, the
+ * RPC is missing, or no rows have embeddings yet — none of these
+ * conditions are fatal.
+ */
+const SIMILARITY_K = 8;
+const SIMILARITY_THRESHOLD = 0.55;
+
+async function fetchSimilarities(
+  sb: ReturnType<typeof createServiceClient>
+): Promise<SourceSimilarity[]> {
+  const rpcClient = sb as unknown as {
+    rpc: (
+      fn: string,
+      params: Record<string, number>
+    ) => Promise<{
+      data: Array<{ source_pmid: string; target_pmid: string; similarity: number }> | null;
+      error: { message: string } | null;
+    }>;
+  };
+  const { data, error } = await rpcClient.rpc("paper_similarity_edges_topk", {
+    p_k: SIMILARITY_K,
+    p_threshold: SIMILARITY_THRESHOLD,
+  });
+  if (error) {
+    console.warn(`[recompute-graph] similarity rpc skipped: ${error.message}`);
+    return [];
+  }
+  return (data ?? []).map((r) => ({
+    source_pmid: String(r.source_pmid),
+    target_pmid: String(r.target_pmid),
+    similarity: Number(r.similarity),
+  }));
 }
 
 type SnapshotRow = {
