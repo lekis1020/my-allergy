@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import * as d3 from "d3";
+import { Plus, Minus, RotateCcw } from "lucide-react";
 import type { GraphNode, GraphEdge } from "@/lib/graph/types";
 
 interface SimNode extends d3.SimulationNodeDatum {
@@ -40,19 +41,47 @@ interface RelationshipGraphProps {
    * `router.push(/paper/[pmid])` behavior.
    */
   onSelectNode?: (node: GraphNode) => void;
+  /** D3 link force distance. Default 120. */
+  linkDistance?: number;
+  /** D3 manyBody charge strength (negative = repel). Default -300. */
+  chargeStrength?: number;
+  /**
+   * Additional X/Y centering force strength (0–1). Default 0. Useful for
+   * edgeless graphs where charge alone would spread nodes off-canvas.
+   */
+  centerStrength?: number;
 }
 
 export function RelationshipGraph({
   nodes, edges, width, height,
   nodeRadius, edgeStyle, focusedPmid, onSelectNode,
+  linkDistance = 120,
+  chargeStrength = -300,
+  centerStrength = 0,
 }: RelationshipGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const router = useRouter();
 
   const navigate = useCallback((pmid: string) => {
     router.push(`/paper/${pmid}`);
   }, [router]);
+
+  const handleZoomIn = useCallback(() => {
+    if (!svgRef.current || !zoomRef.current) return;
+    d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, 1.4);
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (!svgRef.current || !zoomRef.current) return;
+    d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, 1 / 1.4);
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    if (!svgRef.current || !zoomRef.current) return;
+    d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.transform, d3.zoomIdentity);
+  }, []);
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -90,12 +119,17 @@ export function RelationshipGraph({
       .scaleExtent([0.3, 3])
       .on("zoom", (event) => g.attr("transform", event.transform));
     svg.call(zoom);
+    zoomRef.current = zoom;
 
     const simulation = d3.forceSimulation<SimNode>(graphNodes)
-      .force("link", d3.forceLink<SimNode, SimEdge>(graphEdges).id((d) => d.pmid).distance(120))
-      .force("charge", d3.forceManyBody().strength(-300))
+      .force("link", d3.forceLink<SimNode, SimEdge>(graphEdges).id((d) => d.pmid).distance(linkDistance))
+      .force("charge", d3.forceManyBody().strength(chargeStrength))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collision", d3.forceCollide().radius(34));
+    if (centerStrength > 0) {
+      simulation.force("x", d3.forceX(width / 2).strength(centerStrength));
+      simulation.force("y", d3.forceY(height / 2).strength(centerStrength));
+    }
 
     const link = g.selectAll<SVGLineElement, SimEdge>(".link")
       .data(graphEdges).enter().append("line")
@@ -180,7 +214,7 @@ export function RelationshipGraph({
     });
 
     return () => { simulation.stop(); };
-  }, [nodes, edges, width, height, navigate, nodeRadius, edgeStyle, focusedPmid, onSelectNode]);
+  }, [nodes, edges, width, height, navigate, nodeRadius, edgeStyle, focusedPmid, onSelectNode, linkDistance, chargeStrength, centerStrength]);
 
   return (
     <div className="relative">
@@ -192,6 +226,32 @@ export function RelationshipGraph({
         preserveAspectRatio="xMidYMid meet"
         className="w-full rounded-xl bg-gray-50 dark:bg-gray-900/50"
       />
+      <div className="absolute right-2 top-2 flex flex-col gap-1">
+        <button
+          type="button"
+          onClick={handleZoomIn}
+          aria-label="Zoom in"
+          className="rounded-md border border-gray-200 bg-white/95 p-1.5 text-gray-700 shadow-sm transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={handleZoomOut}
+          aria-label="Zoom out"
+          className="rounded-md border border-gray-200 bg-white/95 p-1.5 text-gray-700 shadow-sm transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          <Minus className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={handleZoomReset}
+          aria-label="Reset zoom"
+          className="rounded-md border border-gray-200 bg-white/95 p-1.5 text-gray-700 shadow-sm transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+        </button>
+      </div>
       <div
         ref={tooltipRef}
         className="pointer-events-none fixed z-[100] max-w-xs whitespace-pre-wrap rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-lg opacity-0 transition-opacity dark:bg-gray-700"

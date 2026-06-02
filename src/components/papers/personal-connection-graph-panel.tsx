@@ -46,6 +46,8 @@ export function PersonalConnectionGraphPanel() {
           edges={data.edges}
           width={PANEL_WIDTH}
           height={PANEL_HEIGHT}
+          centerStrength={data.edges.length === 0 ? 0.08 : 0.02}
+          chargeStrength={data.edges.length === 0 ? -60 : -200}
         />
       )}
     </div>
