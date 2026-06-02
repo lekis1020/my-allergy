@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import useSWR from "swr";
-import { Loader2, Network, ChevronLeft, AlertTriangle } from "lucide-react";
+import { Loader2, Network, ChevronLeft, AlertTriangle, X } from "lucide-react";
 import { RelationshipGraph } from "@/components/graph/relationship-graph";
 import { DetailSheet } from "@/components/papers/detail-sheet";
 import { useGraphView } from "@/hooks/use-graph-view";
@@ -24,6 +24,7 @@ const PANEL_HEIGHT = 360;
 
 export function RelationshipGraphPanel() {
   const [view, setView] = useGraphView();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   // Galaxy fetch (only when we are on the galaxy state).
   const galaxy = useSWR<GalaxySnapshot & { stale?: boolean }>(
@@ -85,7 +86,7 @@ export function RelationshipGraphPanel() {
       ? buildFocusedView(view.focusedPmid, topic.data)
       : null;
 
-  return (
+  const renderBody = () => (
     <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-800">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -165,6 +166,47 @@ export function RelationshipGraphPanel() {
         )}
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Mobile CTA */}
+      <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-800 sm:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-50 px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:bg-gray-900/50 dark:text-gray-300 dark:hover:bg-gray-900"
+        >
+          <Network className="h-4 w-4" />
+          View relationship map
+        </button>
+      </div>
+
+      {/* Desktop inline panel */}
+      <div className="hidden sm:block">
+        {renderBody()}
+      </div>
+
+      {/* Mobile fullscreen modal */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-950 sm:hidden">
+          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+            <h2 className="text-sm font-semibold">Relationship map</h2>
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Close map"
+              className="rounded-full p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto p-3">
+            {renderBody()}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
