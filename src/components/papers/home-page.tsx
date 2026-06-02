@@ -141,10 +141,7 @@ export function HomePage({ initialData }: HomePageProps) {
             </div>
           </div>
 
-          <RelationshipGraphPanel
-            activeTab={activeTab}
-            isAuthenticated={Boolean(user)}
-          />
+          {activeTab === "timeline" && <RelationshipGraphPanel />}
 
           {filters.trial && (
             <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-800">

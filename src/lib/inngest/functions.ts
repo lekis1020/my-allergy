@@ -425,6 +425,8 @@ export const generateTrendingAnalysisFn = inngest.createFunction(
   }
 );
 
+export { recomputeGraphFn } from "./recompute-graph";
+
 /**
  * Daily cron job that precomputes the First Author Geography insight.
  * Runs at 07:00 UTC — an hour after the paper sync — so the snapshot reflects
