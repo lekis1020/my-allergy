@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280" />
+  <title>Relationship Map · Asthma</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, sans-serif; background: #f9fafb; }
+    .app-max { max-width: 1280px; margin: 0 auto; }
+    .dot-pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; position: relative; }
+    .dot-pulse::before { content: ''; display: block; width: 8px; height: 8px; border-radius: 50%; background: rgba(16,185,129,0.5); position: absolute; top: 0; left: 0; animation: ping 1.5s ease-in-out infinite; }
+    @keyframes ping { 0% { transform: scale(1); opacity: 0.75; } 100% { transform: scale(2.2); opacity: 0; } }
+    .skeleton { background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    svg text { font-family: ui-sans-serif, system-ui, sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<!-- ===== TOP BAR ===== -->
+<header class="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur">
+  <div class="app-max flex h-14 items-center justify-between px-4">
+    <div class="flex items-center gap-2">
+      <div class="flex h-8 w-8 items-center justify-center rounded-full bg-white ring-1 ring-gray-200">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <circle cx="10" cy="10" r="8" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5"/>
+          <circle cx="7" cy="9" r="2.2" fill="#3B82F6" opacity="0.9"/>
+          <circle cx="13" cy="9" r="2.2" fill="#3B82F6" opacity="0.9"/>
+          <circle cx="10" cy="13" r="1.4" fill="#6366F1" opacity="0.7"/>
+        </svg>
+      </div>
+      <span class="text-base font-extrabold tracking-tight text-gray-900">My Allergy</span>
+      <span class="ml-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium italic tracking-wide text-blue-600">beta</span>
+    </div>
+    <nav class="flex items-center gap-1">
+      <a href="#" class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-900">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Home
+      </a>
+      <a href="#" class="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        Trending
+      </a>
+      <a href="#" class="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100">Trials</a>
+      <a href="#" class="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100">Agora</a>
+      <div class="ml-2 flex items-center gap-2 border-l border-gray-200 pl-3">
+        <button class="rounded-full p-2 text-gray-500 hover:bg-gray-100">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
+        <div class="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">A</div>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<!-- ===== MAIN LAYOUT ===== -->
+<div class="app-max px-4 py-4">
+  <div class="grid min-h-[calc(100vh-56px)] grid-cols-[280px_minmax(0,1fr)_320px] gap-0">
+
+    <!-- ===== LEFT SIDEBAR ===== -->
+    <div class="pr-4">
+      <div class="sticky top-20">
+        <div class="mb-4 relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search topic, PMID, DOI" class="w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+        </div>
+        <div class="flex border-b border-gray-200 mb-3">
+          <button class="flex-1 border-b-2 border-blue-500 px-3 py-2 text-sm font-semibold text-gray-900">Topics</button>
+          <button class="flex-1 border-b-2 border-transparent px-3 py-2 text-sm font-semibold text-gray-500">Journals</button>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <button class="flex items-center gap-1.5 rounded-full border border-red-300 bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800 ring-2 ring-red-300 ring-offset-1">
+            <span class="h-2 w-2 rounded-full bg-red-500 inline-block"></span>Asthma
+          </button>
+          <button class="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+            <span class="h-2 w-2 rounded-full bg-amber-400 inline-block"></span>Rhinitis
+          </button>
+          <button class="flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-2.5 py-1 text-xs font-medium text-pink-700">
+            <span class="h-2 w-2 rounded-full bg-pink-500 inline-block"></span>Urticaria
+          </button>
+          <button class="flex items-center gap-1.5 rounded-full border border-fuchsia-200 bg-fuchsia-50 px-2.5 py-1 text-xs font-medium text-fuchsia-700">
+            <span class="h-2 w-2 rounded-full bg-fuchsia-500 inline-block"></span>Angioedema
+          </button>
+          <button class="flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700">
+            <span class="h-2 w-2 rounded-full bg-orange-500 inline-block"></span>Atopic derm.
+          </button>
+          <button class="flex items-center gap-1.5 rounded-full border border-lime-200 bg-lime-50 px-2.5 py-1 text-xs font-medium text-lime-700">
+            <span class="h-2 w-2 rounded-full bg-lime-500 inline-block"></span>Food allergy
+          </button>
+          <button class="flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700">
+            <span class="h-2 w-2 rounded-full bg-violet-500 inline-block"></span>Drug allergy
+          </button>
+          <button class="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+            <span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>Eosinophilic
+          </button>
+          <button class="flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700">
+            <span class="h-2 w-2 rounded-full bg-cyan-500 inline-block"></span>Immunodeficiency
+          </button>
+          <button class="flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
+            <span class="h-2 w-2 rounded-full bg-rose-500 inline-block"></span>Anaphylaxis
+          </button>
+          <button class="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
+            <span class="h-2 w-2 rounded-full bg-indigo-500 inline-block"></span>Immunotherapy
+          </button>
+          <button class="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-600">
+            <span class="h-2 w-2 rounded-full bg-gray-400 inline-block"></span>Others
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MAIN COLUMN ===== -->
+    <div class="min-w-0 border-x border-gray-200 bg-white">
+
+      <!-- Tab bar -->
+      <div class="sticky top-14 z-20 border-b border-gray-200 bg-white/95 backdrop-blur">
+        <div class="grid grid-cols-2 text-sm">
+          <button class="border-b-2 border-blue-500 px-3 py-3 font-semibold text-gray-900">Timeline</button>
+          <button class="border-b-2 border-transparent px-3 py-3 font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-800">For you</button>
+        </div>
+      </div>
+
+      <!-- ===== RELATIONSHIP MAP PANEL — TOPIC STATE ===== -->
+      <div class="border-b border-gray-200 px-4 py-3">
+
+        <!-- Panel header: back + breadcrumb -->
+        <div class="mb-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <button class="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              Back to map
+            </button>
+            <span class="text-gray-300">|</span>
+            <div class="flex items-center gap-1.5">
+              <span class="inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
+              <h2 class="text-sm font-semibold text-gray-900">Asthma</h2>
+              <span class="text-xs text-gray-400">· top 80 of 612</span>
+            </div>
+          </div>
+          <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">Updated 2h ago</span>
+        </div>
+
+        <!-- Topic graph SVG — paper nodes -->
+        <div class="rounded-xl bg-gray-50 overflow-hidden relative">
+          <svg width="680" height="360" viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+            <rect width="680" height="360" fill="#F9FAFB"/>
+
+            <!-- ===== EDGES ===== -->
+            <!-- Journal colors used for paper fill:
+                 Allergy=#DC2626  JACI=#1E40AF  JACI:IP=#3B82F6
+                 CEA=#F59E0B  JIACI=#0EA5E9  AAAI=#10B981  CurrOpin=#8B5CF6 -->
+
+            <!-- citation edges: dashed gray -->
+            <line x1="120" y1="80" x2="200" y2="140" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="200" y1="140" x2="310" y2="110" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="310" y1="110" x2="420" y2="90" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="420" y1="90" x2="540" y2="120" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="120" y1="80" x2="310" y2="110" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="200" y1="140" x2="420" y2="90" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="310" y1="110" x2="540" y2="120" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="540" y1="120" x2="610" y2="80" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="160" y1="220" x2="280" y2="200" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="280" y1="200" x2="390" y2="240" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="390" y1="240" x2="500" y2="210" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <line x1="500" y1="210" x2="600" y2="230" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+
+            <!-- coauthor edges: solid indigo -->
+            <line x1="120" y1="80" x2="200" y2="140" stroke="#6366F1" stroke-width="2"/>
+            <line x1="310" y1="110" x2="280" y2="200" stroke="#6366F1" stroke-width="2"/>
+            <line x1="420" y1="90" x2="500" y2="210" stroke="#6366F1" stroke-width="2"/>
+            <line x1="160" y1="220" x2="390" y2="240" stroke="#6366F1" stroke-width="2"/>
+            <line x1="540" y1="120" x2="600" y2="230" stroke="#6366F1" stroke-width="2"/>
+            <line x1="200" y1="140" x2="280" y2="200" stroke="#6366F1" stroke-width="2"/>
+            <line x1="65" y1="165" x2="160" y2="220" stroke="#6366F1" stroke-width="2"/>
+            <line x1="65" y1="165" x2="120" y2="80" stroke="#6366F1" stroke-width="2"/>
+
+            <!-- mention edges: solid blue -->
+            <line x1="120" y1="80" x2="160" y2="220" stroke="#3B82F6" stroke-width="2"/>
+            <line x1="310" y1="110" x2="390" y2="240" stroke="#3B82F6" stroke-width="2"/>
+            <line x1="420" y1="90" x2="280" y2="200" stroke="#3B82F6" stroke-width="2"/>
+            <line x1="540" y1="120" x2="500" y2="210" stroke="#3B82F6" stroke-width="2"/>
+            <line x1="80" y1="300" x2="160" y2="220" stroke="#3B82F6" stroke-width="2"/>
+            <line x1="450" y1="300" x2="390" y2="240" stroke="#3B82F6" stroke-width="2"/>
+            <line x1="610" y1="80" x2="540" y2="120" stroke="#3B82F6" stroke-width="2"/>
+
+            <!-- topic edges: faint purple -->
+            <line x1="120" y1="80" x2="65" y2="165" stroke="#A855F7" stroke-width="1.5"/>
+            <line x1="200" y1="140" x2="160" y2="220" stroke="#A855F7" stroke-width="1.5"/>
+            <line x1="310" y1="110" x2="450" y2="300" stroke="#A855F7" stroke-width="1.5"/>
+            <line x1="280" y1="200" x2="80" y2="300" stroke="#A855F7" stroke-width="1.5"/>
+            <line x1="500" y1="210" x2="450" y2="300" stroke="#A855F7" stroke-width="1.5"/>
+            <line x1="390" y1="240" x2="270" y2="310" stroke="#A855F7" stroke-width="1.5"/>
+            <line x1="600" y1="230" x2="610" y2="80" stroke="#A855F7" stroke-width="1.5"/>
+
+            <!-- ===== PAPER NODES ===== -->
+            <!-- r = clamp(10, log(cit+2)*4, 22), fill=journal color, label=journal abbrev -->
+
+            <!-- Node 1: JACI, cit=150 → r=20, cx=120, cy=80 -->
+            <circle cx="120" cy="80" r="20" fill="#1E40AF"/>
+            <text x="120" y="83" text-anchor="middle" font-size="6.5" font-weight="700" fill="white">JACI</text>
+            <text x="120" y="105" text-anchor="middle" font-size="8.5" fill="#6B7280">Dupilumab severe</text>
+
+            <!-- Node 2: Allergy, cit=120 → r=19.6, cx=200, cy=140 -->
+            <circle cx="200" cy="140" r="19" fill="#DC2626"/>
+            <text x="200" y="143" text-anchor="middle" font-size="6.5" font-weight="700" fill="white">Allergy</text>
+            <text x="200" y="164" text-anchor="middle" font-size="8.5" fill="#6B7280">IL-5 biologics RCT</text>
+
+            <!-- Node 3: JACI:IP, cit=88 → r=18.2, cx=310, cy=110 -->
+            <circle cx="310" cy="110" r="18" fill="#3B82F6"/>
+            <text x="310" y="113" text-anchor="middle" font-size="6" font-weight="700" fill="white">JACI:IP</text>
+            <text x="310" y="133" text-anchor="middle" font-size="8.5" fill="#6B7280">Mepolizumab real-world</text>
+
+            <!-- Node 4: CEA, cit=65 → r=17, cx=420, cy=90 -->
+            <circle cx="420" cy="90" r="17" fill="#F59E0B"/>
+            <text x="420" y="93" text-anchor="middle" font-size="6.5" font-weight="700" fill="white">CEA</text>
+            <text x="420" y="112" text-anchor="middle" font-size="8.5" fill="#6B7280">Airway biomarkers</text>
+
+            <!-- Node 5: JIACI, cit=42 → r=15.4, cx=540, cy=120 -->
+            <circle cx="540" cy="120" r="15" fill="#0EA5E9"/>
+            <text x="540" y="123" text-anchor="middle" font-size="6" font-weight="700" fill="white">JIACI</text>
+            <text x="540" y="140" text-anchor="middle" font-size="8.5" fill="#6B7280">Tezepelumab phase 3</text>
+
+            <!-- Node 6: AAAI, cit=30 → r=14.4, cx=610, cy=80 -->
+            <circle cx="610" cy="80" r="14" fill="#10B981"/>
+            <text x="610" y="83" text-anchor="middle" font-size="5.5" font-weight="700" fill="white">AAAI</text>
+            <text x="610" y="99" text-anchor="middle" font-size="8.5" fill="#6B7280">Omalizumab asthma</text>
+
+            <!-- Node 7: CurrOpin, cit=18 → r=12.8, cx=65, cy=165 -->
+            <circle cx="65" cy="165" r="13" fill="#8B5CF6"/>
+            <text x="65" y="168" text-anchor="middle" font-size="5.5" font-weight="700" fill="white">CurOp</text>
+            <text x="65" y="183" text-anchor="middle" font-size="8.5" fill="#6B7280">T2 inflammation review</text>
+
+            <!-- Node 8: JACI, cit=80 → r=18, cx=160, cy=220 -->
+            <circle cx="160" cy="220" r="18" fill="#1E40AF"/>
+            <text x="160" y="223" text-anchor="middle" font-size="6.5" font-weight="700" fill="white">JACI</text>
+            <text x="160" y="243" text-anchor="middle" font-size="8.5" fill="#6B7280">Benralizumab exacerb.</text>
+
+            <!-- Node 9: Allergy, cit=55 → r=16.4, cx=280, cy=200 -->
+            <circle cx="280" cy="200" r="16" fill="#DC2626"/>
+            <text x="280" y="203" text-anchor="middle" font-size="6.5" font-weight="700" fill="white">Allergy</text>
+            <text x="280" y="221" text-anchor="middle" font-size="8.5" fill="#6B7280">Eosinophil asthma</text>
+
+            <!-- Node 10: CEA, cit=105 → r=18.9, cx=390, cy=240 -->
+            <circle cx="390" cy="240" r="19" fill="#F59E0B"/>
+            <text x="390" y="243" text-anchor="middle" font-size="6.5" font-weight="700" fill="white">CEA</text>
+            <text x="390" y="264" text-anchor="middle" font-size="8.5" fill="#6B7280">Exhaled NO predictor</text>
+
+            <!-- Node 11: JACI:IP, cit=35 → r=14.8, cx=500, cy=210 -->
+            <circle cx="500" cy="210" r="15" fill="#3B82F6"/>
+            <text x="500" y="213" text-anchor="middle" font-size="6" font-weight="700" fill="white">JACI:IP</text>
+            <text x="500" y="230" text-anchor="middle" font-size="8.5" fill="#6B7280">Step-down therapy</text>
+
+            <!-- Node 12: JIACI, cit=10 → r=11.7, cx=600, cy=230 -->
+            <circle cx="600" cy="230" r="12" fill="#0EA5E9"/>
+            <text x="600" y="233" text-anchor="middle" font-size="5.5" font-weight="700" fill="white">JIACI</text>
+            <text x="600" y="247" text-anchor="middle" font-size="8.5" fill="#6B7280">SABA over-reliance</text>
+
+            <!-- Node 13: AAAI, cit=22 → r=13.3, cx=80, cy=300 -->
+            <circle cx="80" cy="300" r="13" fill="#10B981"/>
+            <text x="80" y="303" text-anchor="middle" font-size="5.5" font-weight="700" fill="white">AAAI</text>
+            <text x="80" y="318" text-anchor="middle" font-size="8.5" fill="#6B7280">Pediatric wheeze</text>
+
+            <!-- Node 14: CurrOpin, cit=5 → r=10, cx=450, cy=300 -->
+            <circle cx="450" cy="300" r="10" fill="#8B5CF6"/>
+            <text x="450" y="303" text-anchor="middle" font-size="5.5" font-weight="700" fill="white">CurOp</text>
+            <text x="450" y="315" text-anchor="middle" font-size="8.5" fill="#6B7280">Biologic choice</text>
+
+            <!-- Node 15: JACI, cit=140 → r=20.2, cx=270, cy=310 ... scatter -->
+            <circle cx="270" cy="315" r="16" fill="#1E40AF"/>
+            <text x="270" y="318" text-anchor="middle" font-size="6.5" font-weight="700" fill="white">JACI</text>
+            <text x="270" y="336" text-anchor="middle" font-size="8.5" fill="#6B7280">ICS adherence</text>
+
+            <!-- A few more scattered nodes -->
+            <!-- Node 16: Allergy, cit=0 → r=10, cx=580, cy=300 -->
+            <circle cx="580" cy="305" r="10" fill="#DC2626"/>
+            <text x="580" y="308" text-anchor="middle" font-size="5.5" font-weight="700" fill="white">Allergy</text>
+            <text x="580" y="320" text-anchor="middle" font-size="8.5" fill="#6B7280">Oral corticosteroid</text>
+
+            <!-- Node 17: CEA, cit=0 → r=10, cx=640, cy=180 -->
+            <circle cx="640" cy="185" r="10" fill="#F59E0B"/>
+            <text x="640" y="188" text-anchor="middle" font-size="5.5" font-weight="700" fill="white">CEA</text>
+            <text x="640" y="200" text-anchor="middle" font-size="8.5" fill="#6B7280">FENO threshold</text>
+
+            <!-- Node 18: AAAI, cit=15 → r=12.3, cx=360, cy="160" -->
+            <circle cx="360" cy="165" r="12" fill="#10B981"/>
+            <text x="360" y="168" text-anchor="middle" font-size="5.5" font-weight="700" fill="white">AAAI</text>
+            <text x="360" y="182" text-anchor="middle" font-size="8.5" fill="#6B7280">Asthma mortality</text>
+
+            <!-- Node 19: JIACI, cit=60 → r=16.7, cx=470, cy=155 -->
+            <circle cx="470" cy="155" r="17" fill="#0EA5E9"/>
+            <text x="470" y="158" text-anchor="middle" font-size="6" font-weight="700" fill="white">JIACI</text>
+            <text x="470" y="177" text-anchor="middle" font-size="8.5" fill="#6B7280">FeNO-guided dosing</text>
+
+            <!-- Node 20: CurrOpin, cit=3 → r=10, cx=205, cy=290 -->
+            <circle cx="205" cy="295" r="10" fill="#8B5CF6"/>
+            <text x="205" y="298" text-anchor="middle" font-size="5.5" font-weight="700" fill="white">CurOp</text>
+            <text x="205" y="310" text-anchor="middle" font-size="8.5" fill="#6B7280">AIT asthma</text>
+
+            <!-- ===== LEGEND (bottom-right) ===== -->
+            <rect x="490" y="318" width="185" height="38" rx="6" fill="white" opacity="0.95" stroke="#E5E7EB" stroke-width="1"/>
+            <!-- citation -->
+            <line x1="500" y1="330" x2="524" y2="330" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6,3"/>
+            <text x="528" y="333" font-size="8" fill="#6B7280">Citation</text>
+            <!-- coauthor -->
+            <line x1="560" y1="330" x2="584" y2="330" stroke="#6366F1" stroke-width="2"/>
+            <text x="588" y="333" font-size="8" fill="#6B7280">Co-author</text>
+            <!-- mention -->
+            <line x1="500" y1="347" x2="524" y2="347" stroke="#3B82F6" stroke-width="2"/>
+            <text x="528" y="350" font-size="8" fill="#6B7280">Mention</text>
+            <!-- topic -->
+            <line x1="560" y1="347" x2="584" y2="347" stroke="#A855F7" stroke-width="1.5"/>
+            <text x="588" y="350" font-size="8" fill="#6B7280">Topic</text>
+
+          </svg>
+        </div>
+
+        <p class="mt-2 text-[10px] text-gray-400">Node size ~ citation count · Node color ~ journal · Click a paper to see detail</p>
+      </div>
+
+      <!-- ===== PAPER CARD SKELETONS ===== -->
+      <div class="border-b border-gray-100 px-4 py-4">
+        <div class="flex gap-3">
+          <div class="h-9 w-9 rounded-full skeleton flex-shrink-0"></div>
+          <div class="flex-1 space-y-2">
+            <div class="flex items-center gap-2">
+              <div class="h-4 w-20 rounded skeleton"></div>
+              <div class="h-4 w-14 rounded skeleton"></div>
+            </div>
+            <div class="h-4 w-full rounded skeleton"></div>
+            <div class="h-4 w-3/4 rounded skeleton"></div>
+            <div class="h-3.5 w-2/3 rounded skeleton"></div>
+            <div class="flex gap-4 mt-2">
+              <div class="h-3 w-12 rounded skeleton"></div>
+              <div class="h-3 w-12 rounded skeleton"></div>
+              <div class="h-3 w-16 rounded skeleton"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-b border-gray-100 px-4 py-4">
+        <div class="flex gap-3">
+          <div class="h-9 w-9 rounded-full skeleton flex-shrink-0"></div>
+          <div class="flex-1 space-y-2">
+            <div class="flex items-center gap-2">
+              <div class="h-4 w-24 rounded skeleton"></div>
+              <div class="h-4 w-16 rounded skeleton"></div>
+            </div>
+            <div class="h-4 w-full rounded skeleton"></div>
+            <div class="h-4 w-5/6 rounded skeleton"></div>
+            <div class="h-3.5 w-3/4 rounded skeleton"></div>
+            <div class="flex gap-4 mt-2">
+              <div class="h-3 w-10 rounded skeleton"></div>
+              <div class="h-3 w-14 rounded skeleton"></div>
+              <div class="h-3 w-12 rounded skeleton"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-b border-gray-100 px-4 py-4">
+        <div class="flex gap-3">
+          <div class="h-9 w-9 rounded-full skeleton flex-shrink-0"></div>
+          <div class="flex-1 space-y-2">
+            <div class="flex items-center gap-2">
+              <div class="h-4 w-16 rounded skeleton"></div>
+              <div class="h-4 w-20 rounded skeleton"></div>
+            </div>
+            <div class="h-4 w-full rounded skeleton"></div>
+            <div class="h-4 w-4/5 rounded skeleton"></div>
+            <div class="h-3.5 w-1/2 rounded skeleton"></div>
+            <div class="flex gap-4 mt-2">
+              <div class="h-3 w-14 rounded skeleton"></div>
+              <div class="h-3 w-10 rounded skeleton"></div>
+              <div class="h-3 w-16 rounded skeleton"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== RIGHT RAIL ===== -->
+    <div class="pl-4">
+      <div class="sticky top-20 space-y-4">
+        <section class="rounded-2xl border border-gray-200 bg-white p-4">
+          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <svg class="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+            Live
+          </h3>
+          <div class="rounded-xl bg-gray-50 p-3">
+            <div class="flex items-center gap-2">
+              <span class="dot-pulse"></span>
+              <p class="text-sm font-medium text-gray-900">42명 접속 중</p>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">홈을 보고 있는 다른 사용자 (실시간)</p>
+          </div>
+        </section>
+        <section class="rounded-2xl border border-gray-200 bg-white p-4">
+          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <svg class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            Database
+          </h3>
+          <div class="space-y-3 text-sm">
+            <div class="rounded-xl bg-gray-50 p-3">
+              <p class="font-medium text-gray-900">Total papers</p>
+              <p class="mt-1 text-2xl font-bold text-gray-900">3,241</p>
+            </div>
+            <div class="rounded-xl bg-gray-50 p-3">
+              <p class="flex items-center gap-1 font-medium text-gray-900">
+                <svg class="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Last sync
+              </p>
+              <p class="mt-1 text-gray-600">2h ago</p>
+              <p class="mt-0.5 text-xs text-gray-500">Daily at midnight</p>
+            </div>
+          </div>
+        </section>
+        <section class="rounded-2xl border border-gray-200 bg-white p-4">
+          <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <svg class="h-4 w-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            Trending
+          </h3>
+          <div class="space-y-2 text-xs text-gray-700">
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>Dupilumab + asthma</span>
+              <span class="text-gray-400">48 papers</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-pink-500"></span>Omalizumab CSU</span>
+              <span class="text-gray-400">31 papers</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-lime-500"></span>OIT peanut allergy</span>
+              <span class="text-gray-400">27 papers</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
