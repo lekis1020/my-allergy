@@ -15,6 +15,7 @@ import type {
 export const W_CITATION = 3.0;
 export const W_COAUTHOR = 2.0;
 export const W_MENTION = 1.5;
+export const W_SIMILARITY = 1.5;
 export const W_TOPIC = 1.0;
 
 // ── Caps ───────────────────────────────────────────────────────────────
@@ -49,6 +50,11 @@ export interface SourceMention {
   source_pmid: string;
   mentioned_pmid: string;
 }
+export interface SourceSimilarity {
+  source_pmid: string;
+  target_pmid: string;
+  similarity: number; // 0..1, cosine similarity
+}
 export interface SourceJournal {
   id: string;
   abbreviation: string;
@@ -60,6 +66,7 @@ export interface SourceData {
   authors: SourceAuthor[];
   mentions: SourceMention[];
   journals: SourceJournal[];
+  similarities?: SourceSimilarity[];
 }
 
 export interface Snapshots {
@@ -83,8 +90,29 @@ export function buildGraphSnapshots(src: SourceData): Snapshots {
   applyCitations(edges, src, paperById);
   applyMentions(edges, src, paperById);
   applyCoauthors(edges, src, paperById);
+  applySimilarities(edges, src, paperById);
   applyTopicReinforcement(edges, paperById);
   return finalize(paperById, edges, src);
+}
+
+function applySimilarities(
+  edges: Map<string, EdgeAcc>,
+  src: SourceData,
+  papers: Map<string, PaperNode>
+) {
+  if (!src.similarities) return;
+  for (const s of src.similarities) {
+    if (s.source_pmid === s.target_pmid) continue;
+    if (!papers.has(s.source_pmid) || !papers.has(s.target_pmid)) continue;
+    const e = ensureEdge(edges, s.source_pmid, s.target_pmid);
+    if (!e.types.has("similarity")) {
+      e.types.add("similarity");
+      // Scale by similarity strength: a barely-above-threshold pair gets
+      // a small contribution; a 0.95-similarity pair gets close to full
+      // W_SIMILARITY weight.
+      e.weight += W_SIMILARITY * Math.max(0, s.similarity);
+    }
+  }
 }
 
 function ensureEdge(
