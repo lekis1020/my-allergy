@@ -426,6 +426,7 @@ export const generateTrendingAnalysisFn = inngest.createFunction(
 );
 
 export { recomputeGraphFn } from "./recompute-graph";
+export { backfillCitationsFn } from "./backfill-citations";
 
 /**
  * Daily cron job that precomputes the First Author Geography insight.

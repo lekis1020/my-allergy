@@ -9,6 +9,7 @@ import {
   generateTrendingAnalysisFn,
   generateGeographyInsightsFn,
   recomputeGraphFn,
+  backfillCitationsFn,
 } from "@/lib/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
@@ -22,5 +23,6 @@ export const { GET, POST, PUT } = serve({
     generateTrendingAnalysisFn,
     generateGeographyInsightsFn,
     recomputeGraphFn,
+    backfillCitationsFn,
   ],
 });
