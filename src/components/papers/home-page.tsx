@@ -9,6 +9,7 @@ const HomeSidebar = dynamic(() => import("@/components/layout/home-sidebar").the
 import { PaperFeed } from "@/components/papers/paper-feed";
 import { FilterBar } from "@/components/papers/filter-bar";
 import { RelationshipGraphPanel } from "@/components/papers/relationship-graph-panel";
+import { PersonalConnectionGraphPanel } from "@/components/papers/personal-connection-graph-panel";
 import { usePaperFilters } from "@/hooks/use-paper-filters";
 import { usePapers } from "@/hooks/use-papers";
 import { useAuth } from "@/hooks/use-auth";
@@ -142,6 +143,7 @@ export function HomePage({ initialData }: HomePageProps) {
           </div>
 
           {activeTab === "timeline" && <RelationshipGraphPanel />}
+          {activeTab === "for_you" && user && <PersonalConnectionGraphPanel />}
 
           {filters.trial && (
             <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-800">
