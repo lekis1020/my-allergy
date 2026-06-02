@@ -8,6 +8,7 @@ import {
   onDemandEnrichFn,
   generateTrendingAnalysisFn,
   generateGeographyInsightsFn,
+  recomputeGraphFn,
 } from "@/lib/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
@@ -20,5 +21,6 @@ export const { GET, POST, PUT } = serve({
     onDemandEnrichFn,
     generateTrendingAnalysisFn,
     generateGeographyInsightsFn,
+    recomputeGraphFn,
   ],
 });
