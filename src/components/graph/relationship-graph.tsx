@@ -21,9 +21,31 @@ interface RelationshipGraphProps {
   edges: GraphEdge[];
   width: number;
   height: number;
+  /**
+   * Optional radius callback. Default: 16 (matches V1 behavior).
+   */
+  nodeRadius?: (node: GraphNode) => number;
+  /**
+   * Optional stroke / dash override per edge. Default keeps the current
+   * citation/mention/both ternary inline.
+   */
+  edgeStyle?: (edge: GraphEdge) => { stroke: string; strokeWidth: number; dasharray: string | null };
+  /**
+   * When set, non-focused, non-neighbor nodes and their incident edges fade
+   * to opacity 0.15. The focused node stays at full opacity.
+   */
+  focusedPmid?: string;
+  /**
+   * If provided, click invokes this instead of the default
+   * `router.push(/paper/[pmid])` behavior.
+   */
+  onSelectNode?: (node: GraphNode) => void;
 }
 
-export function RelationshipGraph({ nodes, edges, width, height }: RelationshipGraphProps) {
+export function RelationshipGraph({
+  nodes, edges, width, height,
+  nodeRadius, edgeStyle, focusedPmid, onSelectNode,
+}: RelationshipGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -50,6 +72,18 @@ export function RelationshipGraph({ nodes, edges, width, height }: RelationshipG
       type: e.type,
     }));
 
+    const focusedNeighbors = new Set<string>();
+    if (focusedPmid) {
+      for (const e of edges) {
+        if (e.source === focusedPmid) focusedNeighbors.add(e.target);
+        else if (e.target === focusedPmid) focusedNeighbors.add(e.source);
+      }
+    }
+
+    function defaultEdgeStroke(t: GraphEdge["type"]) {
+      return t === "citation" ? "#9CA3AF" : t === "mention" ? "#3B82F6" : "#8B5CF6";
+    }
+
     const g = svg.append("g");
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -66,16 +100,30 @@ export function RelationshipGraph({ nodes, edges, width, height }: RelationshipG
     const link = g.selectAll<SVGLineElement, SimEdge>(".link")
       .data(graphEdges).enter().append("line")
       .attr("class", "link")
-      .attr("stroke", (d) => d.type === "citation" ? "#9CA3AF" : d.type === "mention" ? "#3B82F6" : "#8B5CF6")
-      .attr("stroke-width", 2)
-      .attr("stroke-dasharray", (d) => d.type === "citation" ? "6,3" : "none");
+      .attr("stroke", (d) => edgeStyle ? edgeStyle(d as unknown as GraphEdge).stroke : defaultEdgeStroke(d.type))
+      .attr("stroke-width", (d) => edgeStyle ? edgeStyle(d as unknown as GraphEdge).strokeWidth : 2)
+      .attr("stroke-dasharray", (d) => {
+        const style = edgeStyle?.(d as unknown as GraphEdge);
+        if (style?.dasharray !== undefined) return style.dasharray ?? "";
+        return d.type === "citation" ? "6,3" : "";
+      })
+      .attr("opacity", (d) => {
+        if (!focusedPmid) return 1;
+        const src = (d.source as SimNode).pmid;
+        const tgt = (d.target as SimNode).pmid;
+        if (src === focusedPmid || tgt === focusedPmid) return 1;
+        return 0.15;
+      });
 
     const node = g.selectAll<SVGGElement, SimNode>(".node")
       .data(graphNodes).enter().append("g")
       .attr("class", "node")
       .style("cursor", "pointer");
 
-    node.on("click", (_event, d) => navigate(d.pmid));
+    node.on("click", (_event, d) => {
+      if (onSelectNode) onSelectNode(d as unknown as GraphNode);
+      else navigate(d.pmid);
+    });
     node.call(
       d3.drag<SVGGElement, SimNode>()
         .on("start", (event, d) => {
@@ -90,11 +138,16 @@ export function RelationshipGraph({ nodes, edges, width, height }: RelationshipG
     );
 
     node.append("circle")
-      .attr("r", 16)
+      .attr("r", (d) => nodeRadius?.(d as unknown as GraphNode) ?? 16)
       .attr("fill", (d) => d.journal_color)
       .attr("stroke", "white")
       .attr("stroke-width", 2)
-      .attr("opacity", 0.9);
+      .attr("opacity", (d) => {
+        if (!focusedPmid) return 0.9;
+        if (d.pmid === focusedPmid) return 1;
+        if (focusedNeighbors.has(d.pmid)) return 0.9;
+        return 0.15;
+      });
 
     node.append("text")
       .text((d) => d.journal_abbreviation)
@@ -127,7 +180,7 @@ export function RelationshipGraph({ nodes, edges, width, height }: RelationshipG
     });
 
     return () => { simulation.stop(); };
-  }, [nodes, edges, width, height, navigate]);
+  }, [nodes, edges, width, height, navigate, nodeRadius, edgeStyle, focusedPmid, onSelectNode]);
 
   return (
     <div className="relative">
