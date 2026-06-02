@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildGraphSnapshots, type SourceData } from "@/lib/graph/build-snapshots";
+import type { GalaxyNode, GalaxyEdge } from "@/lib/graph/types";
 
 function emptySource(overrides: Partial<SourceData> = {}): SourceData {
   return {
@@ -172,5 +173,75 @@ describe("buildGraphSnapshots — topic reinforcement", () => {
     }));
     const edges = [...out.topics.values()].flatMap((t) => t.edges);
     expect(edges).toHaveLength(0);
+  });
+});
+
+describe("buildGraphSnapshots — per-topic cap", () => {
+  it("caps a topic at PER_TOPIC_CAP nodes by (degree desc, citation desc)", () => {
+    // 100 papers all tagged asthma; pmids that have citations should win.
+    const papers = Array.from({ length: 100 }, (_, i) => ({
+      pmid: `p${i}`,
+      title: "Asthma",
+      abstract: "asthma asthma",
+      publication_date: `2024-01-${(i % 28) + 1}`,
+      epub_date: null,
+      citation_count: i, // higher i → higher tiebreaker
+      journal_id: "j1",
+    }));
+    // Give p99 a single citation edge so it has degree 1.
+    const citations = [{ source_pmid: "p99", target_pmid: "p98" }];
+    const out = buildGraphSnapshots(emptySource({
+      papers,
+      citations,
+      journals: [{ id: "j1", abbreviation: "JACI", color: "#000" }],
+    }));
+    const asthma = out.topics.get("asthma")!;
+    expect(asthma.nodes.length).toBe(80);
+    expect(asthma.truncated.total).toBe(100);
+    expect(asthma.truncated.dropped).toBe(20);
+    // p99 and p98 (degree 1) should be in the slice.
+    const pmids = asthma.nodes.map((n) => n.pmid);
+    expect(pmids).toContain("p99");
+    expect(pmids).toContain("p98");
+    // Edges should only include endpoints in the slice.
+    for (const e of asthma.edges) {
+      expect(pmids).toContain(e.source);
+      expect(pmids).toContain(e.target);
+    }
+  });
+});
+
+describe("buildGraphSnapshots — galaxy aggregation", () => {
+  it("aggregates cross-topic edges into galaxy edges with summed weights", () => {
+    const out = buildGraphSnapshots(emptySource({
+      papers: [
+        { pmid: "A", title: "Asthma study", abstract: "asthma", publication_date: "2025-01-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+        { pmid: "B", title: "Urticaria study", abstract: "urticaria", publication_date: "2025-02-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+      ],
+      citations: [{ source_pmid: "A", target_pmid: "B" }],
+      journals: [{ id: "j1", abbreviation: "JACI", color: "#000" }],
+    }));
+    expect(out.galaxy.nodes.find((n: GalaxyNode) => n.topic_slug === "asthma")?.paper_count).toBe(1);
+    expect(out.galaxy.nodes.find((n: GalaxyNode) => n.topic_slug === "urticaria")?.paper_count).toBe(1);
+    const cross = out.galaxy.edges.find(
+      (e: GalaxyEdge) =>
+        (e.source === "asthma" && e.target === "urticaria") ||
+        (e.source === "urticaria" && e.target === "asthma")
+    );
+    expect(cross).toBeDefined();
+    expect(cross!.weight).toBeCloseTo(3, 5);
+    expect(cross!.paper_pair_count).toBe(1);
+  });
+
+  it("does not include same-topic edges in the galaxy", () => {
+    const out = buildGraphSnapshots(emptySource({
+      papers: [
+        { pmid: "A", title: "Asthma 1", abstract: "asthma", publication_date: "2025-01-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+        { pmid: "B", title: "Asthma 2", abstract: "asthma", publication_date: "2025-02-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+      ],
+      citations: [{ source_pmid: "A", target_pmid: "B" }],
+      journals: [{ id: "j1", abbreviation: "JACI", color: "#000" }],
+    }));
+    expect(out.galaxy.edges).toHaveLength(0);
   });
 });

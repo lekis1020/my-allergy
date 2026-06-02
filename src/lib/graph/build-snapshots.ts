@@ -1,10 +1,13 @@
-import { classifyPaperTopics } from "@/lib/utils/topic-tags";
+import { classifyPaperTopics, TOPIC_META } from "@/lib/utils/topic-tags";
 import { normalizeAuthor } from "./normalize-author";
 import type { TopicTag } from "@/types/filters";
 import type {
   PaperNode,
   EdgeType,
+  PaperEdge,
   TopicSnapshot,
+  GalaxyNode,
+  GalaxyEdge,
   GalaxySnapshot,
 } from "./types";
 
@@ -218,40 +221,132 @@ function buildNodes(src: SourceData): Map<string, PaperNode> {
 function finalize(
   paperById: Map<string, PaperNode>,
   edges: Map<string, EdgeAcc>,
-  _src: SourceData
+  src: SourceData
 ): Snapshots {
-  const topics = new Map<string, TopicSnapshot>();
-
-  for (const node of paperById.values()) {
-    const slug = node.primary_topic;
-    let snap = topics.get(slug);
-    if (!snap) {
-      snap = { slug, nodes: [], edges: [], truncated: { total: 0, dropped: 0 } };
-      topics.set(slug, snap);
-    }
-    snap.nodes.push(node);
-    snap.truncated.total += 1;
+  // ── Degree map ───────────────────────────────────────────────────
+  const degree = new Map<string, number>();
+  for (const e of edges.values()) {
+    degree.set(e.source, (degree.get(e.source) ?? 0) + 1);
+    degree.set(e.target, (degree.get(e.target) ?? 0) + 1);
   }
 
+  // ── Per-topic subgraphs ──────────────────────────────────────────
+  const allPapersByTopic = new Map<string, PaperNode[]>();
+  for (const node of paperById.values()) {
+    let arr = allPapersByTopic.get(node.primary_topic);
+    if (!arr) {
+      arr = [];
+      allPapersByTopic.set(node.primary_topic, arr);
+    }
+    arr.push(node);
+  }
+
+  const topics = new Map<string, TopicSnapshot>();
+  for (const [slug, candidates] of allPapersByTopic) {
+    const sorted = [...candidates].sort((a, b) => {
+      const da = degree.get(a.pmid) ?? 0;
+      const db = degree.get(b.pmid) ?? 0;
+      if (db !== da) return db - da;
+      if (b.citation_count !== a.citation_count) return b.citation_count - a.citation_count;
+      return b.publication_date.localeCompare(a.publication_date);
+    });
+    const top = sorted.slice(0, PER_TOPIC_CAP);
+    const included = new Set(top.map((p) => p.pmid));
+    const induced: PaperEdge[] = [];
+    for (const e of edges.values()) {
+      if (!included.has(e.source) || !included.has(e.target)) continue;
+      const a = paperById.get(e.source)!;
+      const b = paperById.get(e.target)!;
+      if (a.primary_topic !== slug || b.primary_topic !== slug) continue;
+      induced.push({
+        source: e.source,
+        target: e.target,
+        types: [...e.types],
+        weight: e.weight,
+      });
+    }
+    topics.set(slug, {
+      slug,
+      nodes: top,
+      edges: induced,
+      truncated: {
+        total: candidates.length,
+        dropped: Math.max(0, candidates.length - top.length),
+      },
+    });
+  }
+
+  // ── Galaxy aggregation ───────────────────────────────────────────
+  const galaxyNodes: GalaxyNode[] = [];
+  for (const [slug, papers] of allPapersByTopic) {
+    galaxyNodes.push({
+      topic_slug: slug,
+      topic_label: TOPIC_META[slug as TopicTag]?.label ?? slug,
+      topic_color: pickTopicColor(slug as TopicTag),
+      paper_count: papers.length,
+      recent_paper_count: papers.filter((p) =>
+        isWithinDays(p.publication_date, RECENT_WINDOW_DAYS, src)
+      ).length,
+    });
+  }
+
+  const galaxyEdgeAcc = new Map<string, GalaxyEdge>();
   for (const e of edges.values()) {
     const a = paperById.get(e.source);
     const b = paperById.get(e.target);
     if (!a || !b) continue;
-    if (a.primary_topic !== b.primary_topic) continue;
-    const snap = topics.get(a.primary_topic);
-    snap?.edges.push({
-      source: e.source,
-      target: e.target,
-      types: [...e.types],
-      weight: e.weight,
-    });
+    if (a.primary_topic === b.primary_topic) continue;
+    const [s, t] = a.primary_topic < b.primary_topic
+      ? [a.primary_topic, b.primary_topic]
+      : [b.primary_topic, a.primary_topic];
+    const key = `${s}|${t}`;
+    const cur = galaxyEdgeAcc.get(key) ?? { source: s, target: t, weight: 0, paper_pair_count: 0 };
+    cur.weight += e.weight;
+    cur.paper_pair_count += 1;
+    galaxyEdgeAcc.set(key, cur);
   }
 
   return {
-    galaxy: { nodes: [], edges: [] },
+    galaxy: { nodes: galaxyNodes, edges: [...galaxyEdgeAcc.values()] },
     topics,
   };
 }
 
-// Ensure TopicTag is used (needed for classifyPaperTopics return type awareness).
-void (null as unknown as TopicTag);
+// TOPIC_META gives label/className but not a hex color. We derive a hex from
+// the className's color word (e.g. "text-red-500" → #EF4444). The mapping
+// matches Tailwind's default palette and is intentionally small — Phase 2
+// can move this to topics.ts if more colors are needed.
+function pickTopicColor(slug: TopicTag): string {
+  const className = TOPIC_META[slug]?.className ?? "";
+  const tones: Record<string, string> = {
+    red: "#EF4444",
+    amber: "#F59E0B",
+    pink: "#EC4899",
+    fuchsia: "#D946EF",
+    yellow: "#EAB308",
+    lime: "#84CC16",
+    emerald: "#10B981",
+    teal: "#14B8A6",
+    cyan: "#06B6D4",
+    sky: "#0EA5E9",
+    blue: "#3B82F6",
+    indigo: "#6366F1",
+    violet: "#8B5CF6",
+    purple: "#A855F7",
+    rose: "#F43F5E",
+    orange: "#F97316",
+    gray: "#6B7280",
+  };
+  for (const [tone, hex] of Object.entries(tones)) {
+    if (className.includes(`text-${tone}-`)) return hex;
+    if (className.includes(`bg-${tone}-`)) return hex;
+  }
+  return "#6B7280";
+}
+
+function isWithinDays(dateStr: string, days: number, _src: SourceData): boolean {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = Date.now();
+  return now - d.getTime() <= days * 24 * 60 * 60 * 1000;
+}
