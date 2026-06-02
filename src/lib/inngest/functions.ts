@@ -4,6 +4,7 @@ import { fetchPapersForJournal } from "@/lib/sync/fetcher";
 import { storePapers } from "@/lib/sync/store";
 import { enrichPapersWithCrossRef } from "@/lib/sync/enricher";
 import { collectCitations } from "@/lib/sync/citations";
+import { embedTexts } from "@/lib/openai/embed";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getDateRange } from "@/lib/utils/date";
 import { generatePaperSummary } from "@/lib/openai/summarize";
@@ -151,6 +152,64 @@ export const syncJournalFn = inngest.createFunction(
         return collectCitations(supabase, storeResult.insertedPmids);
       });
 
+      // Embed newly inserted papers so the relationship-graph snapshot
+      // can pick up their similarity edges on the next recompute.
+      // Snapshot refresh is deferred (cron or manual
+      // admin/graph.recompute) so 7 parallel journal syncs don't kick
+      // off 7 recomputes back-to-back.
+      const embedResult = await step.run("embed-new-papers", async () => {
+        if (storeResult.insertedPmids.length === 0) {
+          return { embedded: 0, short: 0, errors: 0 };
+        }
+
+        const { data: rows, error: readErr } = await supabase
+          .from("papers")
+          .select("pmid, title, abstract")
+          .in("pmid", storeResult.insertedPmids);
+        if (readErr || !rows || rows.length === 0) {
+          return { embedded: 0, short: 0, errors: 0 };
+        }
+
+        const texts = rows.map((r) =>
+          `${String(r.title ?? "")}\n\n${r.abstract ? String(r.abstract) : ""}`.trim()
+        );
+        let vectors: (number[] | null)[];
+        try {
+          vectors = await embedTexts(texts);
+        } catch {
+          return { embedded: 0, short: 0, errors: rows.length };
+        }
+
+        // PostgREST update on a `vector` column: same untyped-client
+        // pattern as embed-papers.ts.
+        const sb = supabase as unknown as {
+          from: (table: string) => {
+            update: (vals: Record<string, unknown>) => {
+              eq: (col: string, val: string) => Promise<{ error: { message: string } | null }>;
+            };
+          };
+        };
+
+        let embedded = 0;
+        let short = 0;
+        let errors = 0;
+        for (let i = 0; i < rows.length; i++) {
+          const vec = vectors[i];
+          if (!vec) {
+            short += 1;
+            continue;
+          }
+          const { error } = await sb
+            .from("papers")
+            .update({ embedding: vec })
+            .eq("pmid", String(rows[i].pmid));
+          if (error) errors += 1;
+          else embedded += 1;
+        }
+
+        return { embedded, short, errors };
+      });
+
       await step.run("mark-sync-success", async () => {
         const { error } = await supabase
           .from("sync_logs")
@@ -169,7 +228,7 @@ export const syncJournalFn = inngest.createFunction(
         }
       });
 
-      console.log(`[Inngest] Synced ${journal.abbreviation}: ${articles.length} found, ${storeResult.inserted} inserted, enriched ${enrichResult.enriched}, citations ${citationResult.citationsInserted}`);
+      console.log(`[Inngest] Synced ${journal.abbreviation}: ${articles.length} found, ${storeResult.inserted} inserted, enriched ${enrichResult.enriched}, citations ${citationResult.citationsInserted}, embedded ${embedResult.embedded}`);
 
       return {
         journal: journal.abbreviation,
