@@ -72,16 +72,60 @@ interface EdgeAcc {
   weight: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _pairKey = (a: string, b: string) =>
-  a < b ? `${a}|${b}` : `${b}|${a}`;
-
 // ── Main entry point ───────────────────────────────────────────────────
 export function buildGraphSnapshots(src: SourceData): Snapshots {
   const paperById = buildNodes(src);
   const edges = new Map<string, EdgeAcc>();
-  // Tasks 6–8 layer additional passes here.
+  applyCitations(edges, src, paperById);
+  applyMentions(edges, src, paperById);
   return finalize(paperById, edges, src);
+}
+
+function ensureEdge(
+  edges: Map<string, EdgeAcc>,
+  a: string,
+  b: string
+): EdgeAcc {
+  const [s, t] = a < b ? [a, b] : [b, a];
+  const key = `${s}|${t}`;
+  let e = edges.get(key);
+  if (!e) {
+    e = { source: s, target: t, types: new Set(), weight: 0 };
+    edges.set(key, e);
+  }
+  return e;
+}
+
+function applyCitations(
+  edges: Map<string, EdgeAcc>,
+  src: SourceData,
+  papers: Map<string, PaperNode>
+) {
+  for (const c of src.citations) {
+    if (c.source_pmid === c.target_pmid) continue;
+    if (!papers.has(c.source_pmid) || !papers.has(c.target_pmid)) continue;
+    const e = ensureEdge(edges, c.source_pmid, c.target_pmid);
+    if (!e.types.has("citation")) {
+      e.types.add("citation");
+      e.weight += W_CITATION;
+    }
+  }
+}
+
+function applyMentions(
+  edges: Map<string, EdgeAcc>,
+  src: SourceData,
+  papers: Map<string, PaperNode>
+) {
+  for (const m of src.mentions) {
+    if (m.source_pmid === m.mentioned_pmid) continue;
+    if (!papers.has(m.source_pmid) || !papers.has(m.mentioned_pmid)) continue;
+    const e = ensureEdge(edges, m.source_pmid, m.mentioned_pmid);
+    if (!e.types.has("mention")) {
+      e.types.add("mention");
+      e.weight += W_MENTION;
+    }
+  }
 }
 
 function buildNodes(src: SourceData): Map<string, PaperNode> {
@@ -111,14 +155,14 @@ function buildNodes(src: SourceData): Map<string, PaperNode> {
   return out;
 }
 
-// Placeholder — Task 8 replaces with the real implementation.
 function finalize(
   paperById: Map<string, PaperNode>,
-  _edges: Map<string, EdgeAcc>,
+  edges: Map<string, EdgeAcc>,
   _src: SourceData
 ): Snapshots {
   const topics = new Map<string, TopicSnapshot>();
-  for (const [pmid, node] of paperById) {
+
+  for (const node of paperById.values()) {
     const slug = node.primary_topic;
     let snap = topics.get(slug);
     if (!snap) {
@@ -127,8 +171,22 @@ function finalize(
     }
     snap.nodes.push(node);
     snap.truncated.total += 1;
-    void pmid;
   }
+
+  for (const e of edges.values()) {
+    const a = paperById.get(e.source);
+    const b = paperById.get(e.target);
+    if (!a || !b) continue;
+    if (a.primary_topic !== b.primary_topic) continue;
+    const snap = topics.get(a.primary_topic);
+    snap?.edges.push({
+      source: e.source,
+      target: e.target,
+      types: [...e.types],
+      weight: e.weight,
+    });
+  }
+
   return {
     galaxy: { nodes: [], edges: [] },
     topics,

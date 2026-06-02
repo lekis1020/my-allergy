@@ -41,3 +41,52 @@ describe("buildGraphSnapshots — node build", () => {
     expect(asthma!.nodes[0].journal_abbreviation).toBe("JACI");
   });
 });
+
+describe("buildGraphSnapshots — citation and mention edges", () => {
+  function withTwoPapers(extra: Partial<SourceData> = {}) {
+    return emptySource({
+      papers: [
+        { pmid: "A", title: "Asthma biologics", abstract: "asthma asthma", publication_date: "2025-01-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+        { pmid: "B", title: "Severe asthma trial", abstract: "asthma", publication_date: "2025-02-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+      ],
+      journals: [{ id: "j1", abbreviation: "JACI", color: "#000000" }],
+      ...extra,
+    });
+  }
+
+  it("creates a citation edge with weight 3 between A and B", () => {
+    const out = buildGraphSnapshots(withTwoPapers({ citations: [{ source_pmid: "A", target_pmid: "B" }] }));
+    const asthma = out.topics.get("asthma")!;
+    expect(asthma.edges).toHaveLength(1);
+    expect(asthma.edges[0].types).toContain("citation");
+    expect(asthma.edges[0].weight).toBeCloseTo(3, 5);
+  });
+
+  it("creates a mention edge with weight 1.5", () => {
+    const out = buildGraphSnapshots(withTwoPapers({ mentions: [{ source_pmid: "A", mentioned_pmid: "B" }] }));
+    const asthma = out.topics.get("asthma")!;
+    expect(asthma.edges).toHaveLength(1);
+    expect(asthma.edges[0].types).toEqual(["mention"]);
+    expect(asthma.edges[0].weight).toBeCloseTo(1.5, 5);
+  });
+
+  it("merges citation and mention on the same pair", () => {
+    const out = buildGraphSnapshots(withTwoPapers({
+      citations: [{ source_pmid: "A", target_pmid: "B" }],
+      mentions: [{ source_pmid: "B", mentioned_pmid: "A" }],
+    }));
+    const e = out.topics.get("asthma")!.edges[0];
+    expect(new Set(e.types)).toEqual(new Set(["citation", "mention"]));
+    expect(e.weight).toBeCloseTo(3 + 1.5, 5);
+  });
+
+  it("ignores self-loops and unknown endpoints", () => {
+    const out = buildGraphSnapshots(withTwoPapers({
+      citations: [
+        { source_pmid: "A", target_pmid: "A" },
+        { source_pmid: "A", target_pmid: "Z" },
+      ],
+    }));
+    expect(out.topics.get("asthma")!.edges).toHaveLength(0);
+  });
+});
