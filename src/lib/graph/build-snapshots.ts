@@ -1,4 +1,5 @@
 import { classifyPaperTopics } from "@/lib/utils/topic-tags";
+import { normalizeAuthor } from "./normalize-author";
 import type { TopicTag } from "@/types/filters";
 import type {
   PaperNode,
@@ -78,6 +79,8 @@ export function buildGraphSnapshots(src: SourceData): Snapshots {
   const edges = new Map<string, EdgeAcc>();
   applyCitations(edges, src, paperById);
   applyMentions(edges, src, paperById);
+  applyCoauthors(edges, src, paperById);
+  applyTopicReinforcement(edges, paperById);
   return finalize(paperById, edges, src);
 }
 
@@ -124,6 +127,63 @@ function applyMentions(
     if (!e.types.has("mention")) {
       e.types.add("mention");
       e.weight += W_MENTION;
+    }
+  }
+}
+
+function applyCoauthors(
+  edges: Map<string, EdgeAcc>,
+  src: SourceData,
+  papers: Map<string, PaperNode>
+) {
+  // Build author-key → pmids[] index using only first or last position rows.
+  const pmidsByKey = new Map<string, string[]>();
+  for (const a of src.authors) {
+    if (!papers.has(a.pmid)) continue;
+    if (a.position !== 1 && !a.is_last) continue;
+    const key = normalizeAuthor(a.last_name, a.first_name, a.initials);
+    if (!key) continue;
+    let arr = pmidsByKey.get(key);
+    if (!arr) {
+      arr = [];
+      pmidsByKey.set(key, arr);
+    }
+    arr.push(a.pmid);
+  }
+
+  // Build edges for each shared-author cohort, skipping the common-name
+  // flood and de-duplicating per pair.
+  for (const pmids of pmidsByKey.values()) {
+    if (pmids.length < 2) continue;
+    if (pmids.length > COMMON_NAME_GUARD) continue;
+    // Dedup in case the same author appears as both first AND last on a single paper.
+    const unique = [...new Set(pmids)];
+    for (let i = 0; i < unique.length; i++) {
+      for (let j = i + 1; j < unique.length; j++) {
+        const e = ensureEdge(edges, unique[i], unique[j]);
+        if (!e.types.has("coauthor")) {
+          e.types.add("coauthor");
+          e.weight += W_COAUTHOR;
+        }
+      }
+    }
+  }
+}
+
+function applyTopicReinforcement(
+  edges: Map<string, EdgeAcc>,
+  papers: Map<string, PaperNode>
+) {
+  for (const e of edges.values()) {
+    const a = papers.get(e.source);
+    const b = papers.get(e.target);
+    if (!a || !b) continue;
+    const setA = new Set(a.topic_tags);
+    let overlap = 0;
+    for (const t of b.topic_tags) if (setA.has(t)) overlap += 1;
+    if (overlap > 0) {
+      e.types.add("topic");
+      e.weight += W_TOPIC * overlap;
     }
   }
 }
