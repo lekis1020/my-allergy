@@ -138,6 +138,9 @@ export function RelationshipGraphPanel() {
                 height={PANEL_HEIGHT}
                 onSelectNode={(n) => setView({ kind: "topic", slug: n.pmid })}
                 nodeRadius={(n) => 16 + Math.min(20, Math.sqrt(galaxyNodeCount(galaxy.data!, n.pmid)) * 1.8)}
+                chargeStrength={-80}
+                centerStrength={0.08}
+                linkDistance={90}
               />
             )
           ) : (
@@ -150,6 +153,8 @@ export function RelationshipGraphPanel() {
               onSelectNode={(n) =>
                 setView({ kind: "highlight", slug: view.slug, focusedPmid: n.pmid })
               }
+              centerStrength={topicGraphEdges.length === 0 ? 0.08 : 0.02}
+              chargeStrength={topicGraphEdges.length === 0 ? -60 : -200}
             />
           )}
         </div>
