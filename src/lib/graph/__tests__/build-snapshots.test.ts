@@ -245,3 +245,69 @@ describe("buildGraphSnapshots — galaxy aggregation", () => {
     expect(out.galaxy.edges).toHaveLength(0);
   });
 });
+
+describe("buildGraphSnapshots — similarity pass", () => {
+  it("creates a similarity edge weighted by the similarity score", () => {
+    const out = buildGraphSnapshots(emptySource({
+      papers: [
+        { pmid: "A", title: "Asthma study", abstract: "asthma", publication_date: "2025-01-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+        { pmid: "B", title: "Asthma cohort", abstract: "asthma", publication_date: "2025-02-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+      ],
+      similarities: [{ source_pmid: "A", target_pmid: "B", similarity: 0.8 }],
+      journals: [{ id: "j1", abbreviation: "JACI", color: "#000" }],
+    }));
+    const asthma = out.topics.get("asthma")!;
+    expect(asthma.edges).toHaveLength(1);
+    expect(asthma.edges[0].types).toContain("similarity");
+    // W_SIMILARITY (1.5) * similarity (0.8) + topic reinforcement (1.0)
+    expect(asthma.edges[0].weight).toBeCloseTo(1.5 * 0.8 + 1, 5);
+  });
+
+  it("merges with citation on the same pair regardless of direction", () => {
+    const out = buildGraphSnapshots(emptySource({
+      papers: [
+        { pmid: "A", title: "Asthma study", abstract: "asthma", publication_date: "2025-01-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+        { pmid: "B", title: "Asthma cohort", abstract: "asthma", publication_date: "2025-02-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+      ],
+      citations: [{ source_pmid: "A", target_pmid: "B" }],
+      similarities: [{ source_pmid: "B", target_pmid: "A", similarity: 0.5 }],
+      journals: [{ id: "j1", abbreviation: "JACI", color: "#000" }],
+    }));
+    const e = out.topics.get("asthma")!.edges[0];
+    expect(new Set(e.types)).toEqual(new Set(["citation", "similarity", "topic"]));
+    // citation 3 + similarity (1.5 * 0.5) + topic 1
+    expect(e.weight).toBeCloseTo(3 + 1.5 * 0.5 + 1, 5);
+  });
+
+  it("dedupes per pair: a second similarity row never bumps the weight twice", () => {
+    const out = buildGraphSnapshots(emptySource({
+      papers: [
+        { pmid: "A", title: "Asthma study", abstract: "asthma", publication_date: "2025-01-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+        { pmid: "B", title: "Asthma cohort", abstract: "asthma", publication_date: "2025-02-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+      ],
+      similarities: [
+        { source_pmid: "A", target_pmid: "B", similarity: 0.9 },
+        { source_pmid: "B", target_pmid: "A", similarity: 0.4 },
+      ],
+      journals: [{ id: "j1", abbreviation: "JACI", color: "#000" }],
+    }));
+    const e = out.topics.get("asthma")!.edges[0];
+    // Only the first encountered row contributes; deduped to a single similarity contribution.
+    expect(e.weight).toBeCloseTo(1.5 * 0.9 + 1, 5);
+  });
+
+  it("ignores self-loops and unknown endpoints", () => {
+    const out = buildGraphSnapshots(emptySource({
+      papers: [
+        { pmid: "A", title: "Asthma", abstract: "asthma", publication_date: "2025-01-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+        { pmid: "B", title: "Asthma", abstract: "asthma", publication_date: "2025-02-01", epub_date: null, citation_count: 0, journal_id: "j1" },
+      ],
+      similarities: [
+        { source_pmid: "A", target_pmid: "A", similarity: 0.9 },
+        { source_pmid: "A", target_pmid: "Z", similarity: 0.9 },
+      ],
+      journals: [{ id: "j1", abbreviation: "JACI", color: "#000" }],
+    }));
+    expect(out.topics.get("asthma")!.edges).toHaveLength(0);
+  });
+});
