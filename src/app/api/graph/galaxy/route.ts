@@ -46,6 +46,7 @@ export async function GET() {
   const res = NextResponse.json({
     ...(data.payload as GalaxySnapshot),
     stale,
+    computed_at: computedAt.toISOString(),
   });
   res.headers.set("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
   res.headers.set("X-Graph-Computed-At", computedAt.toISOString());
