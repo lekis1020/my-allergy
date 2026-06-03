@@ -27,7 +27,7 @@ import type { GalaxySnapshot, TopicSnapshot } from "@/lib/graph/types";
  */
 export const recomputeGraphFn = inngest.createFunction(
   { id: "relationship-graph.recompute", retries: 2 },
-  { event: "admin/graph.recompute" },
+  [{ event: "admin/graph.recompute" }, { cron: "TZ=UTC 0 18 * * *" }],
   async ({ step }) => {
     const sourceData = await step.run("fetch-source-data", async () => {
       return await fetchSourceData();
