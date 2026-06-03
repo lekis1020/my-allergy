@@ -2,16 +2,19 @@
 
 import { useMemo, useState } from "react";
 import useSWR from "swr";
-import { Loader2, Network, ChevronLeft, AlertTriangle, X } from "lucide-react";
+import { Loader2, Network, ChevronLeft, X } from "lucide-react";
 import { RelationshipGraph } from "@/components/graph/relationship-graph";
 import { DetailSheet } from "@/components/papers/detail-sheet";
 import { useGraphView } from "@/hooks/use-graph-view";
+import { formatRelativeDate, formatDate } from "@/lib/utils/date";
 import type {
   GalaxySnapshot,
   TopicSnapshot,
   PaperNode,
   PaperEdge,
 } from "@/lib/graph/types";
+
+type SnapshotMeta = { stale?: boolean; computed_at?: string };
 
 const fetcher = async <T,>(url: string): Promise<T> => {
   const res = await fetch(url);
@@ -27,7 +30,7 @@ export function RelationshipGraphPanel() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Galaxy fetch (only when we are on the galaxy state).
-  const galaxy = useSWR<GalaxySnapshot & { stale?: boolean }>(
+  const galaxy = useSWR<GalaxySnapshot & SnapshotMeta>(
     view.kind === "galaxy" ? "/api/graph/galaxy" : null,
     fetcher,
     { revalidateOnFocus: false }
@@ -35,11 +38,14 @@ export function RelationshipGraphPanel() {
 
   // Topic fetch (when we are on topic or highlight).
   const topicSlug = view.kind === "galaxy" ? null : view.slug;
-  const topic = useSWR<TopicSnapshot & { stale?: boolean }>(
+  const topic = useSWR<TopicSnapshot & SnapshotMeta>(
     topicSlug ? `/api/graph/topic/${topicSlug}` : null,
     fetcher,
     { revalidateOnFocus: false }
   );
+
+  const activeMeta: SnapshotMeta | undefined =
+    view.kind === "galaxy" ? galaxy.data : topic.data;
 
   // Galaxy click → topic. We render topic clusters as our standard
   // GraphNode shape by promoting them: pmid := slug, title := label.
@@ -107,10 +113,16 @@ export function RelationshipGraphPanel() {
             ? "Relationship map"
             : `Relationship map · ${view.slug}`}
         </h2>
-        {(view.kind === "galaxy" ? galaxy.data?.stale : topic.data?.stale) && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
-            <AlertTriangle className="h-3 w-3" />
-            Stale
+        {activeMeta?.computed_at && (
+          <span
+            className={`text-[10px] ${
+              activeMeta.stale
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-gray-500 dark:text-gray-400"
+            }`}
+            title={`Computed at ${formatDate(activeMeta.computed_at)}`}
+          >
+            Updated {formatRelativeDate(activeMeta.computed_at)}
           </span>
         )}
       </div>
