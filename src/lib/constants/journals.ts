@@ -32,19 +32,39 @@ const ALLERGY_MESH_TERMS = [
   "Asthma, Occupational",
 ];
 
+// tiab terms mirror the MeSH concepts above. Recently-published papers are not
+// yet MeSH-indexed by NLM (status "epublish", 0 MeSH terms) for several weeks, so
+// the MeSH clauses cannot match them — only these tiab terms can. Keep this list a
+// faithful title/abstract mirror of ALLERGY_MESH_TERMS so a paper that WILL match
+// once indexed is also caught immediately on publication, instead of being missing
+// from general journals (Frontiers in Immunology, Lancet, NEJM, …) until indexing.
 const ALLERGY_TIAB_TERMS = [
   "anaphylaxis",
   "urticaria",
   "atopic dermatitis",
+  "atopic",
   "food allergy",
   "drug allergy",
   "angioedema",
   "allergic rhinitis",
   "allergic asthma",
+  "allergic conjunctivitis",
+  "allergic",
+  "allergen",
+  "allergens",
   "allergen immunotherapy",
+  "hypersensitivity",
+  "eosinophilia",
   "eosinophilic esophagitis",
   "mastocytosis",
+  "mast cell",
+  "mast cells",
+  "immunoglobulin E",
+  "contact dermatitis",
+  "occupational asthma",
   "immunodeficiency",
+  "agammaglobulinemia",
+  "agammaglobulinaemia",
 ];
 
 // --- Respiratory-specific MeSH & tiab for respiratory journals ---
