@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerAuthClient, createServiceClient } from "@/lib/supabase/server";
-import { isAdmin } from "@/lib/auth/admin";
+import { createServiceClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -10,13 +10,6 @@ interface ProposalRow {
   proposed_start_date: string | null;
   proposed_end_date: string | null;
   status: string;
-}
-
-async function requireAdmin() {
-  const auth = await createServerAuthClient();
-  const { data: { user } } = await auth.auth.getUser();
-  if (!user || !isAdmin(user.email)) return null;
-  return user;
 }
 
 export async function POST(

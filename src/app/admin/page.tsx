@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { createServerAuthClient } from "@/lib/supabase/server";
-import { isAdmin } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { AdminUserList } from "@/components/admin/user-list";
 
 export const metadata = {
@@ -8,10 +7,8 @@ export const metadata = {
 };
 
 export default async function AdminPage() {
-  const authClient = await createServerAuthClient();
-  const { data: { session } } = await authClient.auth.getSession();
-
-  if (!session?.user || !isAdmin(session.user.email)) {
+  const admin = await requireAdmin();
+  if (!admin) {
     redirect("/");
   }
 

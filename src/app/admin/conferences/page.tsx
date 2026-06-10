@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { createServerAuthClient, createServiceClient } from "@/lib/supabase/server";
-import { isAdmin } from "@/lib/auth/admin";
+import { createServiceClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { ConferenceProposalList } from "@/components/admin/conference-proposal-list";
 
 export const dynamic = "force-dynamic";
@@ -25,9 +25,8 @@ export interface ProposalWithConference {
 }
 
 export default async function ConferenceProposalsPage() {
-  const auth = await createServerAuthClient();
-  const { data: { session } } = await auth.auth.getSession();
-  if (!session?.user || !isAdmin(session.user.email)) {
+  const admin = await requireAdmin();
+  if (!admin) {
     redirect("/");
   }
 
