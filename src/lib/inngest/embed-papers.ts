@@ -29,20 +29,7 @@ export const embedPapersFn = inngest.createFunction(
         : null;
 
     const pmidsToEmbed = await step.run("load-targets", async () => {
-      // We use a service-role untyped client because `papers.embedding`
-      // is not in the generated Supabase types yet.
-      const sb = createServiceClient() as unknown as {
-        from: (table: string) => {
-          select: (cols: string) => {
-            is: (col: string, val: unknown) => {
-              limit: (n: number) => Promise<{
-                data: Array<{ pmid: string; title: string; abstract: string | null }> | null;
-                error: { message: string } | null;
-              }>;
-            };
-          };
-        };
-      };
+      const sb = createServiceClient();
       const cap = limit ?? 10000;
       const { data, error } = await sb
         .from("papers")
@@ -88,18 +75,14 @@ export const embedPapersFn = inngest.createFunction(
         // Supabase does not support upserting vector columns in bulk
         // through PostgREST batch, so we issue one UPDATE per row. With
         // CHUNK_SIZE=64 and ~5ms latency each, this is ~300ms per chunk.
-        const sb = createServiceClient() as unknown as {
-          from: (table: string) => {
-            update: (vals: Record<string, unknown>) => {
-              eq: (col: string, val: string) => Promise<{ error: { message: string } | null }>;
-            };
-          };
-        };
+        const sb = createServiceClient();
         let errors = 0;
         for (const u of updates) {
+          // The pgvector column is `string | null` in the generated types,
+          // but PostgREST accepts (and serializes) a number[] at runtime.
           const { error } = await sb
             .from("papers")
-            .update({ embedding: u.vec })
+            .update({ embedding: u.vec as unknown as string })
             .eq("pmid", u.pmid);
           if (error) errors += 1;
         }

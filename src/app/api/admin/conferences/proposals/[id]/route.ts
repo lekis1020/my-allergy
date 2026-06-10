@@ -27,8 +27,7 @@ export async function POST(
   }
 
   const service = createServiceClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: proposal, error: fetchError } = await ((service as any).from("conference_proposals"))
+  const { data: proposal, error: fetchError } = await service.from("conference_proposals")
     .select("id, conference_id, proposed_start_date, proposed_end_date, status")
     .eq("id", id)
     .maybeSingle();
@@ -44,8 +43,7 @@ export async function POST(
     if (!row.proposed_start_date || !row.proposed_end_date) {
       return NextResponse.json({ error: "Proposal missing dates" }, { status: 400 });
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (service.from("conferences") as any)
+    const { error: updateError } = await service.from("conferences")
       .update({
         start_date: row.proposed_start_date,
         end_date: row.proposed_end_date,
@@ -55,8 +53,7 @@ export async function POST(
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: markError } = await ((service as any).from("conference_proposals"))
+  const { error: markError } = await service.from("conference_proposals")
     .update({
       status: action === "approve" ? "approved" : "rejected",
       reviewed_at: new Date().toISOString(),

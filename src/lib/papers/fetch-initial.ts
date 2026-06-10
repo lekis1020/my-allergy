@@ -44,7 +44,7 @@ export async function fetchInitialPapers(): Promise<PapersResponse> {
     return EMPTY;
   }
 
-  const rows = (data || []) as unknown as PaperRow[];
+  const rows: PaperRow[] = data || [];
   const hasMore = rows.length > INITIAL_LIMIT;
   const pageRows = hasMore ? rows.slice(0, INITIAL_LIMIT) : rows;
   const papers = pageRows.map((row) => toPaperDto(row));

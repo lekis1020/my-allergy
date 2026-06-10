@@ -31,8 +31,7 @@ export default async function ConferenceProposalsPage() {
   }
 
   const service = createServiceClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await ((service as any).from("conference_proposals"))
+  const { data } = await service.from("conference_proposals")
     .select(
       `id, conference_id, current_start_date, current_end_date,
        proposed_start_date, proposed_end_date, source_url, confidence,

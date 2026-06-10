@@ -12,218 +12,271 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.4"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       bookmarks: {
         Row: {
-          id: string
-          user_id: string
-          pmid: string
-          created_at: string
           ai_summary: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
+          created_at: string
+          id: string
           pmid: string
-          created_at?: string
+          user_id: string
+        }
+        Insert: {
           ai_summary?: string | null
+          created_at?: string
+          id?: string
+          pmid: string
+          user_id: string
         }
         Update: {
+          ai_summary?: string | null
+          created_at?: string
           id?: string
-          user_id?: string
           pmid?: string
-          created_at?: string
-          ai_summary?: string | null
-        }
-        Relationships: []
-      }
-      notifications: {
-        Row: {
-          id: string
-          user_id: string
-          paper_pmid: string
-          comment_id: string
-          type: "bookmark_comment" | "thread_comment"
-          read: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          paper_pmid: string
-          comment_id: string
-          type: "bookmark_comment" | "thread_comment"
-          read?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
           user_id?: string
-          paper_pmid?: string
-          comment_id?: string
-          type?: "bookmark_comment" | "thread_comment"
-          read?: boolean
-          created_at?: string
         }
         Relationships: []
       }
-      paper_comments: {
+      chat_sessions: {
         Row: {
-          id: string
-          paper_pmid: string
-          user_id: string | null
-          parent_id: string | null
-          anon_id: string
-          content: string
-          report_count: number
-          deleted_at: string | null
           created_at: string
+          id: string
+          messages: Json
+          paper_pmid: string
           updated_at: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          paper_pmid: string
-          user_id?: string | null
-          parent_id?: string | null
-          anon_id: string
-          content: string
-          report_count?: number
-          deleted_at?: string | null
           created_at?: string
+          id?: string
+          messages?: Json
+          paper_pmid: string
           updated_at?: string
+          user_id: string
         }
         Update: {
-          id?: string
-          paper_pmid?: string
-          user_id?: string | null
-          parent_id?: string | null
-          anon_id?: string
-          content?: string
-          report_count?: number
-          deleted_at?: string | null
           created_at?: string
+          id?: string
+          messages?: Json
+          paper_pmid?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chat_usage: {
+        Row: {
+          count: number
+          paper_pmid: string
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          paper_pmid: string
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          paper_pmid?: string
+          used_at?: string
+          user_id?: string
         }
         Relationships: []
       }
       comment_reports: {
         Row: {
-          id: string
           comment_id: string
-          reporter_id: string
-          reason: string | null
           created_at: string
+          id: string
+          reason: string | null
+          reporter_id: string
         }
         Insert: {
-          id?: string
           comment_id: string
-          reporter_id: string
-          reason?: string | null
           created_at?: string
+          id?: string
+          reason?: string | null
+          reporter_id: string
         }
         Update: {
-          id?: string
           comment_id?: string
-          reporter_id?: string
-          reason?: string | null
           created_at?: string
+          id?: string
+          reason?: string | null
+          reporter_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "comment_reports_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "paper_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conference_proposals: {
+        Row: {
+          conference_id: string
+          confidence: string | null
+          created_at: string
+          current_end_date: string | null
+          current_start_date: string | null
+          id: string
+          proposed_end_date: string | null
+          proposed_start_date: string | null
+          reasoning: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_url: string | null
+          status: string
+        }
+        Insert: {
+          conference_id: string
+          confidence?: string | null
+          created_at?: string
+          current_end_date?: string | null
+          current_start_date?: string | null
+          id?: string
+          proposed_end_date?: string | null
+          proposed_start_date?: string | null
+          reasoning?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_url?: string | null
+          status?: string
+        }
+        Update: {
+          conference_id?: string
+          confidence?: string | null
+          created_at?: string
+          current_end_date?: string | null
+          current_start_date?: string | null
+          id?: string
+          proposed_end_date?: string | null
+          proposed_start_date?: string | null
+          reasoning?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_url?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conference_proposals_conference_id_fkey"
+            columns: ["conference_id"]
+            isOneToOne: false
+            referencedRelation: "conferences"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conferences: {
         Row: {
+          country: string | null
+          created_at: string | null
+          date_confirmed: boolean | null
+          end_date: string | null
           id: string
+          is_korean: boolean | null
+          location: string | null
           name: string
           name_ko: string | null
-          start_date: string | null
-          end_date: string | null
-          location: string | null
-          country: string | null
-          tags: string[]
-          website: string | null
-          is_korean: boolean
-          source_url: string | null
           scraped_at: string | null
-          created_at: string
-          updated_at: string
-          date_confirmed: boolean
+          source_url: string | null
+          start_date: string | null
+          tags: string[] | null
+          updated_at: string | null
+          website: string | null
         }
         Insert: {
+          country?: string | null
+          created_at?: string | null
+          date_confirmed?: boolean | null
+          end_date?: string | null
           id?: string
+          is_korean?: boolean | null
+          location?: string | null
           name: string
           name_ko?: string | null
-          start_date?: string | null
-          end_date?: string | null
-          location?: string | null
-          country?: string | null
-          tags?: string[]
-          website?: string | null
-          is_korean?: boolean
-          source_url?: string | null
           scraped_at?: string | null
-          created_at?: string
-          updated_at?: string
-          date_confirmed?: boolean
+          source_url?: string | null
+          start_date?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          website?: string | null
         }
         Update: {
+          country?: string | null
+          created_at?: string | null
+          date_confirmed?: boolean | null
+          end_date?: string | null
           id?: string
+          is_korean?: boolean | null
+          location?: string | null
           name?: string
           name_ko?: string | null
-          start_date?: string | null
-          end_date?: string | null
-          location?: string | null
-          country?: string | null
-          tags?: string[]
-          website?: string | null
-          is_korean?: boolean
-          source_url?: string | null
           scraped_at?: string | null
-          created_at?: string
-          updated_at?: string
-          date_confirmed?: boolean
+          source_url?: string | null
+          start_date?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          website?: string | null
         }
         Relationships: []
       }
-      paper_citations: {
+      geography_insights: {
         Row: {
-          source_pmid: string
-          target_pmid: string
-          created_at: string
+          computed_at: string
+          days: number
+          from_date: string
+          id: string
+          locations: Json
+          total_first_authors: number
         }
         Insert: {
-          source_pmid: string
-          target_pmid: string
-          created_at?: string
+          computed_at?: string
+          days: number
+          from_date: string
+          id?: string
+          locations?: Json
+          total_first_authors?: number
         }
         Update: {
-          source_pmid?: string
-          target_pmid?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
-      paper_feedback: {
-        Row: {
-          user_id: string
-          paper_pmid: string
-          feedback: "interested" | "not_interested"
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          user_id: string
-          paper_pmid: string
-          feedback: "interested" | "not_interested"
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          user_id?: string
-          paper_pmid?: string
-          feedback?: "interested" | "not_interested"
-          created_at?: string
-          updated_at?: string
+          computed_at?: string
+          days?: number
+          from_date?: string
+          id?: string
+          locations?: Json
+          total_first_authors?: number
         }
         Relationships: []
       }
@@ -235,7 +288,7 @@ export type Database = {
           e_issn: string | null
           id: string
           impact_factor: number | null
-          issn: string
+          issn: string | null
           name: string
           slug: string
         }
@@ -246,7 +299,7 @@ export type Database = {
           e_issn?: string | null
           id?: string
           impact_factor?: number | null
-          issn: string
+          issn?: string | null
           name: string
           slug: string
         }
@@ -257,11 +310,49 @@ export type Database = {
           e_issn?: string | null
           id?: string
           impact_factor?: number | null
-          issn?: string
+          issn?: string | null
           name?: string
           slug?: string
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          paper_pmid: string
+          read: boolean
+          type: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          paper_pmid: string
+          read?: boolean
+          type: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          paper_pmid?: string
+          read?: boolean
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "paper_comments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       paper_authors: {
         Row: {
@@ -301,6 +392,187 @@ export type Database = {
           },
         ]
       }
+      paper_citations: {
+        Row: {
+          created_at: string
+          source_pmid: string
+          target_pmid: string
+        }
+        Insert: {
+          created_at?: string
+          source_pmid: string
+          target_pmid: string
+        }
+        Update: {
+          created_at?: string
+          source_pmid?: string
+          target_pmid?: string
+        }
+        Relationships: []
+      }
+      paper_comments: {
+        Row: {
+          anon_id: string
+          content: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          paper_pmid: string
+          parent_id: string | null
+          report_count: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          anon_id: string
+          content: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          paper_pmid: string
+          parent_id?: string | null
+          report_count?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          anon_id?: string
+          content?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          paper_pmid?: string
+          parent_id?: string | null
+          report_count?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paper_comments_paper_pmid_fkey"
+            columns: ["paper_pmid"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["pmid"]
+          },
+          {
+            foreignKeyName: "paper_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "paper_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      paper_feedback: {
+        Row: {
+          created_at: string
+          feedback: Database["public"]["Enums"]["paper_feedback_kind"]
+          paper_pmid: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback: Database["public"]["Enums"]["paper_feedback_kind"]
+          paper_pmid: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback?: Database["public"]["Enums"]["paper_feedback_kind"]
+          paper_pmid?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      paper_graph_snapshots: {
+        Row: {
+          computed_at: string
+          edge_count: number
+          node_count: number
+          payload: Json
+          scope: string
+        }
+        Insert: {
+          computed_at?: string
+          edge_count: number
+          node_count: number
+          payload: Json
+          scope: string
+        }
+        Update: {
+          computed_at?: string
+          edge_count?: number
+          node_count?: number
+          payload?: Json
+          scope?: string
+        }
+        Relationships: []
+      }
+      paper_likes: {
+        Row: {
+          created_at: string
+          id: string
+          paper_pmid: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          paper_pmid: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          paper_pmid?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paper_likes_paper_pmid_fkey"
+            columns: ["paper_pmid"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["pmid"]
+          },
+        ]
+      }
+      paper_mentions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          mentioned_pmid: string
+          source_pmid: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          mentioned_pmid: string
+          source_pmid: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          mentioned_pmid?: string
+          source_pmid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paper_mentions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "paper_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       papers: {
         Row: {
           abstract: string | null
@@ -309,6 +581,7 @@ export type Database = {
           created_at: string
           crossref_data: Json | null
           doi: string | null
+          embedding: string | null
           epub_date: string | null
           id: string
           issue: string | null
@@ -318,7 +591,7 @@ export type Database = {
           pages: string | null
           pmid: string
           publication_date: string
-          publication_types: string[] | null
+          publication_types: string[]
           search_vector: unknown
           title: string
           updated_at: string
@@ -331,6 +604,7 @@ export type Database = {
           created_at?: string
           crossref_data?: Json | null
           doi?: string | null
+          embedding?: string | null
           epub_date?: string | null
           id?: string
           issue?: string | null
@@ -340,7 +614,7 @@ export type Database = {
           pages?: string | null
           pmid: string
           publication_date: string
-          publication_types?: string[] | null
+          publication_types?: string[]
           search_vector?: unknown
           title: string
           updated_at?: string
@@ -353,6 +627,7 @@ export type Database = {
           created_at?: string
           crossref_data?: Json | null
           doi?: string | null
+          embedding?: string | null
           epub_date?: string | null
           id?: string
           issue?: string | null
@@ -362,7 +637,7 @@ export type Database = {
           pages?: string | null
           pmid?: string
           publication_date?: string
-          publication_types?: string[] | null
+          publication_types?: string[]
           search_vector?: unknown
           title?: string
           updated_at?: string
@@ -378,39 +653,24 @@ export type Database = {
           },
         ]
       }
-      user_affinity_profiles: {
+      pubmed_query_cache: {
         Row: {
-          user_id: string
-          topics: Json
-          authors: Json
-          keywords: Json
-          mesh_terms: Json
-          journals: Json
-          article_types: Json
-          feedback_count: number
-          updated_at: string
+          fetched_at: string
+          pmids: string[]
+          query_hash: string
+          ttl_seconds: number
         }
         Insert: {
-          user_id: string
-          topics?: Json
-          authors?: Json
-          keywords?: Json
-          mesh_terms?: Json
-          journals?: Json
-          article_types?: Json
-          feedback_count?: number
-          updated_at?: string
+          fetched_at?: string
+          pmids?: string[]
+          query_hash: string
+          ttl_seconds?: number
         }
         Update: {
-          user_id?: string
-          topics?: Json
-          authors?: Json
-          keywords?: Json
-          mesh_terms?: Json
-          journals?: Json
-          article_types?: Json
-          feedback_count?: number
-          updated_at?: string
+          fetched_at?: string
+          pmids?: string[]
+          query_hash?: string
+          ttl_seconds?: number
         }
         Relationships: []
       }
@@ -461,120 +721,63 @@ export type Database = {
           },
         ]
       }
-      chat_sessions: {
-        Row: {
-          id: string
-          user_id: string
-          paper_pmid: string
-          messages: import("./database").ChatMessage[]
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          paper_pmid: string
-          messages?: import("./database").ChatMessage[]
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          paper_pmid?: string
-          messages?: import("./database").ChatMessage[]
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      chat_usage: {
-        Row: {
-          user_id: string
-          paper_pmid: string
-          used_at: string
-          count: number
-        }
-        Insert: {
-          user_id: string
-          paper_pmid: string
-          used_at?: string
-          count?: number
-        }
-        Update: {
-          user_id?: string
-          paper_pmid?: string
-          used_at?: string
-          count?: number
-        }
-        Relationships: []
-      }
-      paper_likes: {
-        Row: {
-          id: string
-          user_id: string
-          paper_pmid: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          paper_pmid: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          paper_pmid?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
       trending_analysis: {
         Row: {
-          id: string
-          date: string
-          ai_summary: string | null
-          stats_json: Json | null
+          ai_summary: string
           created_at: string
+          date: string
+          id: string
+          stats_json: Json
         }
         Insert: {
-          id?: string
-          date: string
-          ai_summary?: string | null
-          stats_json?: Json | null
+          ai_summary: string
           created_at?: string
+          date: string
+          id?: string
+          stats_json?: Json
         }
         Update: {
-          id?: string
-          date?: string
-          ai_summary?: string | null
-          stats_json?: Json | null
+          ai_summary?: string
           created_at?: string
+          date?: string
+          id?: string
+          stats_json?: Json
         }
         Relationships: []
       }
-      paper_mentions: {
+      user_affinity_profiles: {
         Row: {
-          id: string
-          comment_id: string
-          source_pmid: string
-          mentioned_pmid: string
-          created_at: string
+          article_types: Json
+          authors: Json
+          feedback_count: number
+          journals: Json
+          keywords: Json
+          mesh_terms: Json
+          topics: Json
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          comment_id: string
-          source_pmid: string
-          mentioned_pmid: string
-          created_at?: string
+          article_types?: Json
+          authors?: Json
+          feedback_count?: number
+          journals?: Json
+          keywords?: Json
+          mesh_terms?: Json
+          topics?: Json
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          id?: string
-          comment_id?: string
-          source_pmid?: string
-          mentioned_pmid?: string
-          created_at?: string
+          article_types?: Json
+          authors?: Json
+          feedback_count?: number
+          journals?: Json
+          keywords?: Json
+          mesh_terms?: Json
+          topics?: Json
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -583,6 +786,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_pubmed_query_cache: { Args: never; Returns: number }
+      get_agora_papers: {
+        Args: { p_limit: number; p_offset: number }
+        Returns: {
+          comment_count: number
+          latest_comment_at: string
+          paper_pmid: string
+          total_count: number
+        }[]
+      }
+      is_email_confirmed: { Args: never; Returns: boolean }
+      paper_similarity_edges_topk: {
+        Args: { p_k: number; p_threshold: number }
+        Returns: {
+          similarity: number
+          source_pmid: string
+          target_pmid: string
+        }[]
+      }
       search_papers: {
         Args: {
           date_from?: string
@@ -742,6 +964,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       paper_feedback_kind: ["interested", "not_interested"],

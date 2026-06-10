@@ -1,6 +1,6 @@
 import "server-only";
 import { createAnonClient, createServerAuthClient } from "@/lib/supabase/server";
-import { toPaperDto, type PaperRow } from "./transform";
+import { toPaperDto } from "./transform";
 import type { PaperWithJournal } from "@/types/filters";
 
 interface ChatSessionItem {
@@ -69,7 +69,7 @@ export async function fetchHistoryData(): Promise<HistoryInitialData> {
     .from("papers")
     .select(
       `
-      id, pmid, doi, title, abstract, publication_date, epub_date,
+      id, pmid, doi, title, abstract, ai_summary, publication_date, epub_date,
       volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
       journals!inner (id, name, abbreviation, color, slug),
       paper_authors (last_name, first_name, initials, affiliation, position)
@@ -83,9 +83,7 @@ export async function fetchHistoryData(): Promise<HistoryInitialData> {
     return { ...empty, authenticated: true, bookmarkPmids };
   }
 
-  const allPapers = (papersData || []).map((row) =>
-    toPaperDto(row as unknown as PaperRow),
-  );
+  const allPapers = (papersData || []).map((row) => toPaperDto(row));
 
   const bookmarkSet = new Set(bookmarkPmids);
   const chatPmidSet = new Set(chatPmids);

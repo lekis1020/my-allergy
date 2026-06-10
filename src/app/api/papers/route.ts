@@ -56,20 +56,18 @@ function sortColumn(sort: string): "epub_date" | "citation_count" {
 
 function buildPapersQuery(args: QueryArgs, withCount: boolean) {
   const supabase = createAnonClient();
-  const papersTable = (supabase as any).from("papers");
+  const papersTable = supabase.from("papers");
   const selectCols = `
       id, pmid, doi, title, abstract, ai_summary, publication_date, epub_date,
       volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
       journals!inner (id, name, abbreviation, color, slug),
       paper_authors (last_name, first_name, initials, affiliation, position)
-    `;
+    ` as const;
   // `estimated` count (planner stats, no scan) only on the first page — it
   // feeds the header label and the on-demand-fetch heuristic. Cursor pages
   // skip counting entirely.
-  let query: any = (withCount
-    ? papersTable.select(selectCols, { count: "estimated" })
-    : papersTable.select(selectCols)
-  )
+  let query = papersTable
+    .select(selectCols, { count: withCount ? "estimated" : undefined })
     .not("abstract", "is", null)
     .neq("abstract", "");
 
@@ -117,9 +115,11 @@ function buildPapersQuery(args: QueryArgs, withCount: boolean) {
   return query.order("position", { referencedTable: "paper_authors", ascending: true });
 }
 
+type PapersQuery = ReturnType<typeof buildPapersQuery>;
+
 // Restricts a query to rows strictly after the keyset cursor, matching the
 // `(sortColumn DESC/ASC NULLS LAST, id DESC/ASC)` ordering.
-function applyKeyset(query: any, sort: string, cursor: { v: string | null; id: string }) {
+function applyKeyset(query: PapersQuery, sort: string, cursor: { v: string | null; id: string }) {
   const col = sortColumn(sort);
   const ascending = sort === "date_asc";
   if (cursor.v === null) {
@@ -211,7 +211,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch papers" }, { status: 500 });
   }
 
-  let rawRows: PaperRow[] = (data as unknown as PaperRow[]) || [];
+  let rawRows: PaperRow[] = data || [];
   let dbTotal = count || 0;
   let dataSource: "db" | "db+live" | "db (timeout)" = "db";
 
@@ -323,7 +323,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const paperDtos = rawRows.map((row) => toPaperDto(row as unknown as PaperRow));
+  const paperDtos = rawRows.map((row) => toPaperDto(row));
 
   // Collect like and bookmark counts for returned papers
   const paperPmids = paperDtos.map((p) => p.pmid);
@@ -343,21 +343,30 @@ export async function GET(request: NextRequest) {
   }
   const countMap = new Map<string, SocialCounts>();
   if (paperPmids.length > 0) {
-    const { data: countRows, error: countErr } = await (statsClient.rpc as any)(
+    // `get_paper_social_counts` (migration 00036) is absent from the generated
+    // Database types because it has not been applied to the linked database
+    // yet — type the call shape manually until the migration lands.
+    const socialCountsRpc = statsClient.rpc as unknown as (
+      fn: "get_paper_social_counts",
+      args: { p_pmids: string[] },
+    ) => PromiseLike<{
+      data: Array<{
+        pmid: string;
+        like_count: number;
+        bookmark_count: number;
+        comment_count: number;
+        connection_count: number;
+      }> | null;
+      error: { message: string } | null;
+    }>;
+    const { data: countRows, error: countErr } = await socialCountsRpc(
       "get_paper_social_counts",
       { p_pmids: paperPmids },
     );
     if (countErr) {
       console.warn("[Papers] social counts RPC failed:", countErr);
     }
-    const rows = (countRows as Array<{
-      pmid: string;
-      like_count: number;
-      bookmark_count: number;
-      comment_count: number;
-      connection_count: number;
-    }> | null) ?? [];
-    for (const row of rows) {
+    for (const row of countRows ?? []) {
       countMap.set(row.pmid, {
         like: Number(row.like_count) || 0,
         bookmark: Number(row.bookmark_count) || 0,
@@ -372,18 +381,15 @@ export async function GET(request: NextRequest) {
   const userLikedSet = new Set<string>();
   if (user && paperPmids.length > 0) {
     const [{ data: myBookmarks }, { data: myLikes }] = await Promise.all([
-      (statsClient.from("bookmarks") as any)
+      statsClient.from("bookmarks")
         .select("pmid")
         .eq("user_id", user.id)
         .in("pmid", paperPmids),
-      (statsClient.from("paper_likes") as any)
+      statsClient.from("paper_likes")
         .select("paper_pmid")
         .eq("user_id", user.id)
         .in("paper_pmid", paperPmids),
-    ]) as [
-      { data: Array<{ pmid: string }> | null },
-      { data: Array<{ paper_pmid: string }> | null },
-    ];
+    ]);
     for (const row of myBookmarks ?? []) userBookmarkedSet.add(row.pmid);
     for (const row of myLikes ?? []) userLikedSet.add(row.paper_pmid);
   }
