@@ -5,6 +5,7 @@ import { getGeminiClient, fetchPdfBuffer } from "@/lib/gemini/client";
 import { PAPER_CHAT_SYSTEM_PROMPT } from "@/lib/gemini/prompts";
 import { encryptChatData, readChatMessages } from "@/lib/crypto/chat-encryption";
 import type { ChatMessage } from "@/types/database";
+import type { Json } from "@/types/supabase";
 
 export async function POST(
   request: NextRequest,
@@ -176,7 +177,7 @@ export async function POST(
           .upsert({
             user_id: user.id,
             paper_pmid: pmid,
-            messages: storedMessages as unknown as ChatMessage[],
+            messages: storedMessages as unknown as Json,
             updated_at: new Date().toISOString(),
           }, { onConflict: "user_id,paper_pmid" });
 

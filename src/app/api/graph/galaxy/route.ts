@@ -6,20 +6,7 @@ import type { GalaxySnapshot } from "@/lib/graph/types";
 const STALE_AFTER_HOURS = 24;
 
 export async function GET() {
-  // paper_graph_snapshots is not yet in the generated Supabase types.
-  // Cast to an untyped client to access the table directly.
-  const sb = createAnonClient() as unknown as {
-    from: (table: string) => {
-      select: (columns: string) => {
-        eq: (column: string, value: string) => {
-          maybeSingle: () => Promise<{
-            data: { payload: unknown; computed_at: unknown } | null;
-            error: { message: string } | null;
-          }>;
-        };
-      };
-    };
-  };
+  const sb = createAnonClient();
   const { data, error } = await sb
     .from("paper_graph_snapshots")
     .select("payload, computed_at")
@@ -39,12 +26,12 @@ export async function GET() {
     return res;
   }
 
-  const computedAt = new Date(data.computed_at as string);
+  const computedAt = new Date(data.computed_at);
   const ageMs = Date.now() - computedAt.getTime();
   const stale = ageMs > STALE_AFTER_HOURS * 60 * 60 * 1000;
 
   const res = NextResponse.json({
-    ...(data.payload as GalaxySnapshot),
+    ...(data.payload as unknown as GalaxySnapshot),
     stale,
     computed_at: computedAt.toISOString(),
   });

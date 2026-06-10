@@ -56,8 +56,7 @@ export async function GET(request: NextRequest) {
 
   // Only check conferences with a website AND whose stored end_date is in the
   // future or unknown. Past conferences don't need rechecking.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: conferences, error } = await (supabase.from("conferences") as any)
+  const { data: conferences, error } = await supabase.from("conferences")
     .select("id, name, name_ko, website, start_date, end_date")
     .not("website", "is", null)
     .or(`end_date.is.null,end_date.gte.${today}`)
@@ -70,11 +69,10 @@ export async function GET(request: NextRequest) {
   const rows = (conferences ?? []) as ConferenceRow[];
 
   // Skip conferences that already have a pending proposal.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: pending } = await ((supabase as any).from("conference_proposals"))
+  const { data: pending } = await supabase.from("conference_proposals")
     .select("conference_id")
     .eq("status", "pending");
-  const pendingSet = new Set((pending as PendingProposalRow[] | null ?? []).map((p) => p.conference_id));
+  const pendingSet = new Set((pending ?? []).map((p) => p.conference_id));
 
   const proposals: ProposalSummary[] = [];
   const errors: Array<{ name: string; error: string }> = [];
@@ -100,8 +98,7 @@ export async function GET(request: NextRequest) {
         result.start_date !== row.start_date || result.end_date !== row.end_date;
       if (!datesChanged) continue;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: insertError } = await ((supabase as any).from("conference_proposals")).insert({
+      const { error: insertError } = await supabase.from("conference_proposals").insert({
         conference_id: row.id,
         current_start_date: row.start_date,
         current_end_date: row.end_date,

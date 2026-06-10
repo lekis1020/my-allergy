@@ -7,6 +7,7 @@ import {
   type SourceSimilarity,
 } from "@/lib/graph/build-snapshots";
 import type { GalaxySnapshot, TopicSnapshot } from "@/lib/graph/types";
+import type { Json } from "@/types/supabase";
 
 /**
  * Recomputes the DB-wide relationship-graph snapshots.
@@ -91,10 +92,7 @@ async function fetchSourceData(): Promise<SourceData> {
     papers: { pmid: string };
   };
 
-  // PostgREST embeds the joined `papers` row as an object; the generated
-  // Supabase types may type it as an array due to unknown join cardinality.
-  // The runtime value for !inner on a FK is always a single object.
-  const rows = (allAuthorRows ?? []) as unknown as Row[];
+  const rows: Row[] = allAuthorRows ?? [];
 
   const maxPosByPaper = new Map<string, number>();
   for (const r of rows) {
@@ -141,16 +139,7 @@ const SIMILARITY_THRESHOLD = 0.55;
 async function fetchSimilarities(
   sb: ReturnType<typeof createServiceClient>
 ): Promise<SourceSimilarity[]> {
-  const rpcClient = sb as unknown as {
-    rpc: (
-      fn: string,
-      params: Record<string, number>
-    ) => Promise<{
-      data: Array<{ source_pmid: string; target_pmid: string; similarity: number }> | null;
-      error: { message: string } | null;
-    }>;
-  };
-  const { data, error } = await rpcClient.rpc("paper_similarity_edges_topk", {
+  const { data, error } = await sb.rpc("paper_similarity_edges_topk", {
     p_k: SIMILARITY_K,
     p_threshold: SIMILARITY_THRESHOLD,
   });
@@ -167,7 +156,7 @@ async function fetchSimilarities(
 
 type SnapshotRow = {
   scope: string;
-  payload: GalaxySnapshot | TopicSnapshot;
+  payload: Json;
   node_count: number;
   edge_count: number;
 };
@@ -176,27 +165,18 @@ async function writeSnapshots(
   galaxy: GalaxySnapshot,
   topics: Map<string, TopicSnapshot>
 ): Promise<number> {
-  // paper_graph_snapshots is not yet in the generated Supabase types.
-  // Cast to an untyped client similar to the geography_insights pattern.
-  const sb = createServiceClient() as unknown as {
-    from: (table: string) => {
-      upsert: (
-        values: SnapshotRow[],
-        options: { onConflict: string }
-      ) => Promise<{ error: { message: string } | null }>;
-    };
-  };
+  const sb = createServiceClient();
 
   const rows: SnapshotRow[] = [
     {
       scope: "galaxy",
-      payload: galaxy,
+      payload: galaxy as unknown as Json,
       node_count: galaxy.nodes.length,
       edge_count: galaxy.edges.length,
     },
     ...[...topics.entries()].map(([slug, snap]) => ({
       scope: `topic:${slug}`,
-      payload: snap,
+      payload: snap as unknown as Json,
       node_count: snap.nodes.length,
       edge_count: snap.edges.length,
     })),

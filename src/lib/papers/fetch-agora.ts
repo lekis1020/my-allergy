@@ -11,13 +11,6 @@ const COMMENT_SCAN_LIMIT = 2000;
 
 type AuthClient = Awaited<ReturnType<typeof createServerAuthClient>>;
 
-interface AgoraAggRow {
-  paper_pmid: string;
-  comment_count: number;
-  latest_comment_at: string;
-  total_count: number;
-}
-
 interface PageAggregate {
   pagePmids: string[];
   counts: Map<string, number>;
@@ -35,16 +28,10 @@ async function aggregateViaRpc(
   limit: number,
   offset: number,
 ): Promise<PageAggregate | null> {
-  // The RPC is not in the generated Supabase types, so the call is cast.
-  // Keep `authClient.rpc` as the callee (do not hoist to a variable) so the
-  // method stays bound to its client instance.
-  type RpcResult = { data: AgoraAggRow[] | null; error: { message: string } | null };
-  const { data, error } = await (
-    authClient.rpc as unknown as (
-      fn: string,
-      args: Record<string, unknown>,
-    ) => Promise<RpcResult>
-  )("get_agora_papers", { p_limit: limit, p_offset: offset });
+  const { data, error } = await authClient.rpc("get_agora_papers", {
+    p_limit: limit,
+    p_offset: offset,
+  });
 
   if (error) {
     console.warn("[agora] get_agora_papers RPC unavailable, falling back to scan:", error.message);
@@ -128,7 +115,7 @@ export async function fetchAgoraPage(page: number, limit: number): Promise<Paper
     .from("papers")
     .select(
       `
-      id, pmid, doi, title, abstract, publication_date, epub_date,
+      id, pmid, doi, title, abstract, ai_summary, publication_date, epub_date,
       volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
       journals!inner (id, name, abbreviation, color, slug),
       paper_authors (last_name, first_name, initials, affiliation, position)
@@ -143,7 +130,7 @@ export async function fetchAgoraPage(page: number, limit: number): Promise<Paper
   }
 
   const papersByPmid = new Map<string, PaperRow>();
-  for (const p of (papersData ?? []) as unknown as PaperRow[]) {
+  for (const p of papersData ?? []) {
     papersByPmid.set(p.pmid, p);
   }
 

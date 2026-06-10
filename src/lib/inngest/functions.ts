@@ -9,6 +9,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getDateRange } from "@/lib/utils/date";
 import { generatePaperSummary } from "@/lib/openai/summarize";
 import { computeAuthorGeography } from "@/lib/insights/author-geography";
+import type { Json } from "@/types/supabase";
 /**
  * Syncs a single journal: fetch from PubMed, store, then enrich with CrossRef.
  */
@@ -180,15 +181,7 @@ export const syncJournalFn = inngest.createFunction(
           return { embedded: 0, short: 0, errors: rows.length };
         }
 
-        // PostgREST update on a `vector` column: same untyped-client
-        // pattern as embed-papers.ts.
-        const sb = supabase as unknown as {
-          from: (table: string) => {
-            update: (vals: Record<string, unknown>) => {
-              eq: (col: string, val: string) => Promise<{ error: { message: string } | null }>;
-            };
-          };
-        };
+        const sb = supabase;
 
         let embedded = 0;
         let short = 0;
@@ -199,9 +192,11 @@ export const syncJournalFn = inngest.createFunction(
             short += 1;
             continue;
           }
+          // The pgvector column is `string | null` in the generated types,
+          // but PostgREST accepts (and serializes) a number[] at runtime.
           const { error } = await sb
             .from("papers")
-            .update({ embedding: vec })
+            .update({ embedding: vec as unknown as string })
             .eq("pmid", String(rows[i].pmid));
           if (error) errors += 1;
           else embedded += 1;
@@ -507,22 +502,14 @@ export const generateGeographyInsightsFn = inngest.createFunction(
 
     await step.run("save-geography", async () => {
       const supabase = createServiceClient();
-      // geography_insights is not in the generated Supabase types yet.
-      await (supabase as unknown as {
-        from: (table: string) => {
-          upsert: (
-            values: Record<string, unknown>,
-            options: { onConflict: string },
-          ) => Promise<{ error: unknown }>;
-        };
-      })
+      await supabase
         .from("geography_insights")
         .upsert(
           {
             days: result.days,
             from_date: result.fromDate,
             total_first_authors: result.totalFirstAuthors,
-            locations: result.locations,
+            locations: result.locations as unknown as Json,
             computed_at: new Date().toISOString(),
           },
           { onConflict: "days" },

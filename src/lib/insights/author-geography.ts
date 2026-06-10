@@ -86,7 +86,7 @@ export async function computeAuthorGeography(
       throw new Error(`author-geography query failed: ${error.message}`);
     }
 
-    const pageRows = (data ?? []) as unknown as JoinedAuthorRow[];
+    const pageRows: JoinedAuthorRow[] = data ?? [];
     rows.push(...pageRows);
     if (pageRows.length < PAGE_SIZE) break;
     afterPaperId = pageRows[pageRows.length - 1].paper_id;

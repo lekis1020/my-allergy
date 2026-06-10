@@ -11,20 +11,7 @@ interface RouteContext {
 
 export async function GET(_req: Request, ctx: RouteContext) {
   const { slug } = await ctx.params;
-  // paper_graph_snapshots is not yet in the generated Supabase types.
-  // Cast to an untyped client to access the table directly.
-  const sb = createAnonClient() as unknown as {
-    from: (table: string) => {
-      select: (columns: string) => {
-        eq: (column: string, value: string) => {
-          maybeSingle: () => Promise<{
-            data: { payload: unknown; computed_at: unknown } | null;
-            error: { message: string } | null;
-          }>;
-        };
-      };
-    };
-  };
+  const sb = createAnonClient();
   const { data, error } = await sb
     .from("paper_graph_snapshots")
     .select("payload, computed_at")
@@ -39,12 +26,12 @@ export async function GET(_req: Request, ctx: RouteContext) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  const computedAt = new Date(data.computed_at as string);
+  const computedAt = new Date(data.computed_at);
   const ageMs = Date.now() - computedAt.getTime();
   const stale = ageMs > STALE_AFTER_HOURS * 60 * 60 * 1000;
 
   const res = NextResponse.json({
-    ...(data.payload as TopicSnapshot),
+    ...(data.payload as unknown as TopicSnapshot),
     stale,
     computed_at: computedAt.toISOString(),
   });
