@@ -5,7 +5,7 @@ import { classifyPaperTopics } from "@/lib/utils/topic-tags";
 import { loadScoringContext } from "@/lib/recommend/affinity";
 import { scorePaper } from "@/lib/recommend/score";
 import { fetchOnDemand } from "@/lib/pubmed/on-demand";
-import { toPaperDto, type PaperRow } from "@/lib/papers/transform";
+import { toPaperDto, PAPER_FEED_SELECT, type PaperRow } from "@/lib/papers/transform";
 import { encodeCursor, decodeCursor, type FeedCursor } from "@/lib/papers/cursor";
 
 const limiter = rateLimit({ windowMs: 60_000, maxRequests: 60 });
@@ -57,17 +57,11 @@ function sortColumn(sort: string): "epub_date" | "citation_count" {
 function buildPapersQuery(args: QueryArgs, withCount: boolean) {
   const supabase = createAnonClient();
   const papersTable = supabase.from("papers");
-  const selectCols = `
-      id, pmid, doi, title, abstract, ai_summary, publication_date, epub_date,
-      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
-      journals!inner (id, name, abbreviation, color, slug),
-      paper_authors (last_name, first_name, initials, affiliation, position)
-    ` as const;
   // `estimated` count (planner stats, no scan) only on the first page — it
   // feeds the header label and the on-demand-fetch heuristic. Cursor pages
   // skip counting entirely.
   let query = papersTable
-    .select(selectCols, { count: withCount ? "estimated" : undefined })
+    .select(PAPER_FEED_SELECT, { count: withCount ? "estimated" : undefined })
     .not("abstract", "is", null)
     .neq("abstract", "");
 

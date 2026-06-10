@@ -2,6 +2,20 @@ import { decodeHtmlEntities } from "@/lib/utils/html-entities";
 import { classifyPaperTopics } from "@/lib/utils/topic-tags";
 import type { PaperWithJournal } from "@/types/filters";
 
+/**
+ * The canonical select for any query whose rows feed toPaperDto(). Every
+ * column PaperRow declares must be fetched — a narrower copy of this string
+ * silently produces undefined DTO fields (this is how trending/agora/history
+ * shipped without ai_summary). Keep the literal type (`as const`) so
+ * supabase-js infers the row shape from it.
+ */
+export const PAPER_FEED_SELECT = `
+      id, pmid, doi, title, abstract, ai_summary, publication_date, epub_date,
+      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
+      journals!inner (id, name, abbreviation, color, slug),
+      paper_authors (last_name, first_name, initials, affiliation, position)
+    ` as const;
+
 export interface PaperRow {
   id: string;
   pmid: string;
