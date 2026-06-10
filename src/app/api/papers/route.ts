@@ -183,9 +183,11 @@ export async function GET(request: NextRequest) {
 
   // Resolve auth for every request — needed for per-user social flags
   // (is_bookmarked / is_liked) on cards, even outside personalization.
+  // getUser() verifies the JWT against Supabase Auth; getSession() would
+  // trust a client-supplied cookie payload, and the user id gates reads
+  // of per-user rows through the service client below.
   const authClient = await createServerAuthClient();
-  const { data: { session } } = await authClient.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user } } = await authClient.auth.getUser();
   const personalizedActive = personalized && !!user;
 
   const queryArgs: QueryArgs = { q, pmids, journals, from, to, sort, articleType };
