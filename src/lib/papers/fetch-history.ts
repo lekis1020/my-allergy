@@ -27,14 +27,16 @@ export async function fetchHistoryData(): Promise<HistoryInitialData> {
   };
 
   const authClient = await createServerAuthClient();
-  const { data: { session } } = await authClient.auth.getSession();
+  // getUser() verifies the JWT server-side; the id scopes the bookmark and
+  // chat-session reads below.
+  const { data: { user } } = await authClient.auth.getUser();
 
-  if (!session?.user) {
+  if (!user) {
     return empty;
   }
 
   const supabase = createAnonClient();
-  const userId = session.user.id;
+  const userId = user.id;
 
   // Parallel fetch: bookmarks + chat sessions
   const [bookmarkResult, chatResult] = await Promise.all([
