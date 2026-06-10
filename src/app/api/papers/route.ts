@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAnonClient, createServerAuthClient, createServiceClient } from "@/lib/supabase/server";
+import { createServerAuthClient, createServiceClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/rate-limit";
-import { classifyPaperTopics } from "@/lib/utils/topic-tags";
 import { loadScoringContext } from "@/lib/recommend/affinity";
-import { scorePaper } from "@/lib/recommend/score";
+import { scoreFeedRows } from "@/lib/recommend/score-feed";
 import { fetchOnDemand } from "@/lib/pubmed/on-demand";
-import { toPaperDto, PAPER_FEED_SELECT, type PaperRow } from "@/lib/papers/transform";
+import { toPaperDto, type PaperRow } from "@/lib/papers/transform";
+import { buildPapersQuery, applyKeyset, type QueryArgs } from "@/lib/papers/feed-query";
+import { fetchSocialCounts, fetchUserSocialState } from "@/lib/papers/social-counts";
 import { encodeCursor, decodeCursor, type FeedCursor } from "@/lib/papers/cursor";
 
 const limiter = rateLimit({ windowMs: 60_000, maxRequests: 60 });
@@ -37,96 +38,6 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
       },
     );
   });
-}
-
-interface QueryArgs {
-  q: string;
-  pmids: string;
-  journals: string;
-  from: string;
-  to: string;
-  sort: string;
-  articleType: string;
-}
-
-// The column each sort orders by — also the keyset cursor's `v` value.
-function sortColumn(sort: string): "epub_date" | "citation_count" {
-  return sort === "citations" ? "citation_count" : "epub_date";
-}
-
-function buildPapersQuery(args: QueryArgs, withCount: boolean) {
-  const supabase = createAnonClient();
-  const papersTable = supabase.from("papers");
-  // `estimated` count (planner stats, no scan) only on the first page — it
-  // feeds the header label and the on-demand-fetch heuristic. Cursor pages
-  // skip counting entirely.
-  let query = papersTable
-    .select(PAPER_FEED_SELECT, { count: withCount ? "estimated" : undefined })
-    .not("abstract", "is", null)
-    .neq("abstract", "");
-
-  if (args.q) query = query.textSearch("search_vector", args.q, { type: "websearch" });
-
-  if (args.pmids) {
-    const list = args.pmids.split(",").filter(Boolean).slice(0, 100);
-    if (list.length > 0) query = query.in("pmid", list);
-  }
-
-  if (args.journals) {
-    const slugs = args.journals.split(",").filter(Boolean).slice(0, 30);
-    if (slugs.length > 0) query = query.in("journals.slug", slugs);
-  }
-
-  if (args.from && /^\d{4}-\d{2}-\d{2}$/.test(args.from)) {
-    query = query.gte("epub_date", args.from);
-  }
-  if (args.to && /^\d{4}-\d{2}-\d{2}$/.test(args.to)) {
-    query = query.lte("epub_date", args.to);
-  }
-
-  if (args.articleType) {
-    const pubTypeMap: Record<string, string[]> = {
-      original: ["Journal Article"],
-      review: ["Review"],
-      rct: ["Randomized Controlled Trial"],
-      systematic_review: ["Systematic Review"],
-      meta_analysis: ["Meta-Analysis"],
-      retrospective: ["Observational Study"],
-      case_report: ["Case Reports"],
-    };
-    const pubTypeValues = pubTypeMap[args.articleType];
-    if (pubTypeValues) {
-      query = query.overlaps("publication_types", pubTypeValues);
-    }
-  }
-
-  const ascending = args.sort === "date_asc";
-  query = query.order(sortColumn(args.sort), { ascending, nullsFirst: false });
-  // Stable secondary key so keyset pagination never skips or repeats rows when
-  // the sort column has ties (or nulls). id direction follows the sort.
-  query = query.order("id", { ascending });
-
-  return query.order("position", { referencedTable: "paper_authors", ascending: true });
-}
-
-type PapersQuery = ReturnType<typeof buildPapersQuery>;
-
-// Restricts a query to rows strictly after the keyset cursor, matching the
-// `(sortColumn DESC/ASC NULLS LAST, id DESC/ASC)` ordering.
-function applyKeyset(query: PapersQuery, sort: string, cursor: { v: string | null; id: string }) {
-  const col = sortColumn(sort);
-  const ascending = sort === "date_asc";
-  if (cursor.v === null) {
-    // The cursor row is already in the NULLS-LAST tail; only id breaks ties.
-    return ascending
-      ? query.is(col, null).gt("id", cursor.id)
-      : query.is(col, null).lt("id", cursor.id);
-  }
-  const cmp = ascending ? "gt" : "lt";
-  // Past the cursor value, OR tied on it but past the id, OR into the null tail.
-  return query.or(
-    `${col}.${cmp}.${cursor.v},and(${col}.eq.${cursor.v},id.${cmp}.${cursor.id}),${col}.is.null`,
-  );
 }
 
 export async function GET(request: NextRequest) {
@@ -256,47 +167,7 @@ export async function GET(request: NextRequest) {
   if (personalizedActive && user) {
     // Personalization re-rank (authed only).
     const context = await loadScoringContext(authClient, user.id);
-    const now = new Date();
-    const scored = rawRows.map((paper) => {
-      const journal = paper.journals;
-      const journalSlug = journal?.slug ?? "";
-      const keywords = Array.isArray(paper.keywords)
-        ? paper.keywords.filter((k): k is string => typeof k === "string").map((k) => k.toLowerCase())
-        : [];
-      const meshTerms = Array.isArray(paper.mesh_terms)
-        ? paper.mesh_terms.filter((t): t is string => typeof t === "string").map((t) => t.toLowerCase())
-        : [];
-      const publicationTypes = Array.isArray(paper.publication_types)
-        ? paper.publication_types.filter((t): t is string => typeof t === "string")
-        : [];
-      const topicTags = classifyPaperTopics({
-        title: String(paper.title ?? ""),
-        abstract: typeof paper.abstract === "string" ? paper.abstract : null,
-        keywords,
-        meshTerms,
-      }).filter((t) => t !== "others");
-      const authorKeys = (paper.paper_authors ?? []).map(
-        (a: { last_name: string; initials: string | null }) =>
-          `${a.last_name}_${a.initials ?? ""}`.replace(/\s+/g, "")
-      );
-
-      const score = scorePaper(
-        {
-          pmid: paper.pmid,
-          journalSlug,
-          publicationDate: paper.epub_date || paper.publication_date,
-          citationCount: paper.citation_count,
-          keywords,
-          meshTerms,
-          topicTags,
-          authorKeys,
-          publicationTypes,
-        },
-        context,
-        now,
-      );
-      return { paper, score };
-    });
+    const scored = scoreFeedRows(rawRows, context, new Date());
     scored.sort((a, b) => b.score - a.score);
     personalizedTotal = scored.length;
     rawRows = scored.slice(personalizedOffset, personalizedOffset + limit).map((s) => s.paper);
@@ -320,75 +191,15 @@ export async function GET(request: NextRequest) {
   }
 
   const paperDtos = rawRows.map((row) => toPaperDto(row));
-
-  // Collect like and bookmark counts for returned papers
   const paperPmids = paperDtos.map((p) => p.pmid);
-  // Use service client for aggregate counts only — `bookmarks` and `paper_comments`
-  // RLS restricts SELECT to the row owner / authed users, which would zero out the
-  // counts under an anon client. We expose only aggregate numbers, not row data.
+
+  // Aggregate counts + per-user social state. Service client — see
+  // lib/papers/social-counts.ts for the RLS rationale.
   const statsClient = createServiceClient();
-
-  // Aggregate like / bookmark / comment / connection counts in a single RPC
-  // round-trip instead of fetching every matching row across 5 tables and
-  // counting them in JS. The function returns one row per input pmid.
-  interface SocialCounts {
-    like: number;
-    bookmark: number;
-    comment: number;
-    connection: number;
-  }
-  const countMap = new Map<string, SocialCounts>();
-  if (paperPmids.length > 0) {
-    // `get_paper_social_counts` (migration 00036) is absent from the generated
-    // Database types because it has not been applied to the linked database
-    // yet — type the call shape manually until the migration lands.
-    const socialCountsRpc = statsClient.rpc as unknown as (
-      fn: "get_paper_social_counts",
-      args: { p_pmids: string[] },
-    ) => PromiseLike<{
-      data: Array<{
-        pmid: string;
-        like_count: number;
-        bookmark_count: number;
-        comment_count: number;
-        connection_count: number;
-      }> | null;
-      error: { message: string } | null;
-    }>;
-    const { data: countRows, error: countErr } = await socialCountsRpc(
-      "get_paper_social_counts",
-      { p_pmids: paperPmids },
-    );
-    if (countErr) {
-      console.warn("[Papers] social counts RPC failed:", countErr);
-    }
-    for (const row of countRows ?? []) {
-      countMap.set(row.pmid, {
-        like: Number(row.like_count) || 0,
-        bookmark: Number(row.bookmark_count) || 0,
-        comment: Number(row.comment_count) || 0,
-        connection: Number(row.connection_count) || 0,
-      });
-    }
-  }
-
-  // Per-user social state — only fetch when authenticated.
-  const userBookmarkedSet = new Set<string>();
-  const userLikedSet = new Set<string>();
-  if (user && paperPmids.length > 0) {
-    const [{ data: myBookmarks }, { data: myLikes }] = await Promise.all([
-      statsClient.from("bookmarks")
-        .select("pmid")
-        .eq("user_id", user.id)
-        .in("pmid", paperPmids),
-      statsClient.from("paper_likes")
-        .select("paper_pmid")
-        .eq("user_id", user.id)
-        .in("paper_pmid", paperPmids),
-    ]);
-    for (const row of myBookmarks ?? []) userBookmarkedSet.add(row.pmid);
-    for (const row of myLikes ?? []) userLikedSet.add(row.paper_pmid);
-  }
+  const countMap = await fetchSocialCounts(statsClient, paperPmids);
+  const { bookmarked: userBookmarkedSet, liked: userLikedSet } = user
+    ? await fetchUserSocialState(statsClient, user.id, paperPmids)
+    : { bookmarked: new Set<string>(), liked: new Set<string>() };
 
   const papers = paperDtos.map((paper) => {
     const counts = countMap.get(paper.pmid);
