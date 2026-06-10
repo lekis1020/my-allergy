@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerAuthClient } from "@/lib/supabase/server";
-import { isAdmin } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { inngest } from "@/lib/inngest/client";
 
 /**
@@ -12,9 +11,8 @@ import { inngest } from "@/lib/inngest/client";
  *  - For incident recovery if the cron is paused or fails.
  */
 export async function POST() {
-  const authClient = await createServerAuthClient();
-  const { data: { session } } = await authClient.auth.getSession();
-  if (!session?.user || !isAdmin(session.user.email)) {
+  const admin = await requireAdmin();
+  if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

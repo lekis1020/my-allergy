@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { createServiceClient, createServerAuthClient } from "@/lib/supabase/server";
-import { isAdmin } from "@/lib/auth/admin";
+import { createServiceClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export async function GET(request: Request) {
-  const authClient = await createServerAuthClient();
-  const { data: { session } } = await authClient.auth.getSession();
-
-  if (!session?.user || !isAdmin(session.user.email)) {
+  const admin = await requireAdmin();
+  if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
