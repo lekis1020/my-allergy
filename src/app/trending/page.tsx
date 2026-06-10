@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createAnonClient } from "@/lib/supabase/server";
-import { toPaperDto } from "@/lib/papers/transform";
+import { toPaperDto, PAPER_FEED_SELECT } from "@/lib/papers/transform";
 import { TrendingFeed } from "@/components/papers/trending-feed";
 import { TrendingInsightsDrawer } from "@/components/papers/trending-insights-drawer";
 import { TopFirstAuthors } from "@/components/insights/top-first-authors";
@@ -27,14 +27,7 @@ async function fetchTrendingPapers() {
 
   const { data, error } = await supabase
     .from("papers")
-    .select(
-      `
-      id, pmid, doi, title, abstract, ai_summary, publication_date, epub_date,
-      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
-      journals!inner (id, name, abbreviation, color, slug),
-      paper_authors (last_name, first_name, initials, affiliation, position)
-    `
-    )
+    .select(PAPER_FEED_SELECT)
     .not("abstract", "is", null)
     .neq("abstract", "")
     .gte("epub_date", fromDate)

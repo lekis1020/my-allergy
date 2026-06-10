@@ -1,6 +1,6 @@
 import "server-only";
 import { createAnonClient, createServerAuthClient } from "@/lib/supabase/server";
-import { toPaperDto, type PaperRow } from "./transform";
+import { toPaperDto, PAPER_FEED_SELECT, type PaperRow } from "./transform";
 import type { PapersResponse } from "@/types/filters";
 
 const INITIAL_LIMIT = 20;
@@ -113,14 +113,7 @@ export async function fetchAgoraPage(page: number, limit: number): Promise<Paper
   const supabase = createAnonClient();
   const { data: papersData, error: papersError } = await supabase
     .from("papers")
-    .select(
-      `
-      id, pmid, doi, title, abstract, ai_summary, publication_date, epub_date,
-      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
-      journals!inner (id, name, abbreviation, color, slug),
-      paper_authors (last_name, first_name, initials, affiliation, position)
-    `,
-    )
+    .select(PAPER_FEED_SELECT)
     .in("pmid", pagePmids)
     .order("position", { referencedTable: "paper_authors", ascending: true });
 
