@@ -115,7 +115,7 @@ export async function POST(
     );
   }
 
-  const limit = commentWriteLimiter.check(`comments:${user.id}`);
+  const limit = await commentWriteLimiter.check(`comments:${user.id}`);
   if (!limit.success) {
     return NextResponse.json(
       { error: "Too many comments. Try again in a moment." },
