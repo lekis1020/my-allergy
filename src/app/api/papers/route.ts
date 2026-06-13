@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerAuthClient, createServiceClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/rate-limit";
+import { distributedRateLimit } from "@/lib/utils/distributed-rate-limit";
+import { classifyPaperTopics } from "@/lib/utils/topic-tags";
 import { loadScoringContext } from "@/lib/recommend/affinity";
 import { scoreFeedRows } from "@/lib/recommend/score-feed";
 import { fetchOnDemand } from "@/lib/pubmed/on-demand";
@@ -11,8 +13,14 @@ import { encodeCursor, decodeCursor, type FeedCursor } from "@/lib/papers/cursor
 
 const limiter = rateLimit({ windowMs: 60_000, maxRequests: 60 });
 
-// Stricter per-user limit for on-demand PubMed fetch (3/min).
-const onDemandLimiter = rateLimit({ windowMs: 60_000, maxRequests: 3 });
+// Stricter per-user limit for on-demand PubMed fetch (3/min). Distributed:
+// this guards the external PubMed quota, which an in-memory per-instance
+// counter cannot protect under serverless fan-out.
+const onDemandLimiter = distributedRateLimit({
+  windowMs: 60_000,
+  maxRequests: 3,
+  prefix: "ondemand",
+});
 
 const ON_DEMAND_TIMEOUT_MS = 4_000;
 const BUFFER_DAYS = 365;
@@ -128,7 +136,7 @@ export async function GET(request: NextRequest) {
 
   if (shouldAttempt && user) {
     const userKey = `user:${user.id}`;
-    const userLimit = onDemandLimiter.check(userKey);
+    const userLimit = await onDemandLimiter.check(userKey);
     if (userLimit.success) {
       try {
         const liveResult = await withTimeout(
