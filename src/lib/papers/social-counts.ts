@@ -27,22 +27,27 @@ export async function fetchSocialCounts(
   if (pmids.length === 0) return countMap;
 
   // `get_paper_social_counts` (migration 00036) is absent from the generated
-  // Database types because it has not been applied to the linked database
-  // yet — type the call shape manually until the migration lands.
-  const socialCountsRpc = statsClient.rpc as unknown as (
-    fn: "get_paper_social_counts",
-    args: { p_pmids: string[] },
-  ) => PromiseLike<{
-    data: Array<{
-      pmid: string;
-      like_count: number;
-      bookmark_count: number;
-      comment_count: number;
-      connection_count: number;
-    }> | null;
-    error: { message: string } | null;
-  }>;
-  const { data: countRows, error: countErr } = await socialCountsRpc(
+  // Database types, so the call shape is typed manually. Cast the CLIENT (not
+  // the method) and call `.rpc()` as a member so `this` stays bound to the
+  // client — hoisting `statsClient.rpc` into a variable detaches `this` and
+  // crashes inside supabase-js with "Cannot read properties of undefined
+  // (reading 'rest')".
+  const rpcClient = statsClient as unknown as {
+    rpc: (
+      fn: "get_paper_social_counts",
+      args: { p_pmids: string[] },
+    ) => PromiseLike<{
+      data: Array<{
+        pmid: string;
+        like_count: number;
+        bookmark_count: number;
+        comment_count: number;
+        connection_count: number;
+      }> | null;
+      error: { message: string } | null;
+    }>;
+  };
+  const { data: countRows, error: countErr } = await rpcClient.rpc(
     "get_paper_social_counts",
     { p_pmids: pmids },
   );
