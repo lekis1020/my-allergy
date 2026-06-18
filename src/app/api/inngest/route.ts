@@ -11,6 +11,7 @@ import {
   recomputeGraphFn,
   backfillCitationsFn,
   embedPapersFn,
+  backfillTopicsFn,
 } from "@/lib/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
@@ -26,5 +27,6 @@ export const { GET, POST, PUT } = serve({
     recomputeGraphFn,
     backfillCitationsFn,
     embedPapersFn,
+    backfillTopicsFn,
   ],
 });

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PubMedArticle } from "@/lib/pubmed/types";
+import { classifyPaperTopics } from "@/lib/utils/topic-tags";
 
 export interface StoreResult {
   inserted: number;
@@ -38,6 +39,16 @@ export async function storePapers(
       keywords: article.keywords,
       mesh_terms: article.meshTerms,
       publication_types: article.publicationTypes,
+      // Classify topics once, at store time, so the relationship-graph
+      // recompute can read this column instead of re-scanning every abstract
+      // (see migration 00045). keywords + MeSH terms are available here, so
+      // this is a strictly richer signal than the recompute's old runtime pass.
+      topic_tags: classifyPaperTopics({
+        title: article.title,
+        abstract: article.abstract,
+        keywords: article.keywords ?? [],
+        meshTerms: article.meshTerms ?? [],
+      }),
       updated_at: new Date().toISOString(),
     }));
 

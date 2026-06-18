@@ -21,6 +21,29 @@ describe("buildGraphSnapshots — node build", () => {
     expect(out.topics.size).toBe(0);
   });
 
+  it("uses persisted topic_tags when present, without needing an abstract", () => {
+    const out = buildGraphSnapshots(emptySource({
+      papers: [
+        {
+          pmid: "1",
+          title: "Severe asthma management with biologics",
+          // No abstract supplied — recompute no longer fetches it.
+          topic_tags: ["urticaria"],
+          publication_date: "2025-01-01",
+          epub_date: "2025-01-01",
+          citation_count: 5,
+          journal_id: "j1",
+        },
+      ],
+      journals: [{ id: "j1", abbreviation: "JACI", color: "#123456" }],
+    }));
+    // Stored tag wins over what title-classification ("asthma") would produce.
+    expect(out.topics.get("asthma")).toBeUndefined();
+    const urticaria = out.topics.get("urticaria");
+    expect(urticaria).toBeDefined();
+    expect(urticaria!.nodes[0].primary_topic).toBe("urticaria");
+  });
+
   it("assigns primary_topic from classifyPaperTopics on title+abstract", () => {
     const out = buildGraphSnapshots(emptySource({
       papers: [
