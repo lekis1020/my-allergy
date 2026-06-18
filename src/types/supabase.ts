@@ -594,6 +594,7 @@ export type Database = {
           publication_types: string[]
           search_vector: unknown
           title: string
+          topic_tags: string[] | null
           updated_at: string
           volume: string | null
         }
@@ -617,6 +618,7 @@ export type Database = {
           publication_types?: string[]
           search_vector?: unknown
           title: string
+          topic_tags?: string[] | null
           updated_at?: string
           volume?: string | null
         }
@@ -640,6 +642,7 @@ export type Database = {
           publication_types?: string[]
           search_vector?: unknown
           title?: string
+          topic_tags?: string[] | null
           updated_at?: string
           volume?: string | null
         }

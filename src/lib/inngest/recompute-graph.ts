@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import {
   buildGraphSnapshots,
   type SourceData,
+  type SourcePaper,
   type SourceAuthor,
   type SourceSimilarity,
 } from "@/lib/graph/build-snapshots";
@@ -12,32 +13,30 @@ import type { Json } from "@/types/supabase";
 /**
  * Recomputes the DB-wide relationship-graph snapshots.
  *
- * Phase 1 ships with an event-only trigger so the operator can run it
- * controlled before flipping on the daily cron in Phase 3. The cron will
- * eventually be added alongside the event:
+ * Triggered daily by cron (03:00 KST) and on demand via the
+ * `admin/graph.recompute` event.
  *
- *   [{ event: "admin/graph.recompute" }, { cron: "TZ=UTC 0 18 * * *" }]
- *
- * The function is intentionally split into three named steps so Inngest's
- * step memoization caches intermediate output across retries.
- *
- * Note: Inngest serializes step return values as JSON, so Map objects do not
- * survive step boundaries. build-snapshots and write-snapshots are therefore
- * combined into a single "build-and-write" step. The final return value uses
- * counts captured inside that step.
+ * IMPORTANT — single-step design: fetch, build, and write all run inside ONE
+ * step. The full source dataset (papers + abstracts + author rows) is tens of
+ * MB at the current corpus size and MUST NOT cross an Inngest step boundary —
+ * step output is capped (~4MB) and a previous split-step design serialized the
+ * whole `SourceData` as a step return value, which silently failed on every
+ * run once the corpus grew past the limit (snapshot froze 2026-06-02). The
+ * step now returns only small counts. See fetchSourceData for the matching
+ * keyset/range pagination that avoids the Postgres statement-timeout on the
+ * unbounded `papers`/`paper_authors` reads.
  */
 export const recomputeGraphFn = inngest.createFunction(
   { id: "relationship-graph.recompute", retries: 2 },
   [{ event: "admin/graph.recompute" }, { cron: "TZ=UTC 0 18 * * *" }],
   async ({ step }) => {
-    const sourceData = await step.run("fetch-source-data", async () => {
-      return await fetchSourceData();
-    });
-
-    const result = await step.run("build-and-write", async () => {
+    const result = await step.run("fetch-build-write", async () => {
+      const sourceData = await fetchSourceData();
       const snapshots = buildGraphSnapshots(sourceData);
       const writtenRows = await writeSnapshots(snapshots.galaxy, snapshots.topics);
       return {
+        papers: sourceData.papers.length,
+        authors: sourceData.authors.length,
         topicCount: snapshots.topics.size,
         galaxyNodes: snapshots.galaxy.nodes.length,
         galaxyEdges: snapshots.galaxy.edges.length,
@@ -49,25 +48,92 @@ export const recomputeGraphFn = inngest.createFunction(
   }
 );
 
+/**
+ * Pages through a table using keyset (seek) pagination on a unique, ordered
+ * column. Unlike OFFSET/range pagination this never scans-and-discards rows,
+ * so a wide table (e.g. `papers` with abstracts) does not blow the Postgres
+ * statement timeout at deep offsets, and it cannot silently truncate at
+ * PostgREST's row cap.
+ */
+const PAGE_SIZE = 1000;
+
+async function paginateKeyset<T>(
+  label: string,
+  keyOf: (row: T) => string,
+  makeQuery: (after: string | null) => PromiseLike<{
+    data: T[] | null;
+    error: { message: string } | null;
+  }>
+): Promise<T[]> {
+  const out: T[] = [];
+  let after: string | null = null;
+  for (;;) {
+    const { data, error } = await makeQuery(after);
+    if (error) throw new Error(`fetch ${label}: ${error.message}`);
+    const rows = data ?? [];
+    out.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+    after = keyOf(rows[rows.length - 1]);
+  }
+  return out;
+}
+
 async function fetchSourceData(): Promise<SourceData> {
   const sb = createServiceClient();
 
-  // Papers — title + abstract for topic classification, plus the fields the
-  // snapshot needs at render time.
-  const { data: papers, error: papersErr } = await sb
-    .from("papers")
-    .select("pmid, title, abstract, publication_date, epub_date, citation_count, journal_id");
-  if (papersErr) throw new Error(`fetch papers: ${papersErr.message}`);
+  // Papers — lightweight columns only. Topic classification is read from the
+  // persisted `topic_tags` column (populated at sync time + backfill), NOT by
+  // re-fetching abstracts: an unbounded select of the full corpus with
+  // abstracts (~27MB) timed out the Postgres statement and froze the snapshot.
+  // Keyset-paginated on `pmid` to avoid the PostgREST row cap.
+  const papers = await paginateKeyset<SourcePaper>(
+    "papers",
+    (r) => r.pmid,
+    (after) => {
+      let q = sb
+        .from("papers")
+        .select("pmid, title, topic_tags, publication_date, epub_date, citation_count, journal_id")
+        .order("pmid", { ascending: true })
+        .limit(PAGE_SIZE);
+      if (after !== null) q = q.gt("pmid", after);
+      return q as unknown as PromiseLike<{ data: SourcePaper[] | null; error: { message: string } | null }>;
+    }
+  );
 
-  const { data: citations, error: citErr } = await sb
-    .from("paper_citations")
-    .select("source_pmid, target_pmid");
-  if (citErr) throw new Error(`fetch citations: ${citErr.message}`);
+  // Citations — narrow join table, no single-column key, so range-paginate
+  // on a deterministic order. Small today but future-proofed against the
+  // PostgREST row cap.
+  const citations: { source_pmid: string; target_pmid: string }[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await sb
+      .from("paper_citations")
+      .select("source_pmid, target_pmid")
+      .order("source_pmid", { ascending: true })
+      .order("target_pmid", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(`fetch citations: ${error.message}`);
+    const rows = data ?? [];
+    citations.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+  }
 
-  const { data: mentions, error: menErr } = await sb
-    .from("paper_mentions")
-    .select("source_pmid, mentioned_pmid");
-  if (menErr) throw new Error(`fetch mentions: ${menErr.message}`);
+  const mentions = await paginateKeyset<{
+    id: string;
+    source_pmid: string;
+    mentioned_pmid: string;
+  }>(
+    "mentions",
+    (r) => r.id,
+    (after) => {
+      let q = sb
+        .from("paper_mentions")
+        .select("id, source_pmid, mentioned_pmid")
+        .order("id", { ascending: true })
+        .limit(PAGE_SIZE);
+      if (after !== null) q = q.gt("id", after);
+      return q;
+    }
+  );
 
   const { data: journals, error: jErr } = await sb
     .from("journals")
@@ -77,13 +143,9 @@ async function fetchSourceData(): Promise<SourceData> {
   // Authors — first author rows (position = 1) and last-author rows
   // (position = MAX(position) per paper). We compute the max-position map
   // in JS rather than SQL because Supabase's PostgREST does not expose the
-  // grouping aggregate cleanly.
-  const { data: allAuthorRows, error: aErr } = await sb
-    .from("paper_authors")
-    .select("paper_id, last_name, first_name, initials, position, papers!inner(pmid)");
-  if (aErr) throw new Error(`fetch authors: ${aErr.message}`);
-
+  // grouping aggregate cleanly. Keyset-paginated on the `id` PK (38k+ rows).
   type Row = {
+    id: string;
     paper_id: string;
     last_name: string;
     first_name: string | null;
@@ -92,7 +154,19 @@ async function fetchSourceData(): Promise<SourceData> {
     papers: { pmid: string };
   };
 
-  const rows: Row[] = allAuthorRows ?? [];
+  const rows = await paginateKeyset<Row>(
+    "authors",
+    (r) => r.id,
+    (after) => {
+      let q = sb
+        .from("paper_authors")
+        .select("id, paper_id, last_name, first_name, initials, position, papers!inner(pmid)")
+        .order("id", { ascending: true })
+        .limit(PAGE_SIZE);
+      if (after !== null) q = q.gt("id", after);
+      return q as unknown as PromiseLike<{ data: Row[] | null; error: { message: string } | null }>;
+    }
+  );
 
   const maxPosByPaper = new Map<string, number>();
   for (const r of rows) {

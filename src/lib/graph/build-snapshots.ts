@@ -27,7 +27,19 @@ export const RECENT_WINDOW_DAYS = 90;
 export interface SourcePaper {
   pmid: string;
   title: string;
-  abstract: string | null;
+  /**
+   * Optional. Only needed as a fallback when `topic_tags` is absent — the
+   * recompute pipeline stores topics at sync time and no longer fetches
+   * abstracts (see migration 00045). Tests still pass abstracts so the
+   * classify-on-the-fly fallback in buildNodes stays exercised.
+   */
+  abstract?: string | null;
+  /**
+   * Precomputed topic classification (ordered; [0] is the primary topic).
+   * When present, buildNodes uses it directly; when absent it falls back to
+   * classifyPaperTopics(title, abstract).
+   */
+  topic_tags?: TopicTag[] | null;
   publication_date: string;
   epub_date: string | null;
   citation_count: number | null;
@@ -225,12 +237,18 @@ function buildNodes(src: SourceData): Map<string, PaperNode> {
 
   for (const p of src.papers) {
     const j = journalById.get(p.journal_id);
-    const topics = classifyPaperTopics({
-      title: p.title,
-      abstract: p.abstract,
-      keywords: [],
-      meshTerms: [],
-    });
+    // Prefer the topics persisted at sync time; fall back to classifying from
+    // title+abstract only when they were not stored (e.g. older rows not yet
+    // backfilled, or unit tests that pass abstracts directly).
+    const topics =
+      p.topic_tags && p.topic_tags.length > 0
+        ? p.topic_tags
+        : classifyPaperTopics({
+            title: p.title,
+            abstract: p.abstract ?? null,
+            keywords: [],
+            meshTerms: [],
+          });
     out.set(p.pmid, {
       pmid: p.pmid,
       title: p.title,
