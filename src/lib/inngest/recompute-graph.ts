@@ -233,6 +233,7 @@ type SnapshotRow = {
   payload: Json;
   node_count: number;
   edge_count: number;
+  computed_at: string;
 };
 
 async function writeSnapshots(
@@ -241,18 +242,26 @@ async function writeSnapshots(
 ): Promise<number> {
   const sb = createServiceClient();
 
+  // `computed_at` defaults to now() only on INSERT; this is an upsert keyed on
+  // `scope`, so every run after the first takes the UPDATE path and the column
+  // would otherwise stay frozen at the original insert time (the "Updated Xh
+  // ago" UI relies on it). Set it explicitly on every write.
+  const computedAt = new Date().toISOString();
+
   const rows: SnapshotRow[] = [
     {
       scope: "galaxy",
       payload: galaxy as unknown as Json,
       node_count: galaxy.nodes.length,
       edge_count: galaxy.edges.length,
+      computed_at: computedAt,
     },
     ...[...topics.entries()].map(([slug, snap]) => ({
       scope: `topic:${slug}`,
       payload: snap as unknown as Json,
       node_count: snap.nodes.length,
       edge_count: snap.edges.length,
+      computed_at: computedAt,
     })),
   ];
 
