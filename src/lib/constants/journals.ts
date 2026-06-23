@@ -21,8 +21,14 @@ const ALLERGY_MESH_TERMS = [
   "Urticaria",
   "Immunoglobulin E",
   "Drug Hypersensitivity",
+  // "Eosinophils" is the cell descriptor; NLM indexes most modern eosinophil
+  // papers (and EGPA, via "Churg-Strauss Syndrome") under these, NOT the
+  // "Eosinophilia" condition term — without them, eosinophil-biology and EGPA
+  // reviews in general journals (Front Immunol, Lancet, …) were silently dropped.
+  "Eosinophils",
   "Eosinophilia",
   "Eosinophilic Esophagitis",
+  "Churg-Strauss Syndrome",
   "Angioedema",
   "Desensitization, Immunologic",
   "Mast Cells",
@@ -54,8 +60,15 @@ const ALLERGY_TIAB_TERMS = [
   "allergens",
   "allergen immunotherapy",
   "hypersensitivity",
+  // Mirror the cell-level MeSH above: pre-indexing (epublish) eosinophil papers
+  // carry these word stems in title/abstract but no MeSH yet. "eosinophilia"
+  // alone misses "eosinophils" / "eosinophilic granulomatosis (EGPA)".
+  "eosinophil",
+  "eosinophils",
+  "eosinophilic",
   "eosinophilia",
   "eosinophilic esophagitis",
+  "eosinophilic granulomatosis",
   "mastocytosis",
   "mast cell",
   "mast cells",
