@@ -29,6 +29,7 @@ export async function fetchInitialPapers(): Promise<PapersResponse> {
     .order("epub_date", { ascending: false, nullsFirst: false })
     .order("id", { ascending: false })
     .order("position", { referencedTable: "paper_authors", ascending: true })
+    .limit(3, { referencedTable: "paper_authors" })
     .range(0, INITIAL_LIMIT);
 
   if (error) {

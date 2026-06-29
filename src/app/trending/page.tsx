@@ -36,6 +36,7 @@ async function fetchTrendingPapers() {
     .order("citation_count", { ascending: false, nullsFirst: false })
     .order("epub_date", { ascending: false })
     .order("position", { referencedTable: "paper_authors", ascending: true })
+    .limit(3, { referencedTable: "paper_authors" })
     .limit(POOL_SIZE);
 
   if (error) {

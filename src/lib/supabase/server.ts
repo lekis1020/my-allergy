@@ -3,12 +3,19 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/supabase";
 
-// Read-only client using anon key — respects RLS policies
+// Read-only client using anon key — respects RLS policies.
+// Anon reads are stateless (no per-request cookies/session), so we reuse a
+// single lazily-created instance instead of allocating one per request.
+let anonClient: ReturnType<typeof createSupabaseClient<Database>> | null = null;
+
 export function createAnonClient() {
-  return createSupabaseClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  if (!anonClient) {
+    anonClient = createSupabaseClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }
+  return anonClient;
 }
 
 // Admin client using service_role key — bypasses RLS

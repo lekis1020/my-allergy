@@ -66,6 +66,7 @@ function PaperCardComponent({ paper }: PaperCardProps) {
             {paper.authors.length > 0 && (
               <PaperAuthors
                 authors={paper.authors}
+                total={paper.authorCount}
                 className="text-sm text-gray-500 dark:text-gray-400"
               />
             )}
@@ -74,7 +75,7 @@ function PaperCardComponent({ paper }: PaperCardProps) {
             )}
             <span className="inline-flex items-center gap-1">
               <Users className="h-3.5 w-3.5" />
-              {paper.authors.length} authors
+              {paper.authorCount} authors
             </span>
             {hasAbstract && (
               <>

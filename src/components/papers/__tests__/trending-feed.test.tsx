@@ -34,6 +34,7 @@ const mkPaper = (i: number): PaperWithJournal => ({
   authors: [
     { last_name: "Kim", first_name: "A", initials: "A", affiliation: null, position: 1 },
   ],
+  authorCount: 1,
 });
 
 const render = () => renderToStaticMarkup(React.createElement(TrendingFeed));

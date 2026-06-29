@@ -9,11 +9,19 @@ import type { PaperWithJournal } from "@/types/filters";
  * shipped without ai_summary). Keep the literal type (`as const`) so
  * supabase-js infers the row shape from it.
  */
+// Feed cards only render the first few authors (by position) plus a total count
+// (paper-card / paper-authors). Fetching every author — and especially the long
+// `affiliation` string — for every row inflates the query, JSON, and SSR HTML
+// for no display benefit. So we drop `affiliation`/`first_name` here and expose
+// the true total via an aliased `count` aggregate; the full author list lives in
+// the paper-detail select. Display feeds additionally cap the embedded rows with
+// `.limit(3, { referencedTable: "paper_authors" })`.
 export const PAPER_FEED_SELECT = `
       id, pmid, doi, title, abstract, ai_summary, publication_date, epub_date,
       volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
       journals!inner (id, name, abbreviation, color, slug),
-      paper_authors (last_name, first_name, initials, affiliation, position)
+      paper_authors (last_name, initials, position),
+      author_count:paper_authors (count)
     ` as const;
 
 export interface PaperRow {
@@ -36,11 +44,11 @@ export interface PaperRow {
   journals: { id: string; name: string; abbreviation: string; color: string; slug: string };
   paper_authors: Array<{
     last_name: string;
-    first_name: string | null;
     initials: string | null;
-    affiliation: string | null;
     position: number;
   }>;
+  // Aliased `count` aggregate embed — PostgREST returns it as `[{ count: N }]`.
+  author_count?: Array<{ count: number }> | null;
 }
 
 export function toPaperDto(paper: PaperRow): PaperWithJournal {
@@ -88,11 +96,16 @@ export function toPaperDto(paper: PaperRow): PaperWithJournal {
     ai_summary: paper.ai_summary ?? null,
     authors: authors.map((a) => ({
       last_name: a.last_name,
-      first_name: a.first_name,
+      // first_name / affiliation are not fetched by the feed select; the
+      // detail page carries the full author record.
+      first_name: null,
       initials: a.initials,
-      affiliation: a.affiliation,
+      affiliation: null,
       position: a.position,
     })),
+    // True total author count from the aggregate embed; falls back to the
+    // (possibly capped) embedded row count when the aggregate is absent.
+    authorCount: paper.author_count?.[0]?.count ?? authors.length,
   };
 }
 

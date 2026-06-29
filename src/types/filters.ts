@@ -85,6 +85,9 @@ export interface PaperWithJournal {
   journal_slug: string;
   topic_tags: TopicTag[];
   authors: AuthorSummary[];
+  // Total number of authors on the paper. The feed select fetches only the first
+  // few `authors` for display, so this carries the real count for "N authors".
+  authorCount: number;
   comment_count?: number;
   latest_comment_at?: string | null;
   ai_summary?: string | null;

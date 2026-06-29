@@ -115,7 +115,8 @@ export async function fetchAgoraPage(page: number, limit: number): Promise<Paper
     .from("papers")
     .select(PAPER_FEED_SELECT)
     .in("pmid", pagePmids)
-    .order("position", { referencedTable: "paper_authors", ascending: true });
+    .order("position", { referencedTable: "paper_authors", ascending: true })
+    .limit(3, { referencedTable: "paper_authors" });
 
   if (papersError) {
     console.error("[agora] paper query error:", papersError);

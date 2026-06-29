@@ -8,9 +8,10 @@ import { PaperCardSkeleton } from "@/components/ui/skeleton";
 // minutes; per-user bookmark/like state is layered in client-side via SWR.
 export const revalidate = 600;
 
-export default async function Page() {
-  const initialData = await fetchInitialPapers();
-
+export default function Page() {
+  // Stream the static shell + skeleton immediately and let the feed resolve
+  // inside the Suspense boundary, so a slow (cold/regenerating) DB query no
+  // longer blocks the whole page render before any bytes are sent.
   return (
     <Suspense
       fallback={
@@ -23,7 +24,12 @@ export default async function Page() {
         </div>
       }
     >
-      <HomePage initialData={initialData} />
+      <TimelineFeed />
     </Suspense>
   );
+}
+
+async function TimelineFeed() {
+  const initialData = await fetchInitialPapers();
+  return <HomePage initialData={initialData} />;
 }

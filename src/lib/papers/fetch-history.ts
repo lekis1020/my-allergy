@@ -71,7 +71,8 @@ export async function fetchHistoryData(): Promise<HistoryInitialData> {
     .from("papers")
     .select(PAPER_FEED_SELECT)
     .in("pmid", allPmids)
-    .order("position", { referencedTable: "paper_authors", ascending: true });
+    .order("position", { referencedTable: "paper_authors", ascending: true })
+    .limit(3, { referencedTable: "paper_authors" });
 
   if (error) {
     console.error("[fetchHistoryData] papers error:", error);
