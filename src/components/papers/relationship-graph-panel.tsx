@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { Loader2, Network, ChevronLeft, X } from "lucide-react";
 import { RelationshipGraph } from "@/components/graph/relationship-graph";
@@ -29,9 +29,26 @@ export function RelationshipGraphPanel() {
   const [view, setView] = useGraphView();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Galaxy fetch (only when we are on the galaxy state).
+  // The inline panel is display-hidden below the `sm` breakpoint, but CSS
+  // hiding alone would still run the snapshot fetch and the d3 force
+  // simulation on phones. Track the breakpoint and only do graph work when
+  // the panel is actually visible (desktop inline, or the mobile modal).
+  // Initializing from matchMedia directly is safe: this component is loaded
+  // via next/dynamic with ssr: false, so there is no server markup to match.
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 640px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    const update = () => setIsDesktop(mq.matches);
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  const graphVisible = isDesktop || mobileOpen;
+
+  // Galaxy fetch (only when we are on the galaxy state and the panel shows).
   const galaxy = useSWR<GalaxySnapshot & SnapshotMeta>(
-    view.kind === "galaxy" ? "/api/graph/galaxy" : null,
+    graphVisible && view.kind === "galaxy" ? "/api/graph/galaxy" : null,
     fetcher,
     { revalidateOnFocus: false }
   );
@@ -39,7 +56,7 @@ export function RelationshipGraphPanel() {
   // Topic fetch (when we are on topic or highlight).
   const topicSlug = view.kind === "galaxy" ? null : view.slug;
   const topic = useSWR<TopicSnapshot & SnapshotMeta>(
-    topicSlug ? `/api/graph/topic/${topicSlug}` : null,
+    graphVisible && topicSlug ? `/api/graph/topic/${topicSlug}` : null,
     fetcher,
     { revalidateOnFocus: false }
   );
@@ -199,10 +216,9 @@ export function RelationshipGraphPanel() {
         </button>
       </div>
 
-      {/* Desktop inline panel */}
-      <div className="hidden sm:block">
-        {renderBody()}
-      </div>
+      {/* Desktop inline panel — mounted only at ≥sm so phones skip the
+          snapshot fetch and force simulation entirely. */}
+      {isDesktop && <div className="hidden sm:block">{renderBody()}</div>}
 
       {/* Mobile fullscreen modal */}
       {mobileOpen && (

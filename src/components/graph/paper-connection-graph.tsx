@@ -2,9 +2,22 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import * as d3 from "d3";
+// Import only the d3 submodules this component uses — the full "d3" bundle
+// would drag every d3 package into the chunk.
+import { select } from "d3-selection";
+import { zoom as d3Zoom } from "d3-zoom";
+import { drag as d3Drag } from "d3-drag";
+import {
+  forceSimulation,
+  forceLink,
+  forceManyBody,
+  forceCenter,
+  forceCollide,
+  type SimulationNodeDatum,
+  type SimulationLinkDatum,
+} from "d3-force";
 
-interface GraphNode extends d3.SimulationNodeDatum {
+interface GraphNode extends SimulationNodeDatum {
   pmid: string;
   title: string;
   journal_abbreviation: string;
@@ -19,7 +32,7 @@ interface MentionDetail {
   created_at: string;
 }
 
-interface GraphEdge extends d3.SimulationLinkDatum<GraphNode> {
+interface GraphEdge extends SimulationLinkDatum<GraphNode> {
   type: "citation" | "mention" | "both";
   direction: "references" | "cited_by" | "bidirectional";
   mentions: MentionDetail[];
@@ -52,8 +65,8 @@ export function PaperConnectionGraph({
 
   useEffect(() => {
     if (!svgRef.current) return;
-    const svg = d3.select(svgRef.current);
-    const tooltip = d3.select(tooltipRef.current);
+    const svg = select(svgRef.current);
+    const tooltip = select(tooltipRef.current);
     svg.selectAll("*").remove();
 
     // Build graph data
@@ -89,18 +102,18 @@ export function PaperConnectionGraph({
     const g = svg.append("g");
 
     if (interactive) {
-      const zoom = d3.zoom<SVGSVGElement, unknown>()
+      const zoom = d3Zoom<SVGSVGElement, unknown>()
         .scaleExtent([0.3, 3])
         .on("zoom", (event) => g.attr("transform", event.transform));
       svg.call(zoom);
     }
 
     // Force simulation
-    const simulation = d3.forceSimulation<GraphNode>(graphNodes)
-      .force("link", d3.forceLink<GraphNode, GraphEdge>(graphEdges).id((d) => d.pmid).distance(160))
-      .force("charge", d3.forceManyBody().strength(-400))
-      .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide().radius(40));
+    const simulation = forceSimulation<GraphNode>(graphNodes)
+      .force("link", forceLink<GraphNode, GraphEdge>(graphEdges).id((d) => d.pmid).distance(160))
+      .force("charge", forceManyBody().strength(-400))
+      .force("center", forceCenter(width / 2, height / 2))
+      .force("collision", forceCollide().radius(40));
 
     // Fix focal node to center
     const focalNode = graphNodes.find((n) => n.isFocal);
@@ -143,7 +156,7 @@ export function PaperConnectionGraph({
     if (interactive) {
       node.on("click", (_event, d) => navigate(d.pmid));
       node.call(
-        d3.drag<SVGGElement, GraphNode>()
+        d3Drag<SVGGElement, GraphNode>()
           .on("start", (event, d) => {
             if (!event.active) simulation.alphaTarget(0.3).restart();
             if (!d.isFocal) { d.fx = d.x; d.fy = d.y; }

@@ -6,10 +6,25 @@ import { useSearchParams } from "next/navigation";
 import { Microscope, X } from "lucide-react";
 const RightRail = dynamic(() => import("@/components/layout/right-rail").then((m) => ({ default: m.RightRail })), { ssr: false });
 const HomeSidebar = dynamic(() => import("@/components/layout/home-sidebar").then((m) => ({ default: m.HomeSidebar })), { ssr: false });
+// The graph panels pull in d3 (force/zoom/drag/selection); loading them lazily
+// keeps d3 out of the first-load bundle for the timeline itself.
+// The placeholder mirrors each panel's own loading state (mobile CTA row /
+// desktop spinner box) so the feed below doesn't jump when the chunk lands.
+const graphPanelPlaceholder = () => (
+  <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+    <div className="h-11 animate-pulse rounded-xl bg-gray-50 dark:bg-gray-900/50 sm:h-[150px]" />
+  </div>
+);
+const RelationshipGraphPanel = dynamic(
+  () => import("@/components/papers/relationship-graph-panel").then((m) => ({ default: m.RelationshipGraphPanel })),
+  { ssr: false, loading: graphPanelPlaceholder },
+);
+const PersonalConnectionGraphPanel = dynamic(
+  () => import("@/components/papers/personal-connection-graph-panel").then((m) => ({ default: m.PersonalConnectionGraphPanel })),
+  { ssr: false, loading: graphPanelPlaceholder },
+);
 import { PaperFeed } from "@/components/papers/paper-feed";
 import { FilterBar } from "@/components/papers/filter-bar";
-import { RelationshipGraphPanel } from "@/components/papers/relationship-graph-panel";
-import { PersonalConnectionGraphPanel } from "@/components/papers/personal-connection-graph-panel";
 import { usePaperFilters } from "@/hooks/use-paper-filters";
 import { usePapers } from "@/hooks/use-papers";
 import { useAuth } from "@/hooks/use-auth";

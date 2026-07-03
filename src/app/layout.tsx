@@ -67,7 +67,6 @@ export default function RootLayout({
         <meta name="google-adsense-account" content="ca-pub-8245767086450488" />
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL!} />
-        <link rel="preload" href="/api/papers?limit=10" as="fetch" crossOrigin="anonymous" />
       </head>
       <body className={`${manrope.variable} ${spaceGrotesk.variable} antialiased`}>
         {/* Google Funding Choices (IAB TCF v2.2 CMP) — must load before AdSense */}
@@ -75,16 +74,20 @@ export default function RootLayout({
           id="google-fc-present"
           strategy="beforeInteractive"
         >{`(function(){function signalGooglefcPresent(){if(!window.frames['googlefcPresent']){if(document.body){var iframe=document.createElement('iframe');iframe.style='width:0;height:0;border:none;z-index:-1000;left:-1000px;top:-1000px;display:none';iframe.name='googlefcPresent';document.body.appendChild(iframe);}else{setTimeout(signalGooglefcPresent,0);}}}signalGooglefcPresent();})();`}</Script>
+        {/* lazyOnload keeps both third-party loaders off the hydration
+            critical path; ad slots queue pushes on window.adsbygoogle, which
+            the loader drains whenever it arrives. CMP is injected first so
+            the consent flow still precedes ad requests, same as before. */}
         <Script
           async
           src="https://fundingchoicesmessages.google.com/i/pub-8245767086450488?ers=2"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8245767086450488"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
         <MobileDrawerProvider>
           <CommentNotificationsProvider>
