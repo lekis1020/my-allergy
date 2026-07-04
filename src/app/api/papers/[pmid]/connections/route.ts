@@ -19,9 +19,10 @@ interface MentionDetail {
 interface ConnectionEdge {
   source: string;
   target: string;
-  type: "citation" | "mention" | "both";
+  type: "citation" | "mention" | "both" | "similarity" | "bookmark";
   direction: "references" | "cited_by" | "bidirectional";
   mentions: MentionDetail[];
+  similarity?: number;
 }
 
 export async function GET(
@@ -96,8 +97,28 @@ export async function GET(
     mentionMap.set(row.source_pmid, arr);
   }
 
-  // 4. Collect all related PMIDs
-  const allPmids = new Set([...citationMap.keys(), ...mentionMap.keys()]);
+  // 4. Similarity neighbours (embedding cosine). The RPC may not be deployed
+  //    yet — degrade to empty rather than throwing a 500.
+  const similarityMap = new Map<string, number>();
+  try {
+    const { data: sims } = await supabase.rpc("paper_similar_neighbors", {
+      p_pmid: pmid,
+      p_k: 8,
+      p_threshold: 0.5,
+    });
+    for (const row of sims ?? []) {
+      similarityMap.set(String(row.pmid), Number(row.similarity));
+    }
+  } catch {
+    // RPC missing / failed → treat as no similarity edges.
+  }
+
+  // 5. Collect all related PMIDs
+  const allPmids = new Set([
+    ...citationMap.keys(),
+    ...mentionMap.keys(),
+    ...similarityMap.keys(),
+  ]);
   const journal = paper.journals as unknown as { abbreviation: string; color: string };
 
   if (allPmids.size === 0) {
@@ -113,7 +134,7 @@ export async function GET(
     });
   }
 
-  // 5. Fetch paper metadata for all related papers
+  // 5b. Fetch paper metadata for all related papers
   const { data: relatedPapers } = await supabase
     .from("papers")
     .select("pmid, title, publication_date, journals!inner(abbreviation, color)")
@@ -141,7 +162,15 @@ export async function GET(
 
     const hasCitation = citationMap.has(relatedPmid);
     const hasMention = mentionMap.has(relatedPmid);
-    const type = hasCitation && hasMention ? "both" : hasCitation ? "citation" : "mention";
+    const hasSimilarity = similarityMap.has(relatedPmid);
+    const type: ConnectionEdge["type"] =
+      hasCitation && hasMention
+        ? "both"
+        : hasCitation
+          ? "citation"
+          : hasMention
+            ? "mention"
+            : "similarity";
     const direction = citationMap.get(relatedPmid) ?? "cited_by";
 
     edges.push({
@@ -150,6 +179,7 @@ export async function GET(
       type,
       direction,
       mentions: mentionMap.get(relatedPmid) ?? [],
+      ...(hasSimilarity ? { similarity: similarityMap.get(relatedPmid) } : {}),
     });
   }
 
