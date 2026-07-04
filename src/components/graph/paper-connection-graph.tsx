@@ -32,10 +32,8 @@ interface MentionDetail {
   created_at: string;
 }
 
-interface GraphEdge extends d3.SimulationLinkDatum<GraphNode> {
-  type: "citation" | "mention" | "both" | "similarity" | "bookmark";
 interface GraphEdge extends SimulationLinkDatum<GraphNode> {
-  type: "citation" | "mention" | "both";
+  type: "citation" | "mention" | "both" | "similarity" | "bookmark";
   direction: "references" | "cited_by" | "bidirectional";
   mentions: MentionDetail[];
   similarity?: number;
