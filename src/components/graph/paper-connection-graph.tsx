@@ -33,9 +33,10 @@ interface MentionDetail {
 }
 
 interface GraphEdge extends SimulationLinkDatum<GraphNode> {
-  type: "citation" | "mention" | "both";
+  type: "citation" | "mention" | "both" | "similarity" | "bookmark";
   direction: "references" | "cited_by" | "bidirectional";
   mentions: MentionDetail[];
+  similarity?: number;
 }
 
 interface PaperConnectionGraphProps {
@@ -43,9 +44,10 @@ interface PaperConnectionGraphProps {
   nodes: Array<{ pmid: string; title: string; journal_abbreviation: string; journal_color: string; publication_date: string }>;
   edges: Array<{
     source: string; target: string;
-    type: "citation" | "mention" | "both";
+    type: "citation" | "mention" | "both" | "similarity" | "bookmark";
     direction: "references" | "cited_by" | "bidirectional";
     mentions: MentionDetail[];
+    similarity?: number;
   }>;
   width: number;
   height: number;
@@ -79,7 +81,7 @@ export function PaperConnectionGraph({
 
     const graphEdges: GraphEdge[] = edges.map((e) => ({
       source: e.source, target: e.target,
-      type: e.type, direction: e.direction, mentions: e.mentions,
+      type: e.type, direction: e.direction, mentions: e.mentions, similarity: e.similarity,
     }));
 
     // Defs for arrow markers
@@ -126,10 +128,21 @@ export function PaperConnectionGraph({
     const link = g.selectAll<SVGLineElement, GraphEdge>(".link")
       .data(graphEdges).enter().append("line")
       .attr("class", "link")
-      .attr("stroke", (d) => d.type === "citation" ? "#9CA3AF" : d.type === "mention" ? "#3B82F6" : "#8B5CF6")
+      .attr("stroke", (d) =>
+        d.type === "citation" ? "#9CA3AF"
+        : d.type === "mention" ? "#3B82F6"
+        : d.type === "similarity" ? "#14b8a6"
+        : d.type === "bookmark" ? "#f59e0b"
+        : "#8B5CF6")
       .attr("stroke-width", 2)
-      .attr("stroke-dasharray", (d) => d.type === "citation" ? "6,3" : "none")
-      .attr("marker-end", (d) => d.type === "citation" ? "url(#arrow-citation)" : "url(#arrow-mention)");
+      .attr("stroke-dasharray", (d) =>
+        d.type === "citation" ? "6,3"
+        : d.type === "similarity" ? "4,3"
+        : "none")
+      .attr("marker-end", (d) =>
+        d.type === "citation" ? "url(#arrow-citation)"
+        : d.type === "mention" || d.type === "both" ? "url(#arrow-mention)"
+        : null);
 
     if (interactive) {
       link.on("mouseenter", function (event, d) {

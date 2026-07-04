@@ -800,6 +800,13 @@ export type Database = {
         }[]
       }
       is_email_confirmed: { Args: never; Returns: boolean }
+      paper_similar_neighbors: {
+        Args: { p_pmid: string; p_k: number; p_threshold: number }
+        Returns: {
+          pmid: string
+          similarity: number
+        }[]
+      }
       paper_similarity_edges_topk: {
         Args: { p_k: number; p_threshold: number }
         Returns: {

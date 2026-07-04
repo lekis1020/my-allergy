@@ -9,14 +9,16 @@ interface ConnectionGraphModalProps {
   nodes: Array<{ pmid: string; title: string; journal_abbreviation: string; journal_color: string; publication_date: string }>;
   edges: Array<{
     source: string; target: string;
-    type: "citation" | "mention" | "both";
+    type: "citation" | "mention" | "both" | "similarity" | "bookmark";
     direction: "references" | "cited_by" | "bidirectional";
     mentions: Array<{ comment_id: string; anon_id: string; content_snippet: string; created_at: string }>;
+    similarity?: number;
   }>;
+  mode: "all" | "mine";
   onClose: () => void;
 }
 
-export function ConnectionGraphModal({ focal, nodes, edges, onClose }: ConnectionGraphModalProps) {
+export function ConnectionGraphModal({ focal, nodes, edges, mode, onClose }: ConnectionGraphModalProps) {
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -39,7 +41,7 @@ export function ConnectionGraphModal({ focal, nodes, edges, onClose }: Connectio
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Paper Connections
+              관계 그래프 — {mode === "mine" ? "내 관계도" : "전체 관계도"}
             </h2>
             <p className="truncate text-xs text-gray-500 dark:text-gray-400">
               {focal.title}
@@ -67,18 +69,37 @@ export function ConnectionGraphModal({ focal, nodes, edges, onClose }: Connectio
 
         {/* Legend */}
         <div className="flex items-center gap-6 border-t border-gray-200 px-6 py-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-          <span className="flex items-center gap-2">
-            <span className="inline-block h-0.5 w-6 border-t-2 border-dashed border-gray-400" />
-            Citation
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="inline-block h-0.5 w-6 bg-blue-500" />
-            User Mention
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="inline-block h-0.5 w-6 bg-purple-500" />
-            Both
-          </span>
+          {mode === "mine" ? (
+            <>
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-0.5 w-6 bg-amber-500" />
+                북마크
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-0.5 w-6 border-t-2 border-dashed border-teal-500" />
+                유사도
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-0.5 w-6 bg-blue-500" />
+                멘션
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-0.5 w-6 border-t-2 border-dashed border-teal-500" />
+                유사도
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-0.5 w-6 border-t-2 border-dashed border-gray-400" />
+                인용
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-0.5 w-6 bg-blue-500" />
+                멘션
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>
