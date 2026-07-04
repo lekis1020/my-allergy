@@ -1,10 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
 import { Sparkles } from "lucide-react";
 import { AbstractSummary } from "@/components/papers/abstract-summary";
-import { BookmarkButton } from "@/components/papers/bookmark-button";
-import { LikeButton } from "@/components/papers/like-button";
 
 interface PaperActionsProps {
   pmid: string;
@@ -20,30 +17,16 @@ interface PaperActionsProps {
  * consolidated disclaimer sits at the bottom of the page.
  */
 export function PaperActions({ pmid, abstract, title, aiSummary }: PaperActionsProps) {
-  const [generatedSummary, setGeneratedSummary] = useState<string | null>(null);
-
-  const handleSummaryGenerated = useCallback((summary: string) => {
-    setGeneratedSummary(summary);
-  }, []);
-
   // Nothing to render if neither a pre-stored summary nor an abstract is available.
   if (!aiSummary && !abstract) return null;
 
-  // The bookmark thumbnail uses the pre-stored summary when present;
-  // otherwise falls back to whatever the user just generated on-demand.
-  const bookmarkSummary = aiSummary ?? generatedSummary;
-
   return (
     <section className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50/50 p-5 dark:border-blue-800/50 dark:from-blue-950/40 dark:to-indigo-950/30">
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex items-center gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
           <Sparkles className="h-4 w-4 text-blue-500" />
           AI 요약
         </h2>
-        <div className="flex items-center gap-1">
-          <LikeButton pmid={pmid} size="md" />
-          <BookmarkButton pmid={pmid} size="md" aiSummary={bookmarkSummary} />
-        </div>
       </div>
 
       {aiSummary && (
@@ -69,7 +52,6 @@ export function PaperActions({ pmid, abstract, title, aiSummary }: PaperActionsP
             abstract={abstract}
             title={title}
             pmid={pmid}
-            onSummaryGenerated={handleSummaryGenerated}
           />
         </div>
       )}

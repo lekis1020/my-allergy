@@ -2,18 +2,35 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import * as d3 from "d3";
+// Import only the d3 submodules this component uses — the full "d3" bundle
+// would drag every d3 package into the chunk.
+import { select } from "d3-selection";
+import { zoom as d3Zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
+import { drag as d3Drag } from "d3-drag";
+import {
+  forceSimulation,
+  forceLink,
+  forceManyBody,
+  forceCenter,
+  forceCollide,
+  forceX,
+  forceY,
+  type SimulationNodeDatum,
+  type SimulationLinkDatum,
+} from "d3-force";
+// Side-effect import: patches selection.transition() used by the zoom buttons.
+import "d3-transition";
 import { Plus, Minus, RotateCcw } from "lucide-react";
 import type { GraphNode, GraphEdge } from "@/lib/graph/types";
 
-interface SimNode extends d3.SimulationNodeDatum {
+interface SimNode extends SimulationNodeDatum {
   pmid: string;
   title: string;
   journal_abbreviation: string;
   journal_color: string;
 }
 
-interface SimEdge extends d3.SimulationLinkDatum<SimNode> {
+interface SimEdge extends SimulationLinkDatum<SimNode> {
   type: GraphEdge["type"];
 }
 
@@ -61,7 +78,7 @@ export function RelationshipGraph({
 }: RelationshipGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const router = useRouter();
 
   const navigate = useCallback((pmid: string) => {
@@ -70,23 +87,23 @@ export function RelationshipGraph({
 
   const handleZoomIn = useCallback(() => {
     if (!svgRef.current || !zoomRef.current) return;
-    d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, 1.4);
+    select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, 1.4);
   }, []);
 
   const handleZoomOut = useCallback(() => {
     if (!svgRef.current || !zoomRef.current) return;
-    d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, 1 / 1.4);
+    select(svgRef.current).transition().duration(200).call(zoomRef.current.scaleBy, 1 / 1.4);
   }, []);
 
   const handleZoomReset = useCallback(() => {
     if (!svgRef.current || !zoomRef.current) return;
-    d3.select(svgRef.current).transition().duration(200).call(zoomRef.current.transform, d3.zoomIdentity);
+    select(svgRef.current).transition().duration(200).call(zoomRef.current.transform, zoomIdentity);
   }, []);
 
   useEffect(() => {
     if (!svgRef.current) return;
-    const svg = d3.select(svgRef.current);
-    const tooltip = d3.select(tooltipRef.current);
+    const svg = select(svgRef.current);
+    const tooltip = select(tooltipRef.current);
     svg.selectAll("*").remove();
 
     const graphNodes: SimNode[] = nodes.map((n) => ({
@@ -115,20 +132,20 @@ export function RelationshipGraph({
 
     const g = svg.append("g");
 
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
+    const zoom = d3Zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3])
       .on("zoom", (event) => g.attr("transform", event.transform));
     svg.call(zoom);
     zoomRef.current = zoom;
 
-    const simulation = d3.forceSimulation<SimNode>(graphNodes)
-      .force("link", d3.forceLink<SimNode, SimEdge>(graphEdges).id((d) => d.pmid).distance(linkDistance))
-      .force("charge", d3.forceManyBody().strength(chargeStrength))
-      .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide().radius(34));
+    const simulation = forceSimulation<SimNode>(graphNodes)
+      .force("link", forceLink<SimNode, SimEdge>(graphEdges).id((d) => d.pmid).distance(linkDistance))
+      .force("charge", forceManyBody().strength(chargeStrength))
+      .force("center", forceCenter(width / 2, height / 2))
+      .force("collision", forceCollide().radius(34));
     if (centerStrength > 0) {
-      simulation.force("x", d3.forceX(width / 2).strength(centerStrength));
-      simulation.force("y", d3.forceY(height / 2).strength(centerStrength));
+      simulation.force("x", forceX(width / 2).strength(centerStrength));
+      simulation.force("y", forceY(height / 2).strength(centerStrength));
     }
 
     const link = g.selectAll<SVGLineElement, SimEdge>(".link")
@@ -159,7 +176,7 @@ export function RelationshipGraph({
       else navigate(d.pmid);
     });
     node.call(
-      d3.drag<SVGGElement, SimNode>()
+      d3Drag<SVGGElement, SimNode>()
         .on("start", (event, d) => {
           if (!event.active) simulation.alphaTarget(0.3).restart();
           d.fx = d.x; d.fy = d.y;
