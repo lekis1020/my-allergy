@@ -10,6 +10,8 @@ import { findOpenAccessPdf } from "@/lib/pubmed/open-access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PaperActions } from "@/components/papers/paper-actions";
+import { BookmarkButton } from "@/components/papers/bookmark-button";
+import { LikeButton } from "@/components/papers/like-button";
 import { StructuredAbstract } from "@/components/papers/structured-abstract";
 import { CommentThread } from "@/components/comments/comment-thread";
 import { AuthorsList } from "@/components/papers/authors-list";
@@ -162,6 +164,17 @@ export default async function PaperDetailPage({ params }: PageProps) {
     </div>
   );
 
+  const paperInteractions = (
+    <div className="flex items-center gap-2">
+      <LikeButton pmid={pmid} size="md" />
+      <BookmarkButton
+        pmid={pmid}
+        size="md"
+        aiSummary={paper.ai_summary ? String(paper.ai_summary) : null}
+      />
+    </div>
+  );
+
   const keywordChips = allTags.length > 0 && (
     <div className="flex flex-wrap gap-1.5">
       {allTags.map((keyword, i) => (
@@ -290,6 +303,8 @@ export default async function PaperDetailPage({ params }: PageProps) {
             {/* Mobile-only: keywords, external links, related papers */}
             <div className="space-y-8 lg:hidden">
 
+              <ConnectionGraphPreview pmid={pmid} />
+
               {allTags.length > 0 && (
                 <section>
                   <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -306,7 +321,12 @@ export default async function PaperDetailPage({ params }: PageProps) {
                 {externalLinks}
               </section>
 
-              <ConnectionGraphPreview pmid={pmid} />
+              <section>
+                <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  이 논문
+                </h2>
+                {paperInteractions}
+              </section>
 
               {hasCitations && (
                 <>
@@ -354,6 +374,15 @@ export default async function PaperDetailPage({ params }: PageProps) {
                 {externalLinks}
               </div>
 
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+                <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  이 논문
+                </h2>
+                {paperInteractions}
+              </div>
+
+              <ConnectionGraphPreview pmid={pmid} />
+
               {allTags.length > 0 && (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
                   <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -362,8 +391,6 @@ export default async function PaperDetailPage({ params }: PageProps) {
                   {keywordChips}
                 </div>
               )}
-
-              <ConnectionGraphPreview pmid={pmid} />
 
               {hasCitations && (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
