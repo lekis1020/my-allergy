@@ -44,7 +44,11 @@ describe("TrendingFeed", () => {
   it("keeps showing papers when a revalidation error occurs", () => {
     // The bug: a failed /api/trending revalidation discarded valid papers.
     mockUseTrending.mockReturnValue({
+      window: "default",
       papers: [mkPaper(1), mkPaper(2)],
+      weekPapers: [],
+      weekStartsOn: null,
+      hasPreviousWeek: false,
       isLoading: false,
       error: new Error("Trending API error: 500"),
     });
@@ -55,7 +59,11 @@ describe("TrendingFeed", () => {
 
   it("shows the error UI only when there are no papers to show", () => {
     mockUseTrending.mockReturnValue({
+      window: "default",
       papers: [],
+      weekPapers: [],
+      weekStartsOn: null,
+      hasPreviousWeek: false,
       isLoading: false,
       error: new Error("Trending API error: 500"),
     });
@@ -64,7 +72,11 @@ describe("TrendingFeed", () => {
 
   it("shows the empty state when there is no data and no error", () => {
     mockUseTrending.mockReturnValue({
+      window: "default",
       papers: [],
+      weekPapers: [],
+      weekStartsOn: null,
+      hasPreviousWeek: false,
       isLoading: false,
       error: undefined,
     });
@@ -73,7 +85,11 @@ describe("TrendingFeed", () => {
 
   it("renders the paper list on success", () => {
     mockUseTrending.mockReturnValue({
+      window: "default",
       papers: [mkPaper(1)],
+      weekPapers: [],
+      weekStartsOn: null,
+      hasPreviousWeek: false,
       isLoading: false,
       error: undefined,
     });

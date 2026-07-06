@@ -15,3 +15,4 @@ export { recomputeGraphFn } from "./recompute-graph";
 export { backfillCitationsFn } from "./backfill-citations";
 export { embedPapersFn } from "./embed-papers";
 export { backfillTopicsFn } from "./backfill-topics";
+export { buildWeeklyTrendingFn } from "./weekly-trending";
