@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Trending — 기본 vs 이번 주 서브탭 mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .badge { display:inline-flex; align-items:center; border-radius:6px; padding:1px 7px; font-size:11px; font-weight:700; color:#fff; }
+</style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+<div class="mx-auto max-w-4xl p-8 space-y-10">
+
+  <div class="rounded-2xl bg-white shadow-sm">
+    <!-- Sticky header -->
+    <div class="border-b border-gray-200 px-4 py-3">
+      <div class="flex items-center gap-2">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+        <h1 class="text-xl font-bold tracking-tight">Trending</h1>
+      </div>
+    </div>
+
+    <!-- Subtab row -->
+    <div class="flex items-center justify-between border-b border-gray-200 px-4 py-2">
+      <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-[12px] font-medium">
+        <span class="rounded-md bg-blue-600 px-3 py-1 text-white">기본</span>
+        <span class="rounded-md px-3 py-1 text-gray-500">이번 주</span>
+      </div>
+      <span class="text-xs text-gray-500">Last 6 months · 인용수 기준</span>
+    </div>
+
+    <!-- Existing 이번 달 분석 card (default tab, unchanged) -->
+    <div class="border-b border-gray-200 px-4 py-5">
+      <h2 class="mb-3 flex items-center gap-2 text-base font-bold">📊 이번 달 연구 동향</h2>
+      <p class="text-sm leading-relaxed text-gray-700">최근 30일간 알레르기·임상면역학 분야에서는 severe asthma의 biologic therapy 관련 연구가 다수 발표되었으며 …</p>
+    </div>
+
+    <!-- List (default) -->
+    <div class="divide-y divide-gray-200">
+      <div class="px-4 py-4">
+        <div class="mb-1 flex items-center gap-1.5">
+          <span class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">1</span>
+          <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">42 citations</span>
+        </div>
+        <div class="pt-3">
+          <div class="mb-1 flex items-center gap-2">
+            <span class="badge" style="background:#2563eb">JACI</span>
+            <span class="text-[11px] text-gray-500">2026-05-18</span>
+          </div>
+          <p class="text-sm font-semibold text-gray-900">Biologic therapy in severe eosinophilic asthma: a real-world cohort</p>
+          <p class="mt-1 line-clamp-2 text-xs text-gray-500">Background. Severe eosinophilic asthma remains difficult to control…</p>
+        </div>
+      </div>
+      <div class="px-4 py-4">
+        <div class="mb-1 flex items-center gap-1.5">
+          <span class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">2</span>
+          <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">31 citations</span>
+        </div>
+        <div class="pt-3">
+          <div class="mb-1 flex items-center gap-2">
+            <span class="badge" style="background:#7c3aed">Allergy</span>
+            <span class="text-[11px] text-gray-500">2026-04-11</span>
+          </div>
+          <p class="text-sm font-semibold text-gray-900">Anti–IL-5 vs anti–TSLP in severe asthma: head-to-head RCT</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Second variant: 이번 주 tab active -->
+  <div class="rounded-2xl bg-white shadow-sm">
+    <div class="border-b border-gray-200 px-4 py-3">
+      <div class="flex items-center gap-2">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+        <h1 class="text-xl font-bold tracking-tight">Trending</h1>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between border-b border-gray-200 px-4 py-2">
+      <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-[12px] font-medium">
+        <span class="rounded-md px-3 py-1 text-gray-500">기본</span>
+        <span class="rounded-md bg-violet-600 px-3 py-1 text-white">이번 주</span>
+      </div>
+      <span class="text-xs text-gray-500">2026-06-30 ~ 2026-07-06 · 활동 + IF</span>
+    </div>
+
+    <!-- Info strip explaining rank formula -->
+    <div class="border-b border-gray-200 bg-violet-50 px-4 py-3 text-xs text-violet-900">
+      <p><strong>이번 주 나온 논문</strong>을 사용자 반응(북마크·라이크·댓글)과 저널 IF로 랭킹합니다. 활동이 없으면 IF·발행일 순으로 fallback.</p>
+    </div>
+
+    <!-- List (이번 주) -->
+    <div class="divide-y divide-gray-200">
+      <div class="px-4 py-4">
+        <div class="mb-1 flex flex-wrap items-center gap-1.5">
+          <span class="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">1</span>
+          <span class="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">score 18.4</span>
+          <span class="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">NEW</span>
+        </div>
+        <div class="pt-3">
+          <div class="mb-1 flex items-center gap-2">
+            <span class="badge" style="background:#2563eb">JACI</span>
+            <span class="text-[11px] text-gray-500">IF 14.2 · 2026-07-04</span>
+          </div>
+          <p class="text-sm font-semibold text-gray-900">Long-term real-world efficacy of tezepelumab in adult asthma</p>
+          <p class="mt-1 text-[11px] text-gray-500">🔖 <strong>4</strong> · ❤ <strong>2</strong> · 💬 <strong>1</strong></p>
+        </div>
+      </div>
+      <div class="px-4 py-4">
+        <div class="mb-1 flex flex-wrap items-center gap-1.5">
+          <span class="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">2</span>
+          <span class="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">score 12.1</span>
+          <span class="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">↑ 3</span>
+        </div>
+        <div class="pt-3">
+          <div class="mb-1 flex items-center gap-2">
+            <span class="badge" style="background:#7c3aed">Allergy</span>
+            <span class="text-[11px] text-gray-500">IF 12.4 · 2026-07-02</span>
+          </div>
+          <p class="text-sm font-semibold text-gray-900">Type-2 low endotype in refractory CRSwNP: transcriptomic signatures</p>
+          <p class="mt-1 text-[11px] text-gray-500">🔖 <strong>2</strong> · ❤ <strong>1</strong> · 💬 <strong>0</strong></p>
+        </div>
+      </div>
+      <div class="px-4 py-4">
+        <div class="mb-1 flex flex-wrap items-center gap-1.5">
+          <span class="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">3</span>
+          <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">IF fallback</span>
+        </div>
+        <div class="pt-3">
+          <div class="mb-1 flex items-center gap-2">
+            <span class="badge" style="background:#ea580c">JACI</span>
+            <span class="text-[11px] text-gray-500">IF 14.2 · 2026-07-01</span>
+          </div>
+          <p class="text-sm font-semibold text-gray-900">Peanut oral immunotherapy in preschool children: 5-year outcomes</p>
+          <p class="mt-1 text-[11px] text-gray-500">활동 아직 없음 · IF 순 fallback</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty variant: 이번 주 활동 전무 -->
+  <div class="rounded-2xl bg-white shadow-sm">
+    <div class="border-b border-gray-200 px-4 py-3">
+      <div class="flex items-center gap-2">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+        <h1 class="text-xl font-bold tracking-tight">Trending — 이번 주 (활동 0)</h1>
+      </div>
+    </div>
+    <div class="flex items-center justify-between border-b border-gray-200 px-4 py-2">
+      <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-[12px] font-medium">
+        <span class="rounded-md px-3 py-1 text-gray-500">기본</span>
+        <span class="rounded-md bg-violet-600 px-3 py-1 text-white">이번 주</span>
+      </div>
+      <span class="text-xs text-gray-500">2026-06-30 ~ 2026-07-06 · IF 순 fallback</span>
+    </div>
+    <div class="px-4 py-8 text-center text-sm text-gray-500">
+      <p class="mb-1">📭 이번 주엔 아직 사이트 활동이 없어요.</p>
+      <p>이번 주 발행 논문을 IF·최신순으로 보여드리는 중.</p>
+    </div>
+  </div>
+
+  <div class="rounded-2xl bg-white p-4 text-xs text-gray-600 shadow-sm">
+    <h3 class="mb-2 font-semibold text-gray-800">랭킹 공식 (초안)</h3>
+    <pre class="whitespace-pre-wrap rounded bg-gray-50 p-3 text-[11px] leading-relaxed">score = bookmarks * 2 + likes * 1 + comments * 3     ← 이번 주(±7일) 발행 논문 대상
+      + IF_norm * 3                                 ← IF/max_IF 정규화
+      + citation_count * 0.5                        ← 대부분 0이지만 조기 인용 반영
+      + recency_boost                               ← (7 - days_since_epub)/7
+
+Tie-break: IF desc → epub_date desc → pmid asc
+Fallback (score 0인 논문만): IF desc → epub_date desc
+"NEW" 배지: 이번 주 처음 top-10 진입
+"↑ N" 배지: 지난주 대비 랭크 상승</pre>
+  </div>
+
+</div>
+</body>
+</html>

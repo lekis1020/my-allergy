@@ -748,6 +748,48 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_trending_snapshots: {
+        Row: {
+          bookmark_count: number
+          citation_count: number
+          comment_count: number
+          computed_at: string
+          epub_date: string | null
+          impact_factor: number | null
+          like_count: number
+          pmid: string
+          rank: number
+          score: number
+          week_starts_on: string
+        }
+        Insert: {
+          bookmark_count?: number
+          citation_count?: number
+          comment_count?: number
+          computed_at?: string
+          epub_date?: string | null
+          impact_factor?: number | null
+          like_count?: number
+          pmid: string
+          rank: number
+          score: number
+          week_starts_on: string
+        }
+        Update: {
+          bookmark_count?: number
+          citation_count?: number
+          comment_count?: number
+          computed_at?: string
+          epub_date?: string | null
+          impact_factor?: number | null
+          like_count?: number
+          pmid?: string
+          rank?: number
+          score?: number
+          week_starts_on?: string
+        }
+        Relationships: []
+      }
       user_affinity_profiles: {
         Row: {
           article_types: Json
