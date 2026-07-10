@@ -15,7 +15,7 @@ interface ConnectionEdge {
   source: string;
   target: string;
   type: EdgeType;
-  direction: "references" | "cited_by" | "bidirectional";
+  direction: "references" | "cited_by" | "bidirectional" | null;
   mentions: Array<{ comment_id: string; anon_id: string; content_snippet: string; created_at: string }>;
   similarity?: number;
 }

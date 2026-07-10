@@ -20,7 +20,7 @@ interface ConnectionEdge {
   source: string;
   target: string;
   type: "citation" | "mention" | "both" | "similarity" | "bookmark";
-  direction: "references" | "cited_by" | "bidirectional";
+  direction: "references" | "cited_by" | "bidirectional" | null;
   mentions: MentionDetail[];
   similarity?: number;
 }
@@ -171,7 +171,7 @@ export async function GET(
           : hasMention
             ? "mention"
             : "similarity";
-    const direction = citationMap.get(relatedPmid) ?? "cited_by";
+    const direction = citationMap.get(relatedPmid) ?? null;
 
     edges.push({
       source: pmid,
