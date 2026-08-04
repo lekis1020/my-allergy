@@ -6,6 +6,7 @@ import { Bell, CalendarDays, Clock, Home, Menu, MessagesSquare, Microscope, Tren
 import { EosinophilIcon } from "@/components/icons/eosinophil-icon";
 import { useMobileDrawer } from "@/components/layout/mobile-drawer-context";
 import { AuthButton } from "@/components/layout/auth-button";
+import { HeaderSearch } from "@/components/layout/header-search";
 import { UnreadRepliesBadge } from "@/components/comments/unread-badge";
 
 export function Header() {
@@ -72,6 +73,7 @@ export function Header() {
             Calendar
           </Link>
           <div className="ml-1 flex items-center gap-1 border-l border-gray-200 pl-2 dark:border-gray-700 sm:ml-2 sm:gap-2 sm:pl-3">
+            <HeaderSearch />
             <Link
               href="/alerts"
               className={`relative rounded-full p-2 transition-colors ${
