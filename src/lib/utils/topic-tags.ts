@@ -84,38 +84,6 @@ const TOPIC_CONFIG: Record<Exclude<TopicTag, "others">, TopicConfig> = {
       "garadacimab",
     ],
   },
-  angioedema: {
-    label: "Angioedema",
-    terms: [
-      // HAE is a bradykinin-mediated disorder (C1-INH deficiency) — clinically
-      // distinct from histamine/mast-cell mediated urticaria. We capture HAE,
-      // acquired (AAE), ACE-inhibitor-induced and idiopathic angioedema here,
-      // plus HAE-specific therapeutics that virtually never appear outside
-      // this disease context.
-      "angioedema",
-      "hereditary angioedema",
-      "acquired angioedema",
-      "idiopathic angioedema",
-      "ace inhibitor angioedema",
-      "ace inhibitor induced angioedema",
-      "ace induced angioedema",
-      "bradykinin angioedema",
-      "bradykinin mediated angioedema",
-      "c1 inhibitor",
-      "c1 esterase inhibitor",
-      "c1 inhibitor deficiency",
-      "c1 esterase inhibitor deficiency",
-      "c1 inh",
-      "plasma derived c1 inhibitor",
-      "recombinant c1 inhibitor",
-      "lanadelumab",
-      "icatibant",
-      "ecallantide",
-      "berotralstat",
-      "donidalorsen",
-      "garadacimab",
-    ],
-  },
   atopic_dermatitis: {
     label: "Atopic Dermatitis",
     terms: [
@@ -211,45 +179,6 @@ const TOPIC_CONFIG: Record<Exclude<TopicTag, "others">, TopicConfig> = {
       // Mastocytosis → elevated anaphylaxis risk; mast cell disorders are
       // central to anaphylaxis pathophysiology
       "mastocytosis",
-    ],
-  },
-  allergen_immunotherapy: {
-    label: "Allergen Immunotherapy",
-    terms: [
-      // Generic AIT vocabulary — kept allergen-specific (not bare
-      // "immunotherapy", which would over-match oncology / biologic therapy).
-      "allergen immunotherapy",
-      "allergen specific immunotherapy",
-      "allergen-specific immunotherapy",
-      "specific immunotherapy",
-      "subcutaneous immunotherapy",
-      "sublingual immunotherapy",
-      "oral immunotherapy",
-      "scit",
-      "slit",
-      "oit",
-      "ait",
-      "desensitization immunologic",
-      "immunologic desensitization",
-      // Venom / hymenoptera (bee, wasp)
-      "venom immunotherapy",
-      "hymenoptera venom immunotherapy",
-      "bee venom immunotherapy",
-      "wasp venom immunotherapy",
-      // Pollen
-      "pollen immunotherapy",
-      "grass pollen immunotherapy",
-      "tree pollen immunotherapy",
-      "birch pollen immunotherapy",
-      "ragweed immunotherapy",
-      // Mite
-      "house dust mite immunotherapy",
-      "dust mite immunotherapy",
-      // Pet dander
-      "cat allergen immunotherapy",
-      "dog allergen immunotherapy",
-      "fel d 1 immunotherapy",
-      "can f 1 immunotherapy",
     ],
   },
   allergen_immunotherapy: {
