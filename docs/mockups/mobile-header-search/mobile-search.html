@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mobile header search — mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .phone { width: 390px; }
+</style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+<div class="mx-auto max-w-7xl p-8">
+  <h1 class="mb-6 text-xl font-bold">모바일 헤더 검색 — 상태별 목업 (390px)</h1>
+  <div class="flex flex-wrap items-start gap-8">
+
+    <!-- ================= State 1: default header + search icon ================= -->
+    <div>
+      <p class="mb-2 text-sm font-semibold text-gray-600">① 기본 상태 — 헤더에 검색 아이콘 추가</p>
+      <div class="phone overflow-hidden rounded-3xl border border-gray-300 bg-white shadow-lg">
+        <!-- header -->
+        <div class="flex h-14 items-center justify-between border-b border-gray-200 px-4">
+          <div class="flex items-center gap-2">
+            <svg class="h-5 w-5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+            <div class="flex h-8 w-8 items-center justify-center rounded-full ring-1 ring-gray-200">
+              <span class="text-lg">🔬</span>
+            </div>
+            <span class="text-base font-extrabold tracking-tight">My Allergy</span>
+            <span class="rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium italic text-blue-600">beta</span>
+          </div>
+          <div class="flex items-center gap-1 border-l border-gray-200 pl-2">
+            <!-- NEW: search icon -->
+            <button class="rounded-full bg-blue-50 p-2 text-blue-600 ring-2 ring-blue-300">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+            </button>
+            <button class="rounded-full p-2 text-gray-500">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            </button>
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white">L</div>
+          </div>
+        </div>
+        <!-- feed below -->
+        <div class="border-b border-gray-200">
+          <div class="grid grid-cols-2 text-sm">
+            <div class="border-b-2 border-blue-500 px-3 py-3 text-center font-semibold">Timeline</div>
+            <div class="border-b-2 border-transparent px-3 py-3 text-center font-semibold text-gray-500">For you</div>
+          </div>
+        </div>
+        <div class="space-y-3 p-4">
+          <div class="h-3 w-4/5 rounded bg-gray-200"></div>
+          <div class="h-3 w-3/5 rounded bg-gray-200"></div>
+          <div class="h-24 rounded-xl bg-gray-100"></div>
+          <div class="h-3 w-4/5 rounded bg-gray-200"></div>
+          <div class="h-24 rounded-xl bg-gray-100"></div>
+        </div>
+      </div>
+      <p class="mt-2 w-[390px] text-xs leading-relaxed text-gray-500">
+        벨 아이콘 왼쪽에 검색 아이콘 추가 (파란 링은 강조 표시용, 실제로는 회색 아이콘).
+        데스크톱(lg↑)에서는 사이드바 검색이 있으므로 아이콘 숨김.
+      </p>
+    </div>
+
+    <!-- ================= State 2: search mode expanded ================= -->
+    <div>
+      <p class="mb-2 text-sm font-semibold text-gray-600">② 검색 모드 — 헤더가 입력줄로 전환</p>
+      <div class="phone overflow-hidden rounded-3xl border border-gray-300 bg-white shadow-lg">
+        <!-- header replaced by search row -->
+        <div class="flex h-14 items-center gap-2 border-b border-gray-200 px-3">
+          <button class="rounded-lg p-1.5 text-gray-600">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          </button>
+          <div class="relative flex-1">
+            <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+            <div class="flex h-10 items-center rounded-full border border-blue-400 bg-gray-50 pl-10 pr-4 text-sm text-gray-400 ring-2 ring-blue-100">
+              Search topic, PMID, DOI<span class="ml-0.5 animate-pulse text-gray-900">|</span>
+            </div>
+          </div>
+        </div>
+        <!-- suggestions panel -->
+        <div class="p-4">
+          <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Topics</p>
+          <div class="flex flex-wrap gap-2">
+            <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium">asthma biologics</span>
+            <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium">food allergy OIT</span>
+            <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium">atopic dermatitis</span>
+            <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium">chronic urticaria</span>
+            <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium">CRSwNP</span>
+          </div>
+          <p class="mb-2 mt-5 text-xs font-semibold uppercase tracking-wider text-gray-400">Journals</p>
+          <div class="flex flex-wrap gap-2">
+            <span class="rounded-full bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-700">JACI</span>
+            <span class="rounded-full bg-sky-100 px-3 py-1.5 text-xs font-semibold text-sky-700">Allergy</span>
+            <span class="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700">JACI: In Practice</span>
+            <span class="rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700">Ann Allergy</span>
+            <span class="rounded-full bg-violet-100 px-3 py-1.5 text-xs font-semibold text-violet-700">Clin Exp Allergy</span>
+          </div>
+        </div>
+      </div>
+      <p class="mt-2 w-[390px] text-xs leading-relaxed text-gray-500">
+        아이콘 탭 → 헤더 줄이 뒤로가기 + 검색 입력으로 전환, 아래에 Topics/Journals 바로가기 칩 노출
+        (사이드바의 TopicMonitorPanel·JournalFilterPanel 기능을 모바일에서도 여기서 접근).
+      </p>
+    </div>
+
+    <!-- ================= State 3: query applied ================= -->
+    <div>
+      <p class="mb-2 text-sm font-semibold text-gray-600">③ 검색 적용 — 피드로 복귀 + 필터 칩</p>
+      <div class="phone overflow-hidden rounded-3xl border border-gray-300 bg-white shadow-lg">
+        <div class="flex h-14 items-center justify-between border-b border-gray-200 px-4">
+          <div class="flex items-center gap-2">
+            <svg class="h-5 w-5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+            <div class="flex h-8 w-8 items-center justify-center rounded-full ring-1 ring-gray-200"><span class="text-lg">🔬</span></div>
+            <span class="text-base font-extrabold tracking-tight">My Allergy</span>
+          </div>
+          <div class="flex items-center gap-1 border-l border-gray-200 pl-2">
+            <button class="rounded-full bg-gray-100 p-2 text-gray-900">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+            </button>
+            <button class="rounded-full p-2 text-gray-500">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            </button>
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white">L</div>
+          </div>
+        </div>
+        <div class="border-b border-gray-200 px-4 py-3">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+              “asthma biologics”
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </span>
+            <span class="text-xs text-gray-500">Clear all</span>
+          </div>
+        </div>
+        <div class="space-y-3 p-4">
+          <div class="h-3 w-4/5 rounded bg-gray-200"></div>
+          <div class="h-24 rounded-xl bg-gray-100"></div>
+          <div class="h-3 w-3/5 rounded bg-gray-200"></div>
+          <div class="h-24 rounded-xl bg-gray-100"></div>
+        </div>
+      </div>
+      <p class="mt-2 w-[390px] text-xs leading-relaxed text-gray-500">
+        검색 실행 시 기존 FilterBar 칩으로 검색어 표시 — 현재 데스크톱과 동일한 기존 동작 재사용, 신규 UI 없음.
+      </p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
