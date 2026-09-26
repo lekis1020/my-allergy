@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Microscope, X } from "lucide-react";
-const RightRail = dynamic(() => import("@/components/layout/right-rail").then((m) => ({ default: m.RightRail })), { ssr: false });
 const HomeSidebar = dynamic(() => import("@/components/layout/home-sidebar").then((m) => ({ default: m.HomeSidebar })), { ssr: false });
 // The graph panels pull in d3 (force/zoom/drag/selection); loading them lazily
 // keeps d3 out of the first-load bundle for the timeline itself.
@@ -25,6 +24,7 @@ const PersonalConnectionGraphPanel = dynamic(
 );
 import { PaperFeed } from "@/components/papers/paper-feed";
 import { FilterBar } from "@/components/papers/filter-bar";
+import { ResponsiveRightRail } from "@/components/layout/responsive-right-rail";
 import { usePaperFilters } from "@/hooks/use-paper-filters";
 import { usePapers } from "@/hooks/use-papers";
 import { useAuth } from "@/hooks/use-auth";
@@ -213,7 +213,7 @@ export function HomePage({ initialData }: HomePageProps) {
 
         <div className="hidden xl:block xl:pl-4">
           <div className="sticky top-20 max-h-[calc(100vh-96px)] overflow-y-auto pr-1">
-            <RightRail total={total} />
+            <ResponsiveRightRail total={total} />
           </div>
         </div>
       </div>
