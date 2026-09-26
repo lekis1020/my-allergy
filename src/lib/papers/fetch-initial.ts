@@ -1,6 +1,6 @@
 import "server-only";
 import { createAnonClient } from "@/lib/supabase/server";
-import { toPaperDto, PAPER_FEED_SELECT, type PaperRow } from "./transform";
+import { toPaperDto, INITIAL_PAPER_FEED_SELECT, type PaperRow } from "./transform";
 import { encodeCursor } from "./cursor";
 import type { PapersResponse } from "@/types/filters";
 
@@ -23,12 +23,13 @@ export async function fetchInitialPapers(): Promise<PapersResponse> {
   // Fetch one extra row to detect a further page without an exact COUNT.
   const { data, count, error } = await supabase
     .from("papers")
-    .select(PAPER_FEED_SELECT, { count: "estimated" })
+    .select(INITIAL_PAPER_FEED_SELECT, { count: "estimated" })
     .not("abstract", "is", null)
     .neq("abstract", "")
     .order("epub_date", { ascending: false, nullsFirst: false })
     .order("id", { ascending: false })
     .order("position", { referencedTable: "paper_authors", ascending: true })
+    .limit(3, { referencedTable: "paper_authors" })
     .range(0, INITIAL_LIMIT);
 
   if (error) {

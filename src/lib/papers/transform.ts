@@ -16,6 +16,14 @@ export const PAPER_FEED_SELECT = `
       paper_authors (last_name, first_name, initials, affiliation, position)
     ` as const;
 
+export const INITIAL_PAPER_FEED_SELECT = `
+      id, pmid, doi, title, abstract, ai_summary, publication_date, epub_date,
+      volume, issue, pages, keywords, mesh_terms, citation_count, journal_id, publication_types,
+      journals!inner (id, name, abbreviation, color, slug),
+      paper_authors (last_name, initials, position),
+      author_count:paper_authors(count)
+    ` as const;
+
 export interface PaperRow {
   id: string;
   pmid: string;
@@ -36,16 +44,18 @@ export interface PaperRow {
   journals: { id: string; name: string; abbreviation: string; color: string; slug: string };
   paper_authors: Array<{
     last_name: string;
-    first_name: string | null;
+    first_name?: string | null;
     initials: string | null;
-    affiliation: string | null;
+    affiliation?: string | null;
     position: number;
   }>;
+  author_count?: Array<{ count: number }> | null;
 }
 
 export function toPaperDto(paper: PaperRow): PaperWithJournal {
   const journal = paper.journals;
   const authors = paper.paper_authors || [];
+  const aggregateAuthorCount = paper.author_count?.[0]?.count;
   const keywords = Array.isArray(paper.keywords)
     ? paper.keywords
         .filter((keyword): keyword is string => typeof keyword === "string")
@@ -86,11 +96,15 @@ export function toPaperDto(paper: PaperRow): PaperWithJournal {
     journal_slug: journal.slug,
     topic_tags: topicTags,
     ai_summary: paper.ai_summary ?? null,
+    author_count:
+      typeof aggregateAuthorCount === "number" && Number.isFinite(aggregateAuthorCount)
+        ? aggregateAuthorCount
+        : authors.length,
     authors: authors.map((a) => ({
       last_name: a.last_name,
-      first_name: a.first_name,
+      first_name: a.first_name ?? null,
       initials: a.initials,
-      affiliation: a.affiliation,
+      affiliation: a.affiliation ?? null,
       position: a.position,
     })),
   };
