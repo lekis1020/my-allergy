@@ -10,12 +10,13 @@ import { ARTICLE_TYPE_LABELS } from "@/types/filters";
 import { Loader2, FileSearch } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { DataSource } from "@/hooks/use-papers";
+import { observeFeedEnd } from "@/lib/papers/feed-pagination";
 
 const AD_INTERVAL = 12;
 // Rough average card height — only an initial estimate; real heights are
 // measured per-row once mounted, so this just seeds the scroll geometry.
 const ESTIMATED_ROW_HEIGHT = 220;
-// Start loading the next page once the tail of the list enters the overscan.
+// Start loading the next page once the viewport is this many rows from the end.
 const LOAD_MORE_THRESHOLD = 3;
 
 const ARTICLE_TYPES: ArticleType[] = [
@@ -76,6 +77,7 @@ export function PaperFeed({
   // is measured we render a plain list, which keeps the SSR markup and the
   // first client render identical (no hydration mismatch).
   const listRef = useRef<HTMLDivElement>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const [listOffset, setListOffset] = useState<number | null>(null);
 
   useEffect(() => {
@@ -98,15 +100,18 @@ export function PaperFeed({
   const virtualItems = virtualizer.getVirtualItems();
   const virtualize = listOffset !== null;
 
-  // Infinite scroll: load the next page as the tail of the list is reached.
+  // Infinite scroll: observe the real list tail independently from render overscan.
   useEffect(() => {
-    if (!virtualize) return;
-    const last = virtualItems[virtualItems.length - 1];
-    if (!last) return;
-    if (last.index >= items.length - LOAD_MORE_THRESHOLD && hasMore && !isLoadingMore) {
-      onLoadMore();
-    }
-  }, [virtualize, virtualItems, items.length, hasMore, isLoadingMore, onLoadMore]);
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel) return;
+
+    return observeFeedEnd(sentinel, {
+      hasMore,
+      isLoadingMore,
+      thresholdPixels: ESTIMATED_ROW_HEIGHT * LOAD_MORE_THRESHOLD,
+      onLoadMore,
+    });
+  }, [hasMore, isLoadingMore, onLoadMore]);
 
   const renderItem = useCallback((item: FeedItem) => {
     if (item.kind === "ad") return <AdBanner variant="feed-inline" />;
@@ -227,6 +232,8 @@ export function PaperFeed({
           </div>
         )}
       </div>
+
+      <div ref={loadMoreSentinelRef} aria-hidden="true" className="h-px" />
 
       <div className="flex justify-center py-8">
         {isLoadingMore && (
