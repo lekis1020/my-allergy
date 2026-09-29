@@ -403,6 +403,16 @@ export const JOURNALS: JournalConfig[] = [
     pubmedQuery: '"Front Allergy"[ta]',
   },
   {
+    name: "Journal of Human Immunity",
+    abbreviation: "J Hum Immun",
+    issn: null,
+    eIssn: "3065-8993",
+    impactFactor: null,
+    color: "#0E7490",
+    slug: "journal-human-immunity",
+    pubmedQuery: '"J Hum Immun"[ta]',
+  },
+  {
     name: "The Lancet",
     abbreviation: "Lancet",
     issn: "0140-6736",
