@@ -1,7 +1,11 @@
 import { CONTRAST_MEDIA } from "@/lib/reference/contrast-media";
+import { SCORING_TOOLS } from "@/lib/reference/scoring-tools";
 import type { IsoDate, ReferenceSheet } from "@/lib/reference/types";
 
-export const REFERENCE_SHEETS: readonly ReferenceSheet[] = [CONTRAST_MEDIA];
+export const REFERENCE_SHEETS: readonly ReferenceSheet[] = [
+  CONTRAST_MEDIA,
+  SCORING_TOOLS,
+];
 
 export function getSheet(slug: string): ReferenceSheet | undefined {
   return REFERENCE_SHEETS.find((sheet) => sheet.slug === slug);

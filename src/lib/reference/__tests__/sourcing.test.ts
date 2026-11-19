@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { REFERENCE_SHEETS, isPublished, reviewState } from "@/lib/reference";
-import { SOURCES } from "@/lib/reference/sources";
+import {
+  REFERENCE_SHEETS,
+  getSheet,
+  isPublished,
+  reviewState,
+} from "@/lib/reference";
+import { SOURCES, getSource } from "@/lib/reference/sources";
 import type {
   IsoDate,
   ReferenceSheet,
@@ -147,6 +152,26 @@ describe("reference sheet sourcing", () => {
   it("passes for the sheets and sources the site ships", () => {
     const todayUtc = new Date().toISOString().slice(0, 10);
     expect(findSourcingProblems(REFERENCE_SHEETS, SOURCES, todayUtc)).toEqual([]);
+  });
+
+  it("links every scoring-tools source to PubMed or a DOI with a publication year", () => {
+    const scoringTools = getSheet("scoring-tools");
+    const citedIds = new Set(
+      scoringTools?.rows.flatMap((row) =>
+        row.answer.status === "sourced" ? row.answer.sourceIds : [],
+      ),
+    );
+    expect(citedIds.size).toBeGreaterThan(0);
+
+    const unlinked = [...citedIds].filter((id) => {
+      const source = getSource(id);
+      return (
+        !source ||
+        !/^https:\/\/(pubmed\.ncbi\.nlm\.nih\.gov|doi\.org)\//.test(source.url) ||
+        !/\b(19|20)\d{2}\b/.test(source.citation)
+      );
+    });
+    expect(unlinked).toEqual([]);
   });
 
   it("accepts a fully sourced sheet", () => {
