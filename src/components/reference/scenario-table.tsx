@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { getSource } from "@/lib/reference/sources";
-import type { ScenarioRow } from "@/lib/reference/types";
+import type { ReferenceSheet, ScenarioRow } from "@/lib/reference/types";
 
 const COLUMNS = "sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4";
 
@@ -12,14 +12,17 @@ export function SourcePendingBadge() {
   );
 }
 
-export function ScenarioTable({ rows }: { rows: readonly ScenarioRow[] }) {
+export function ScenarioTable({
+  rows,
+  columns,
+}: Pick<ReferenceSheet, "rows" | "columns">) {
   return (
     <div className="border-b border-gray-200 dark:border-gray-800">
       <div
         className={`hidden border-b border-gray-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 sm:grid dark:border-gray-800 dark:text-gray-400 ${COLUMNS}`}
       >
-        <span>Scenario</span>
-        <span>Guidance</span>
+        <span>{columns.scenario}</span>
+        <span>{columns.guidance}</span>
       </div>
       <ul className="divide-y divide-gray-200 dark:divide-gray-800">
         {rows.map((row) => (
@@ -76,7 +79,9 @@ function ScenarioCells({ row }: { row: ScenarioRow }) {
           })}
         </ul>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Reviewed by {answer.reviewedBy} on {answer.reviewedOn}
+          {answer.reviewedBy !== undefined
+            ? `Reviewed by ${answer.reviewedBy} on ${answer.reviewedOn}`
+            : `Citation checked on ${answer.reviewedOn}`}
         </p>
       </div>
     </>

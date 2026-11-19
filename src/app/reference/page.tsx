@@ -3,7 +3,12 @@ import Link from "next/link";
 import { BookOpenCheck } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { SourcePendingBadge } from "@/components/reference/scenario-table";
-import { REFERENCE_SHEETS, isPublished, lastReviewedOn } from "@/lib/reference";
+import {
+  REFERENCE_SHEETS,
+  isPublished,
+  reviewState,
+  type ReviewState,
+} from "@/lib/reference";
 
 export const metadata: Metadata = {
   title: "Clinical Reference",
@@ -22,7 +27,7 @@ export default function ReferencePage() {
     >
       <ul className="space-y-3 px-4 py-6">
         {REFERENCE_SHEETS.map((sheet) => {
-          const reviewedOn = lastReviewedOn(sheet);
+          const state = reviewState(sheet);
           return (
             <li key={sheet.slug}>
               <Link
@@ -36,13 +41,7 @@ export default function ReferencePage() {
                   {sheet.question}
                 </p>
                 <div className="mt-3">
-                  {reviewedOn === null ? (
-                    <SourcePendingBadge />
-                  ) : (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Reviewed {reviewedOn}
-                    </span>
-                  )}
+                  <ReviewStatus state={state} />
                 </div>
               </Link>
             </li>
@@ -50,5 +49,16 @@ export default function ReferencePage() {
         })}
       </ul>
     </PageShell>
+  );
+}
+
+function ReviewStatus({ state }: { state: ReviewState }) {
+  if (state.kind === "pending") return <SourcePendingBadge />;
+  return (
+    <span className="text-xs text-gray-500 dark:text-gray-400">
+      {state.kind === "cited"
+        ? `Citations checked ${state.checkedOn} · not yet clinically reviewed`
+        : `Reviewed ${state.reviewedOn}`}
+    </span>
   );
 }

@@ -7,6 +7,7 @@ export const CONTRAST_MEDIA: ReferenceSheet = {
   question:
     "Which contrast agent should be used after an adverse reaction to contrast?",
   relatedQuery: "contrast media",
+  columns: { scenario: "Scenario", guidance: "Guidance" },
   rows: [
     { id: "scenario-1", label: "Scenario 1", answer: { status: "placeholder" } },
     { id: "scenario-2", label: "Scenario 2", answer: { status: "placeholder" } },
