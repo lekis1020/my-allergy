@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { REFERENCE_SHEETS, isPublished, lastReviewedOn } from "@/lib/reference";
+import { REFERENCE_SHEETS, isPublished, reviewState } from "@/lib/reference";
 import { SOURCES } from "@/lib/reference/sources";
 import type {
   IsoDate,
@@ -67,7 +67,7 @@ function findSourcingProblems(
           problems.push(`${where}: source id ${id} is not in SOURCES`);
         }
       }
-      if (answer.reviewedBy.trim() === "") {
+      if (answer.reviewedBy !== undefined && answer.reviewedBy.trim() === "") {
         problems.push(`${where}: reviewedBy is empty`);
       }
       if (!isCalendarDate(answer.reviewedOn)) {
@@ -105,20 +105,23 @@ function placeholderRow(id: string): ScenarioRow {
   return { id, label: id, answer: { status: "placeholder" } };
 }
 
-function sourcedRow(id: string, overrides: Partial<SourcedAnswer> = {}): ScenarioRow {
+function citedRow(id: string, overrides: Partial<SourcedAnswer> = {}): ScenarioRow {
   return {
     id,
     label: id,
     answer: {
       status: "sourced",
       sourceIds: [FIXTURE_SOURCE.id],
-      reviewedBy: "Fixture reviewer",
       reviewedOn: "2026-11-01" as IsoDate,
       scenario: "Fixture scenario",
       guidance: "Fixture guidance",
       ...overrides,
     },
   };
+}
+
+function sourcedRow(id: string, overrides: Partial<SourcedAnswer> = {}): ScenarioRow {
+  return citedRow(id, { reviewedBy: "Fixture reviewer", ...overrides });
 }
 
 function sheet(slug: string, rows: readonly ScenarioRow[]): ReferenceSheet {
@@ -128,6 +131,7 @@ function sheet(slug: string, rows: readonly ScenarioRow[]): ReferenceSheet {
     title: slug,
     question: slug,
     relatedQuery: slug,
+    columns: { scenario: "Scenario", guidance: "Guidance" },
     rows,
   };
 }
@@ -216,6 +220,11 @@ describe("reference sheet sourcing", () => {
     );
   });
 
+  it("accepts a sourced row with a checked citation and no reviewer", () => {
+    const sheets = [sheet("cited-only", [citedRow("row-1")])];
+    expect(findSourcingProblems(sheets, [FIXTURE_SOURCE], TODAY)).toEqual([]);
+  });
+
   it.each(["2026/11/01", "2026-02-30", "2026-13-01", "2026-11-20"])(
     "reports a sourced row reviewed on %s",
     (reviewedOn) => {
@@ -245,20 +254,32 @@ describe("reference sheet sourcing", () => {
   );
 });
 
-describe("sheet publish state", () => {
-  it("leaves a placeholder-only sheet unpublished with no review date", () => {
+describe("sheet review state", () => {
+  it("leaves a placeholder-only sheet pending and unpublished", () => {
     const draft = sheet("draft", [placeholderRow("row-1"), placeholderRow("row-2")]);
+    expect(reviewState(draft)).toEqual({ kind: "pending" });
     expect(isPublished(draft)).toBe(false);
-    expect(lastReviewedOn(draft)).toBeNull();
   });
 
-  it("publishes a sheet with sourced rows and reports the latest review date", () => {
-    const reviewed = sheet("reviewed", [
-      sourcedRow("row-1", { reviewedOn: "2026-10-15" as IsoDate }),
-      sourcedRow("row-2", { reviewedOn: "2026-03-01" as IsoDate }),
+  it("marks a sheet with only checked citations as cited on the latest date, unpublished", () => {
+    const cited = sheet("cited", [
+      citedRow("row-1", { reviewedOn: "2026-10-15" as IsoDate }),
+      citedRow("row-2", { reviewedOn: "2026-03-01" as IsoDate }),
       placeholderRow("row-3"),
     ]);
+    expect(reviewState(cited)).toEqual({ kind: "cited", checkedOn: "2026-10-15" });
+    expect(isPublished(cited)).toBe(false);
+  });
+
+  it("publishes a sheet with a reviewed row, dated by reviewed rows only", () => {
+    const reviewed = sheet("reviewed", [
+      sourcedRow("row-1", { reviewedOn: "2026-03-01" as IsoDate }),
+      citedRow("row-2", { reviewedOn: "2026-10-15" as IsoDate }),
+    ]);
+    expect(reviewState(reviewed)).toEqual({
+      kind: "reviewed",
+      reviewedOn: "2026-03-01",
+    });
     expect(isPublished(reviewed)).toBe(true);
-    expect(lastReviewedOn(reviewed)).toBe("2026-10-15");
   });
 });

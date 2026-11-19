@@ -7,17 +7,31 @@ export function getSheet(slug: string): ReferenceSheet | undefined {
   return REFERENCE_SHEETS.find((sheet) => sheet.slug === slug);
 }
 
-export function lastReviewedOn(sheet: ReferenceSheet): IsoDate | null {
-  let latest: IsoDate | null = null;
-  for (const row of sheet.rows) {
-    if (row.answer.status !== "sourced") continue;
-    if (latest === null || row.answer.reviewedOn > latest) {
-      latest = row.answer.reviewedOn;
+export type ReviewState =
+  | { kind: "pending" }
+  | { kind: "cited"; checkedOn: IsoDate }
+  | { kind: "reviewed"; reviewedOn: IsoDate };
+
+export function reviewState(sheet: ReferenceSheet): ReviewState {
+  let checkedOn: IsoDate | null = null;
+  let reviewedOn: IsoDate | null = null;
+  for (const { answer } of sheet.rows) {
+    if (answer.status !== "sourced") continue;
+    if (checkedOn === null || answer.reviewedOn > checkedOn) {
+      checkedOn = answer.reviewedOn;
+    }
+    if (
+      answer.reviewedBy !== undefined &&
+      (reviewedOn === null || answer.reviewedOn > reviewedOn)
+    ) {
+      reviewedOn = answer.reviewedOn;
     }
   }
-  return latest;
+  if (reviewedOn !== null) return { kind: "reviewed", reviewedOn };
+  if (checkedOn !== null) return { kind: "cited", checkedOn };
+  return { kind: "pending" };
 }
 
 export function isPublished(sheet: ReferenceSheet): boolean {
-  return lastReviewedOn(sheet) !== null;
+  return reviewState(sheet).kind === "reviewed";
 }
