@@ -1,5 +1,6 @@
+import { splitPublishedName } from "@/lib/reference/catalog";
 import { pubmedSourceId } from "@/lib/reference/sources";
-import type { IsoDate, ReferenceSheet, ScenarioRow } from "@/lib/reference/types";
+import type { CatalogEntry, CatalogScreen, IsoDate } from "@/lib/reference/types";
 
 const CITATIONS_CHECKED_ON = "2026-11-19" as IsoDate;
 
@@ -9,30 +10,36 @@ function tool(
   pmids: readonly [string, ...string[]],
   scenario: string,
   guidance: string,
-): ScenarioRow {
+): CatalogEntry {
+  const { condition, name } = splitPublishedName(scenario);
   const [first, ...rest] = pmids;
   return {
     id,
     label,
-    answer: {
+    groupLabel: condition,
+    identity: {
       status: "sourced",
+      name,
+      aliases: [],
       sourceIds: [pubmedSourceId(first), ...rest.map(pubmedSourceId)],
       reviewedOn: CITATIONS_CHECKED_ON,
-      scenario,
       guidance,
+      scenario,
     },
+    calculator: { status: "placeholder" },
   };
 }
 
-export const SCORING_TOOLS: ReferenceSheet = {
-  kind: "scenarios",
+export const SCORING_TOOLS: CatalogScreen = {
+  kind: "catalog",
   slug: "scoring-tools",
   title: "Scoring tools",
   question:
     "Which validated score or grading system fits this condition, and where was it published?",
   relatedQuery: "severity score",
-  columns: { scenario: "Tool", guidance: "What it measures" },
-  rows: [
+  subject: "tool",
+  grouping: "condition",
+  entries: [
     tool(
       "scorad",
       "SCORAD",

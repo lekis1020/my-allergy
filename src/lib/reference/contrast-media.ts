@@ -1,16 +1,18 @@
-import type { ReferenceSheet } from "@/lib/reference/types";
+import { placeholderEntry } from "@/lib/reference/catalog";
+import type { CatalogScreen } from "@/lib/reference/types";
 
-export const CONTRAST_MEDIA: ReferenceSheet = {
-  kind: "scenarios",
+export const CONTRAST_MEDIA: CatalogScreen = {
+  kind: "catalog",
   slug: "contrast-media",
   title: "Contrast media",
   question:
-    "Which contrast agent should be used after an adverse reaction to contrast?",
+    "What do the attached sources say about cross-reaction after a reaction to this contrast agent?",
   relatedQuery: "contrast media",
-  columns: { scenario: "Scenario", guidance: "Guidance" },
-  rows: [
-    { id: "scenario-1", label: "Scenario 1", answer: { status: "placeholder" } },
-    { id: "scenario-2", label: "Scenario 2", answer: { status: "placeholder" } },
-    { id: "scenario-3", label: "Scenario 3", answer: { status: "placeholder" } },
+  subject: "agent",
+  grouping: "class",
+  entries: [
+    placeholderEntry("agent-a", "Agent A"),
+    placeholderEntry("agent-b", "Agent B"),
+    placeholderEntry("agent-c", "Agent C"),
   ],
 };

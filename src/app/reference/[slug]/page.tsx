@@ -3,115 +3,109 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpenCheck } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
-import { ScenarioTable } from "@/components/reference/scenario-table";
+import { CatalogList } from "@/components/reference/catalog-list";
+import { CatalogSearch } from "@/components/reference/catalog-search";
+import { ConditionChips } from "@/components/reference/condition-chips";
+import { MedicalDisclaimer } from "@/components/reference/medical-disclaimer";
+import { activeCondition, reviewStatusLabel } from "@/lib/reference/catalog";
 import {
-  REFERENCE_SHEETS,
-  getSheet,
+  REFERENCE_SCREENS,
+  getScreen,
   isPublished,
   reviewState,
-  type ReviewState,
 } from "@/lib/reference";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ q?: string | string[]; condition?: string | string[] }>;
 }
 
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return REFERENCE_SHEETS.map((sheet) => ({ slug: sheet.slug }));
+  return REFERENCE_SCREENS.map((screen) => ({ slug: screen.slug }));
+}
+
+function firstParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const sheet = getSheet(slug);
-  if (!sheet) return {};
+  const screen = getScreen(slug);
+  if (!screen) return {};
 
   return {
-    title: sheet.title,
-    description: sheet.question,
-    robots: isPublished(sheet) ? undefined : { index: false },
+    title: screen.title,
+    description: screen.question,
+    robots: isPublished(screen) ? undefined : { index: false },
   };
 }
 
-export default async function ReferenceSheetPage({ params }: PageProps) {
+export default async function ReferenceCatalogPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const sheet = getSheet(slug);
-  if (!sheet) notFound();
+  const screen = getScreen(slug);
+  if (!screen) notFound();
 
+  const rawParams = await searchParams;
+  const query = firstParam(rawParams.q);
+  const condition = activeCondition(screen, firstParam(rawParams.condition));
   const relatedPapersHref = `/?${new URLSearchParams({
-    q: sheet.relatedQuery,
+    q: screen.relatedQuery,
     sort: "date_desc",
   })}`;
+  const status = reviewStatusLabel(reviewState(screen));
 
   return (
     <PageShell
-      title={sheet.title}
+      title={screen.title}
       icon={<BookOpenCheck className="h-5 w-5 text-blue-500" />}
       variant="narrow"
+      stickyHeader="desktop"
     >
-      <div className="space-y-3 border-b border-gray-200 px-4 py-4 dark:border-gray-800">
-        <Link
-          href="/reference"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          All sheets
-        </Link>
-        <p className="text-base font-medium text-gray-900 dark:text-gray-100">
-          {sheet.question}
-        </p>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-          <span className="text-gray-500 dark:text-gray-400">
-            {reviewStatus(reviewState(sheet))}
-          </span>
+      <div className="flex flex-col">
+        <div className="order-2 space-y-3 border-b border-gray-200 px-4 py-4 md:order-1 dark:border-gray-800">
           <Link
-            href={relatedPapersHref}
-            className="text-blue-600 hover:underline dark:text-blue-400"
+            href="/reference"
+            className="inline-flex min-h-11 items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
-            Related papers
+            <ArrowLeft className="h-4 w-4" />
+            All sheets
           </Link>
+          <p className="hidden text-base font-medium text-gray-900 md:block dark:text-gray-100">
+            {screen.question}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <span className="text-gray-500 dark:text-gray-400">{status}</span>
+            <Link
+              href={relatedPapersHref}
+              className="inline-flex min-h-11 items-center text-blue-600 hover:underline dark:text-blue-400"
+            >
+              Related papers
+            </Link>
+          </div>
+        </div>
+
+        <div className="order-1 sticky top-14 z-20 border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:static md:order-2 md:bg-transparent dark:border-gray-800 dark:bg-gray-950/90 md:dark:bg-transparent">
+          <CatalogSearch
+            initialQuery={query}
+            condition={condition}
+            subject={screen.subject}
+          />
+          {screen.grouping === "condition" ? (
+            <ConditionChips screen={screen} query={query} condition={condition} />
+          ) : null}
+        </div>
+
+        <div className="order-3">
+          <CatalogList screen={screen} query={query} condition={condition} />
         </div>
       </div>
-
-      <ScenarioTable rows={sheet.rows} columns={sheet.columns} />
 
       <div className="px-4 py-6">
         <MedicalDisclaimer />
       </div>
     </PageShell>
-  );
-}
-
-function reviewStatus(state: ReviewState): string {
-  switch (state.kind) {
-    case "pending":
-      return "Not yet reviewed";
-    case "cited":
-      return `Citations checked ${state.checkedOn} · not yet clinically reviewed`;
-    case "reviewed":
-      return `Last reviewed ${state.reviewedOn}`;
-  }
-}
-
-function MedicalDisclaimer() {
-  return (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-relaxed text-gray-700 dark:border-red-800 dark:bg-red-900/20 dark:text-gray-300">
-      <p className="mb-2 font-semibold text-red-800 dark:text-red-300">
-        본 서비스는 의료 조언을 제공하지 않습니다.
-      </p>
-      <p>
-        서비스에 게시된 모든 콘텐츠는 학술 연구 정보 제공을 목적으로 합니다.
-        특정 환자의 진단, 치료, 예방에 관한 의료적 판단을 대체하지 않으며,
-        의료 전문가의 직접적인 진료를 대신하지 않습니다. 건강 관련
-        결정은 반드시 담당 의료 전문가와 상의하시기 바랍니다.
-      </p>
-      <Link
-        href="/terms"
-        className="mt-2 inline-block text-blue-600 hover:underline dark:text-blue-400"
-      >
-        이용약관
-      </Link>
-    </div>
   );
 }
