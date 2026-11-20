@@ -1,13 +1,16 @@
 import { describe, it, expect } from "vitest";
+import { publishedNameLine } from "@/lib/reference/catalog";
 import {
-  REFERENCE_SHEETS,
-  getSheet,
+  REFERENCE_SCREENS,
+  getScreen,
   isPublished,
   reviewState,
 } from "@/lib/reference";
 import { SOURCES, getSource } from "@/lib/reference/sources";
 import type {
+  CatalogScreen,
   IsoDate,
+  ReferenceScreen,
   ReferenceSheet,
   ScenarioRow,
   Source,
@@ -31,8 +34,117 @@ function isCalendarDate(value: string): boolean {
   );
 }
 
+function checkReviewedOn(
+  where: string,
+  reviewedOn: string,
+  today: string,
+  problems: string[],
+) {
+  if (!isCalendarDate(reviewedOn)) {
+    problems.push(
+      `${where}: reviewedOn "${reviewedOn}" is not a real YYYY-MM-DD date`,
+    );
+  } else if (reviewedOn > today) {
+    problems.push(`${where}: reviewedOn ${reviewedOn} is after ${today}`);
+  }
+}
+
+function checkSheet(
+  sheet: ReferenceSheet,
+  sourceIds: ReadonlySet<string>,
+  today: string,
+  problems: string[],
+) {
+  const rowIds = new Set<string>();
+  for (const row of sheet.rows) {
+    const where = `sheet ${sheet.slug} row ${row.id}`;
+    if (rowIds.has(row.id)) {
+      problems.push(`${where}: duplicate row id`);
+    }
+    rowIds.add(row.id);
+
+    const { answer } = row;
+    if (answer.status === "placeholder") continue;
+
+    for (const id of answer.sourceIds) {
+      if (!sourceIds.has(id)) {
+        problems.push(`${where}: source id ${id} is not in SOURCES`);
+      }
+    }
+    if (answer.reviewedBy !== undefined && answer.reviewedBy.trim() === "") {
+      problems.push(`${where}: reviewedBy is empty`);
+    }
+    checkReviewedOn(where, answer.reviewedOn, today, problems);
+    if (answer.scenario.trim() === "") {
+      problems.push(`${where}: scenario is empty`);
+    }
+    if (answer.guidance.trim() === "") {
+      problems.push(`${where}: guidance is empty`);
+    }
+  }
+}
+
+function checkCatalog(
+  screen: CatalogScreen,
+  sourceIds: ReadonlySet<string>,
+  today: string,
+  problems: string[],
+) {
+  const entryIds = new Set<string>();
+  for (const entry of screen.entries) {
+    const where = `screen ${screen.slug} entry ${entry.id}`;
+    if (entryIds.has(entry.id)) {
+      problems.push(`${where}: duplicate entry id`);
+    }
+    entryIds.add(entry.id);
+
+    if (entry.identity.status === "placeholder") {
+      if (entry.groupLabel !== null) {
+        problems.push(`${where}: placeholder entry has a group label`);
+      }
+      continue;
+    }
+
+    for (const id of entry.identity.sourceIds) {
+      if (!sourceIds.has(id)) {
+        problems.push(`${where}: source id ${id} is not in SOURCES`);
+      }
+    }
+    if (
+      entry.identity.reviewedBy !== undefined &&
+      entry.identity.reviewedBy.trim() === ""
+    ) {
+      problems.push(`${where}: reviewedBy is empty`);
+    }
+    checkReviewedOn(where, entry.identity.reviewedOn, today, problems);
+    if (entry.identity.name.trim() === "") {
+      problems.push(`${where}: name is empty`);
+    }
+    if (entry.identity.guidance.trim() === "") {
+      problems.push(`${where}: guidance is empty`);
+    }
+    for (const alias of entry.identity.aliases) {
+      if (alias.trim() === "") {
+        problems.push(`${where}: alias is empty`);
+      }
+    }
+    if (screen.grouping === "condition") {
+      if (entry.groupLabel === null || entry.groupLabel.trim() === "") {
+        problems.push(`${where}: condition is empty`);
+      } else if (
+        entry.identity.scenario !==
+        publishedNameLine(entry.groupLabel, entry.identity.name)
+      ) {
+        problems.push(
+          `${where}: condition and name do not match the published scenario line`,
+        );
+      }
+    }
+  }
+}
+
 function findSourcingProblems(
-  sheets: readonly ReferenceSheet[],
+  screens: readonly ReferenceScreen[],
   sources: readonly Source[],
   today: string,
 ): string[] {
@@ -50,46 +162,15 @@ function findSourcingProblems(
   }
 
   const slugs = new Set<string>();
-  for (const sheet of sheets) {
-    if (slugs.has(sheet.slug)) {
-      problems.push(`sheet ${sheet.slug}: duplicate slug`);
+  for (const screen of screens) {
+    if (slugs.has(screen.slug)) {
+      problems.push(`screen ${screen.slug}: duplicate slug`);
     }
-    slugs.add(sheet.slug);
-
-    const rowIds = new Set<string>();
-    for (const row of sheet.rows) {
-      const where = `sheet ${sheet.slug} row ${row.id}`;
-      if (rowIds.has(row.id)) {
-        problems.push(`${where}: duplicate row id`);
-      }
-      rowIds.add(row.id);
-
-      const { answer } = row;
-      if (answer.status === "placeholder") continue;
-
-      for (const id of answer.sourceIds) {
-        if (!sourceIds.has(id)) {
-          problems.push(`${where}: source id ${id} is not in SOURCES`);
-        }
-      }
-      if (answer.reviewedBy !== undefined && answer.reviewedBy.trim() === "") {
-        problems.push(`${where}: reviewedBy is empty`);
-      }
-      if (!isCalendarDate(answer.reviewedOn)) {
-        problems.push(
-          `${where}: reviewedOn "${answer.reviewedOn}" is not a real YYYY-MM-DD date`,
-        );
-      } else if (answer.reviewedOn > today) {
-        problems.push(
-          `${where}: reviewedOn ${answer.reviewedOn} is after ${today}`,
-        );
-      }
-      if (answer.scenario.trim() === "") {
-        problems.push(`${where}: scenario is empty`);
-      }
-      if (answer.guidance.trim() === "") {
-        problems.push(`${where}: guidance is empty`);
-      }
+    slugs.add(screen.slug);
+    if (screen.kind === "scenarios") {
+      checkSheet(screen, sourceIds, today, problems);
+    } else {
+      checkCatalog(screen, sourceIds, today, problems);
     }
   }
 
@@ -149,16 +230,16 @@ function expectOneProblemNaming(problems: string[], ...names: string[]) {
 }
 
 describe("reference sheet sourcing", () => {
-  it("passes for the sheets and sources the site ships", () => {
+  it("passes for the screens and sources the site ships", () => {
     const todayUtc = new Date().toISOString().slice(0, 10);
-    expect(findSourcingProblems(REFERENCE_SHEETS, SOURCES, todayUtc)).toEqual([]);
+    expect(findSourcingProblems(REFERENCE_SCREENS, SOURCES, todayUtc)).toEqual([]);
   });
 
   it("links every scoring-tools source to PubMed or a DOI with a publication year", () => {
-    const scoringTools = getSheet("scoring-tools");
+    const scoringTools = getScreen("scoring-tools");
     const citedIds = new Set(
-      scoringTools?.rows.flatMap((row) =>
-        row.answer.status === "sourced" ? row.answer.sourceIds : [],
+      scoringTools?.entries.flatMap((entry) =>
+        entry.identity.status === "sourced" ? entry.identity.sourceIds : [],
       ),
     );
     expect(citedIds.size).toBeGreaterThan(0);
@@ -189,6 +270,7 @@ describe("reference sheet sourcing", () => {
     expectOneProblemNaming(
       findSourcingProblems(sheets, [FIXTURE_SOURCE], TODAY),
       "shared-slug",
+      "duplicate slug",
     );
   });
 

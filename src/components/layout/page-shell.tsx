@@ -6,7 +6,8 @@ interface PageShellProps {
   icon?: ReactNode;
   children: ReactNode;
   variant?: "feed" | "wide" | "narrow";
-  stickyHeader?: boolean;
+  /** "desktop" keeps the title bar sticky from the md breakpoint up and lets it scroll away on a phone. */
+  stickyHeader?: boolean | "desktop";
 }
 
 const VARIANT_CLASSES = {
@@ -32,7 +33,11 @@ export function PageShell({
   const headerBlock = (
     <div
       className={`border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-gray-800 dark:bg-gray-950/90 ${
-        stickyHeader ? "sticky top-14 z-20" : ""
+        stickyHeader === "desktop"
+          ? "md:sticky md:top-14 md:z-20"
+          : stickyHeader
+            ? "sticky top-14 z-20"
+            : ""
       }`}
     >
       <div className="flex items-center gap-2">
