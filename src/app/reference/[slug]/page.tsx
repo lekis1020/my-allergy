@@ -8,7 +8,8 @@ import {
   REFERENCE_SHEETS,
   getSheet,
   isPublished,
-  lastReviewedOn,
+  reviewState,
+  type ReviewState,
 } from "@/lib/reference";
 
 interface PageProps {
@@ -38,7 +39,6 @@ export default async function ReferenceSheetPage({ params }: PageProps) {
   const sheet = getSheet(slug);
   if (!sheet) notFound();
 
-  const reviewedOn = lastReviewedOn(sheet);
   const relatedPapersHref = `/?${new URLSearchParams({
     q: sheet.relatedQuery,
     sort: "date_desc",
@@ -63,7 +63,7 @@ export default async function ReferenceSheetPage({ params }: PageProps) {
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <span className="text-gray-500 dark:text-gray-400">
-            {reviewedOn === null ? "Not yet reviewed" : `Last reviewed ${reviewedOn}`}
+            {reviewStatus(reviewState(sheet))}
           </span>
           <Link
             href={relatedPapersHref}
@@ -74,13 +74,24 @@ export default async function ReferenceSheetPage({ params }: PageProps) {
         </div>
       </div>
 
-      <ScenarioTable rows={sheet.rows} />
+      <ScenarioTable rows={sheet.rows} columns={sheet.columns} />
 
       <div className="px-4 py-6">
         <MedicalDisclaimer />
       </div>
     </PageShell>
   );
+}
+
+function reviewStatus(state: ReviewState): string {
+  switch (state.kind) {
+    case "pending":
+      return "Not yet reviewed";
+    case "cited":
+      return `Citations checked ${state.checkedOn} · not yet clinically reviewed`;
+    case "reviewed":
+      return `Last reviewed ${state.reviewedOn}`;
+  }
 }
 
 function MedicalDisclaimer() {

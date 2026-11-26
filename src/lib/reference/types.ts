@@ -12,7 +12,7 @@ export type Sourced<T> =
   | ({
       status: "sourced";
       sourceIds: readonly [SourceId, ...SourceId[]];
-      reviewedBy: string;
+      reviewedBy?: string;
       reviewedOn: IsoDate;
     } & T);
 
@@ -28,5 +28,6 @@ export interface ReferenceSheet {
   title: string;
   question: string;
   relatedQuery: string;
+  columns: { scenario: string; guidance: string };
   rows: readonly ScenarioRow[];
 }
