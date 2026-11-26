@@ -11,7 +11,6 @@ export { backfillJournalFn, backfillAllFn } from "./backfill-papers";
 export { onDemandEnrichFn } from "./on-demand-enrich";
 export { generateTrendingAnalysisFn } from "./trending-analysis";
 export { generateGeographyInsightsFn } from "./geography-insights";
-export { recomputeGraphFn } from "./recompute-graph";
 export { backfillCitationsFn } from "./backfill-citations";
 export { embedPapersFn } from "./embed-papers";
 export { backfillTopicsFn } from "./backfill-topics";

@@ -13,9 +13,6 @@ import { embedTexts } from "@/lib/openai/embed";
  *
  * Trigger event: `admin/embed.backfill` with optional `data.limit`
  * (default = no limit, process everything).
- *
- * After completion we dispatch `admin/graph.recompute` so the snapshot
- * picks up the new similarity edges in the same pipeline run.
  */
 const CHUNK_SIZE = 64;
 
@@ -93,13 +90,6 @@ export const embedPapersFn = inngest.createFunction(
       totalEmbedded += chunkResult.embedded;
       totalSkippedShort += chunkResult.short;
       totalErrors += chunkResult.errors;
-    }
-
-    if (totalEmbedded > 0) {
-      await step.sendEvent("trigger-recompute", {
-        name: "admin/graph.recompute",
-        data: {},
-      });
     }
 
     return {

@@ -20,7 +20,6 @@ import {
   type LinkedPaper,
 } from "@/components/papers/paper-list-section";
 import { PaperChat } from "@/components/chat/paper-chat";
-import { ConnectionGraphPreview } from "@/components/graph/connection-graph-preview";
 import {
   findCitationsFromDb,
   loadBookmarkedPmids,
@@ -303,8 +302,6 @@ export default async function PaperDetailPage({ params }: PageProps) {
             {/* Mobile-only: keywords, external links, related papers */}
             <div className="space-y-8 lg:hidden">
 
-              <ConnectionGraphPreview pmid={pmid} />
-
               {allTags.length > 0 && (
                 <section>
                   <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -380,8 +377,6 @@ export default async function PaperDetailPage({ params }: PageProps) {
                 </h2>
                 {paperInteractions}
               </div>
-
-              <ConnectionGraphPreview pmid={pmid} />
 
               {allTags.length > 0 && (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50">

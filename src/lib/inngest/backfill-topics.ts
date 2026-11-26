@@ -17,9 +17,7 @@ import { classifyPaperTopics } from "@/lib/utils/topic-tags";
  * cursor: rows leave the filter as they are updated, so "the next N null rows"
  * naturally advances and terminates when none remain.
  *
- * Trigger event: `admin/topics.backfill`. On completion (if anything was
- * classified) it dispatches `admin/graph.recompute` so the snapshot picks up
- * the freshly classified corpus.
+ * Trigger event: `admin/topics.backfill`.
  */
 const BATCH_SIZE = 200;
 const MAX_BATCHES = 250; // safety stop: 250 * 200 = 50k rows
@@ -66,13 +64,6 @@ export const backfillTopicsFn = inngest.createFunction(
       // drained. (Terminate on rows fetched, not rows updated, so a failed
       // update does not end the run early and orphan NULL rows.)
       if (fetched < BATCH_SIZE) break;
-    }
-
-    if (totalClassified > 0) {
-      await step.sendEvent("trigger-recompute", {
-        name: "admin/graph.recompute",
-        data: {},
-      });
     }
 
     return { totalClassified, batchesRun };
