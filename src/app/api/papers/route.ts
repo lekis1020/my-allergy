@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hasSupabaseAuthCookie } from "@/lib/supabase/auth-cookie";
 import { createServerAuthClient, createServiceClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/rate-limit";
 import { distributedRateLimit } from "@/lib/utils/distributed-rate-limit";
@@ -94,13 +95,19 @@ export async function GET(request: NextRequest) {
     ? sortParam
     : "date_desc";
 
-  // Resolve auth for every request — needed for per-user social flags
-  // (is_bookmarked / is_liked) on cards, even outside personalization.
   // getUser() verifies the JWT against Supabase Auth; getSession() would
   // trust a client-supplied cookie payload, and the user id gates reads
   // of per-user rows through the service client below.
-  const authClient = await createServerAuthClient();
-  const { data: { user } } = await authClient.auth.getUser();
+  let auth: {
+    client: Awaited<ReturnType<typeof createServerAuthClient>>;
+    user: { id: string };
+  } | null = null;
+  if (hasSupabaseAuthCookie(request.cookies)) {
+    const client = await createServerAuthClient();
+    const { data } = await client.auth.getUser();
+    if (data.user) auth = { client, user: data.user };
+  }
+  const user = auth?.user ?? null;
   const personalizedActive = personalized && !!user;
 
   const queryArgs: QueryArgs = { q, pmids, journals, from, to, sort, articleType };
@@ -172,9 +179,9 @@ export async function GET(request: NextRequest) {
   let hasMore = false;
   let nextCursor: string | null = null;
 
-  if (personalizedActive && user) {
+  if (personalizedActive && auth) {
     // Personalization re-rank (authed only).
-    const context = await loadScoringContext(authClient, user.id);
+    const context = await loadScoringContext(auth.client, auth.user.id);
     const scored = scoreFeedRows(rawRows, context, new Date());
     scored.sort((a, b) => b.score - a.score);
     personalizedTotal = scored.length;

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { hasSupabaseAuthCookie } from "@/lib/supabase/auth-cookie";
 
 export async function proxy(request: NextRequest) {
   // Anonymous fast path: this proxy exists only to refresh an expired
@@ -7,10 +8,7 @@ export async function proxy(request: NextRequest) {
   // refresh, so skip client construction and the getUser() network
   // round-trip that would otherwise tax every page view and API call
   // from logged-out visitors.
-  const hasAuthCookie = request.cookies
-    .getAll()
-    .some((c) => c.name.startsWith("sb-") && c.name.includes("-auth-token"));
-  if (!hasAuthCookie) {
+  if (!hasSupabaseAuthCookie(request.cookies)) {
     return NextResponse.next({ request });
   }
 

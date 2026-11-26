@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Microscope, X } from "lucide-react";
@@ -25,6 +25,7 @@ const PersonalConnectionGraphPanel = dynamic(
 );
 import { PaperFeed } from "@/components/papers/paper-feed";
 import { FilterBar } from "@/components/papers/filter-bar";
+import { HomePageFallback } from "@/components/papers/home-page-fallback";
 import { usePaperFilters } from "@/hooks/use-paper-filters";
 import { usePapers } from "@/hooks/use-papers";
 import { useAuth } from "@/hooks/use-auth";
@@ -37,6 +38,14 @@ interface HomePageProps {
 }
 
 export function HomePage({ initialData }: HomePageProps) {
+  return (
+    <Suspense fallback={<HomePageFallback initialData={initialData} />}>
+      <HomePageInner initialData={initialData} />
+    </Suspense>
+  );
+}
+
+function HomePageInner({ initialData }: HomePageProps) {
   const searchParams = useSearchParams();
   const { filters, setFilters, clearFilters, hasActiveFilters } = usePaperFilters();
   const { user } = useAuth();
