@@ -44,6 +44,7 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
+    "jsdom": "^31.0.1",
     "vitest": "^4.0.18"
   }
 }

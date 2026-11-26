@@ -1,7 +1,8 @@
 import "server-only";
-import { createAnonClient } from "@/lib/supabase/server";
+import { createAnonClient, createServiceClient } from "@/lib/supabase/server";
 import { toPaperDto, PAPER_FEED_SELECT, type PaperRow } from "./transform";
 import { encodeCursor } from "./cursor";
+import { fetchSocialCounts } from "./social-counts";
 import type { PapersResponse } from "@/types/filters";
 
 const INITIAL_LIMIT = 10;
@@ -39,7 +40,22 @@ export async function fetchInitialPapers(): Promise<PapersResponse> {
   const rows: PaperRow[] = data || [];
   const hasMore = rows.length > INITIAL_LIMIT;
   const pageRows = hasMore ? rows.slice(0, INITIAL_LIMIT) : rows;
-  const papers = pageRows.map((row) => toPaperDto(row));
+  const paperDtos = pageRows.map((row) => toPaperDto(row));
+
+  const countMap = await fetchSocialCounts(
+    createServiceClient(),
+    paperDtos.map((p) => p.pmid),
+  );
+  const papers = paperDtos.map((paper) => {
+    const counts = countMap.get(paper.pmid);
+    return {
+      ...paper,
+      like_count: counts?.like ?? 0,
+      bookmark_count: counts?.bookmark ?? 0,
+      comment_count: counts?.comment ?? 0,
+      connection_count: counts?.connection ?? 0,
+    };
+  });
 
   const lastRow = pageRows[pageRows.length - 1];
   const nextCursor =

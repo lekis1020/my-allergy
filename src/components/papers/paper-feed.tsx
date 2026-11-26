@@ -17,6 +17,20 @@ const AD_INTERVAL = 12;
 const ESTIMATED_ROW_HEIGHT = 220;
 // Start loading the next page once the tail of the list enters the overscan.
 const LOAD_MORE_THRESHOLD = 3;
+const SCROLL_GATE_PX = ESTIMATED_ROW_HEIGHT;
+
+export function shouldPrefetchNextPage(opts: {
+  hasUserScrolled: boolean;
+  lastRenderedIndex: number | undefined;
+  itemCount: number;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+}): boolean {
+  if (!opts.hasUserScrolled) return false;
+  if (opts.lastRenderedIndex === undefined) return false;
+  if (!opts.hasMore || opts.isLoadingMore) return false;
+  return opts.lastRenderedIndex >= opts.itemCount - LOAD_MORE_THRESHOLD;
+}
 
 const ARTICLE_TYPES: ArticleType[] = [
   "original",
@@ -77,6 +91,7 @@ export function PaperFeed({
   // first client render identical (no hydration mismatch).
   const listRef = useRef<HTMLDivElement>(null);
   const [listOffset, setListOffset] = useState<number | null>(null);
+  const [hasUserScrolled, setHasUserScrolled] = useState(false);
 
   useEffect(() => {
     const measure = () => {
@@ -85,6 +100,15 @@ export function PaperFeed({
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.scrollY >= SCROLL_GATE_PX) setHasUserScrolled(true);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const virtualizer = useWindowVirtualizer({
@@ -102,11 +126,19 @@ export function PaperFeed({
   useEffect(() => {
     if (!virtualize) return;
     const last = virtualItems[virtualItems.length - 1];
-    if (!last) return;
-    if (last.index >= items.length - LOAD_MORE_THRESHOLD && hasMore && !isLoadingMore) {
-      onLoadMore();
+    if (
+      !shouldPrefetchNextPage({
+        hasUserScrolled,
+        lastRenderedIndex: last?.index,
+        itemCount: items.length,
+        hasMore,
+        isLoadingMore,
+      })
+    ) {
+      return;
     }
-  }, [virtualize, virtualItems, items.length, hasMore, isLoadingMore, onLoadMore]);
+    onLoadMore();
+  }, [virtualize, virtualItems, items.length, hasMore, isLoadingMore, onLoadMore, hasUserScrolled]);
 
   const renderItem = useCallback((item: FeedItem) => {
     if (item.kind === "ad") return <AdBanner variant="feed-inline" />;
