@@ -93,9 +93,9 @@ export async function storePapers(
   for (let batchStart = 0; batchStart < articles.length; batchStart += BATCH_SIZE) {
     const batch = articles.slice(batchStart, batchStart + BATCH_SIZE);
 
-    // Classify topics once per article, at store time, so the relationship-graph
-    // recompute can read the persisted column instead of re-scanning every
-    // abstract (see migration 00045). Reused for both the unchanged-comparison
+    // Classify topics once per article, at store time, so topic filters can
+    // read the persisted column instead of re-scanning every abstract
+    // (see migration 00045). Reused for both the unchanged-comparison
     // and the row we write.
     const topicTagsByPmid = new Map<string, string[]>(
       batch.map((article) => [

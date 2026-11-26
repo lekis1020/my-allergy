@@ -13,9 +13,8 @@ import { collectCitations } from "@/lib/sync/citations";
  * though we have ~700 papers in our DB.
  *
  * Trigger event: `admin/citations.backfill` with optional `data.days`
- * (default 90). The function loads recent-N-days PMIDs, runs
- * `collectCitations` over them in chunks of `CHUNK_SIZE`, then dispatches
- * `admin/graph.recompute` so the snapshot picks up the new edges.
+ * (default 90). The function loads recent-N-days PMIDs and runs
+ * `collectCitations` over them in chunks of `CHUNK_SIZE`.
  */
 const CHUNK_SIZE = 50;
 const DEFAULT_DAYS = 90;
@@ -68,13 +67,6 @@ export const backfillCitationsFn = inngest.createFunction(
       totalInserted += chunkResult.citationsInserted;
       totalErrors += chunkResult.errors;
     }
-
-    // Recompute snapshots so the UI picks up the new edges without an
-    // additional manual trigger.
-    await step.sendEvent("trigger-recompute", {
-      name: "admin/graph.recompute",
-      data: {},
-    });
 
     return {
       days,

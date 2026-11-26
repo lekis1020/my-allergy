@@ -152,11 +152,7 @@ export const syncJournalFn = inngest.createFunction(
         return collectCitations(supabase, storeResult.insertedPmids);
       });
 
-      // Embed newly inserted papers so the relationship-graph snapshot
-      // can pick up their similarity edges on the next recompute.
-      // Snapshot refresh is deferred (cron or manual
-      // admin/graph.recompute) so 7 parallel journal syncs don't kick
-      // off 7 recomputes back-to-back.
+      // Embed newly inserted papers (title + abstract) for future similarity use.
       const embedResult = await step.run("embed-new-papers", async () => {
         if (storeResult.insertedPmids.length === 0) {
           return { embedded: 0, short: 0, errors: 0 };
